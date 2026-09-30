@@ -1,3 +1,22 @@
+-- SPOTLY: reinicio de tablas public + esquema completo y políticas base.
+-- ATENCIÓN: destructivo. Borra los datos y tablas de Spotly indicados abajo.
+-- No elimina auth.users, buckets ni archivos de Storage.
+-- Revisar y guardar respaldo antes de ejecutar en Supabase SQL Editor.
+-- Ejecutar este archivo completo en una sola ejecución.
+
+BEGIN;
+
+-- Tablas de Spotly del esquema v2, en orden inverso de dependencias.
+-- CASCADE quita también vistas/constraints dependientes dentro de public.
+DROP TABLE IF EXISTS public.saved_cards CASCADE;
+DROP TABLE IF EXISTS public.visit_requests CASCADE;
+DROP TABLE IF EXISTS public.disputes CASCADE;
+DROP TABLE IF EXISTS public.audit_logs CASCADE;
+DROP TABLE IF EXISTS public.contracts CASCADE;
+DROP TABLE IF EXISTS public.reservations CASCADE;
+DROP TABLE IF EXISTS public.spaces CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
 -- ==============================================================================
 -- SPOTLY CHILE - SCHEMA V2 (MEJORADO)
 -- ==============================================================================
@@ -39,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT,
     avatar_url TEXT,
     gender TEXT CHECK (gender IN ('masculino', 'femenino', 'no_binario', 'otro', 'prefiero_no_decir')),
-    birth_date DATE,
+    birth_date DATE NOT NULL CHECK (birth_date <= (CURRENT_DATE - INTERVAL '18 years')::DATE),
     role TEXT NOT NULL DEFAULT 'tenant' CHECK (role IN ('tenant', 'owner', 'admin')),
     owner_terms_accepted BOOLEAN NOT NULL DEFAULT false,
     owner_application_date TIMESTAMPTZ,
@@ -47,8 +66,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
         CHECK (verification_status IN ('unverified', 'in_progress', 'pending_review', 'verified', 'rejected')),
     kyc_rejection_reason TEXT,
     kyc_data JSONB DEFAULT '{}'::jsonb,
-    commune TEXT DEFAULT 'Santiago',
-    city TEXT DEFAULT 'Santiago',
+    commune TEXT,
+    city TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -254,24 +273,6 @@ CREATE TABLE IF NOT EXISTS public.visit_requests (
 COMMENT ON TABLE public.visit_requests IS 'Agendamiento de visitas presenciales o virtuales';
 
 -- ==============================================================================
--- 9. TABLA: saved_cards
--- ==============================================================================
-CREATE TABLE IF NOT EXISTS public.saved_cards (
-    id TEXT PRIMARY KEY DEFAULT public.generate_id('crd'),
-    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    card_brand TEXT NOT NULL CHECK (card_brand IN ('visa', 'mastercard', 'redcompra')),
-    card_holder TEXT NOT NULL,
-    last4 TEXT NOT NULL,
-    expiry_month TEXT NOT NULL,
-    expiry_year TEXT NOT NULL,
-    bank_name TEXT NOT NULL,
-    is_default BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-COMMENT ON TABLE public.saved_cards IS 'Billetera de medios de pago simulados';
-
--- ==============================================================================
 -- ÍNDICES (rendimiento)
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_spaces_owner_id        ON public.spaces(owner_id);
@@ -297,7 +298,6 @@ CREATE INDEX IF NOT EXISTS idx_visit_requests_tenant  ON public.visit_requests(t
 CREATE INDEX IF NOT EXISTS idx_visit_requests_owner   ON public.visit_requests(owner_id);
 CREATE INDEX IF NOT EXISTS idx_visit_requests_date    ON public.visit_requests(visit_date);
 
-CREATE INDEX IF NOT EXISTS idx_saved_cards_user       ON public.saved_cards(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user        ON public.audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp   ON public.audit_logs(timestamp DESC);
 
@@ -340,9 +340,9 @@ BEGIN
       THEN (NEW.raw_user_meta_data->>'birth_date')::DATE
       ELSE NULL
     END,
-    COALESCE(NEW.raw_user_meta_data->>'role', 'tenant'),
-    COALESCE((NEW.raw_user_meta_data->>'owner_terms_accepted')::boolean, false),
-    COALESCE(NEW.raw_user_meta_data->>'verification_status', 'unverified'),
+    'tenant',
+    false,
+    'unverified',
     now(),
     now()
   )
@@ -361,6 +361,42 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
+-- Evita que un usuario se eleve a admin o altere por sí mismo su KYC.
+-- La transición tenant -> owner requiere aceptación registrada de términos.
+CREATE OR REPLACE FUNCTION public.guard_profile_privileged_fields()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.verification_status IS DISTINCT FROM OLD.verification_status
+     OR NEW.kyc_rejection_reason IS DISTINCT FROM OLD.kyc_rejection_reason
+     OR NEW.kyc_data IS DISTINCT FROM OLD.kyc_data THEN
+    RAISE EXCEPTION 'Solo un administrador puede modificar el estado o los datos KYC';
+  END IF;
+
+  IF NEW.role IS DISTINCT FROM OLD.role AND NOT (
+    OLD.role = 'tenant' AND NEW.role = 'owner'
+    AND NEW.owner_terms_accepted IS TRUE
+    AND NEW.owner_application_date IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'Cambio de rol no autorizado';
+  END IF;
+
+  IF NEW.owner_terms_accepted IS DISTINCT FROM OLD.owner_terms_accepted
+     AND NEW.owner_terms_accepted IS NOT TRUE THEN
+    RAISE EXCEPTION 'La aceptación de términos no se puede retirar';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
 -- updated_at automático
 CREATE OR REPLACE FUNCTION public.set_current_timestamp_updated_at()
 RETURNS trigger AS $$
@@ -371,6 +407,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS set_profiles_updated_at ON public.profiles;
+DROP TRIGGER IF EXISTS guard_profiles_privileged_fields ON public.profiles;
+CREATE TRIGGER guard_profiles_privileged_fields
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE PROCEDURE public.guard_profile_privileged_fields();
 CREATE TRIGGER set_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE PROCEDURE public.set_current_timestamp_updated_at();
@@ -395,7 +435,6 @@ ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.disputes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visit_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.saved_cards ENABLE ROW LEVEL SECURITY;
 
 -- Helper admin
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -427,9 +466,7 @@ CREATE POLICY "Actualización de perfil propio o admin"
   WITH CHECK (auth.uid() = id OR public.is_admin());
 
 DROP POLICY IF EXISTS "Inserción de perfil propio" ON public.profiles;
-CREATE POLICY "Inserción de perfil propio"
-  ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() = id OR public.is_admin());
+-- El alta de perfiles la hace el trigger SECURITY DEFINER desde auth.users.
 
 -- ------------------------------------------------------------------------------
 -- RLS: SPACES
@@ -442,13 +479,25 @@ CREATE POLICY "Lectura pública de espacios activos"
 DROP POLICY IF EXISTS "Propietarios pueden crear espacios" ON public.spaces;
 CREATE POLICY "Propietarios pueden crear espacios"
   ON public.spaces FOR INSERT
-  WITH CHECK (auth.uid() = owner_id OR public.is_admin());
+  WITH CHECK (
+    public.is_admin() OR (
+      auth.uid() = owner_id AND EXISTS (
+        SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'owner'
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "Propietarios pueden actualizar sus espacios" ON public.spaces;
 CREATE POLICY "Propietarios pueden actualizar sus espacios"
   ON public.spaces FOR UPDATE
   USING (auth.uid() = owner_id OR public.is_admin())
-  WITH CHECK (auth.uid() = owner_id OR public.is_admin());
+  WITH CHECK (
+    public.is_admin() OR (
+      auth.uid() = owner_id AND EXISTS (
+        SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'owner'
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "Propietarios pueden eliminar sus espacios" ON public.spaces;
 CREATE POLICY "Propietarios pueden eliminar sus espacios"
@@ -505,9 +554,9 @@ CREATE POLICY "Inserción de contratos"
 -- RLS: AUDIT_LOGS
 -- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Inserción de registros de auditoría" ON public.audit_logs;
-CREATE POLICY "Inserción de registros de auditoría"
+CREATE POLICY "Inserción de auditoría propia"
   ON public.audit_logs FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (auth.uid() IS NOT NULL AND user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Lectura de auditoría propia o admin" ON public.audit_logs;
 CREATE POLICY "Lectura de auditoría propia o admin"
@@ -559,20 +608,6 @@ CREATE POLICY "Actualización de visita"
   ON public.visit_requests FOR UPDATE
   USING (tenant_id = auth.uid() OR owner_id = auth.uid() OR public.is_admin());
 
--- ------------------------------------------------------------------------------
--- RLS: SAVED_CARDS
--- ------------------------------------------------------------------------------
-DROP POLICY IF EXISTS "Usuarios ven solo sus tarjetas guardadas" ON public.saved_cards;
-CREATE POLICY "Usuarios ven solo sus tarjetas guardadas"
-  ON public.saved_cards FOR SELECT
-  USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Usuarios gestionan sus tarjetas guardadas" ON public.saved_cards;
-CREATE POLICY "Usuarios gestionan sus tarjetas guardadas"
-  ON public.saved_cards FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-
 -- ==============================================================================
 -- STORAGE: BUCKETS + POLÍTICAS ESTRICTAS
 -- ==============================================================================
@@ -595,6 +630,7 @@ CREATE POLICY "Lectura pública de fotos de espacios"
   USING (bucket_id = 'spaces');
 
 DROP POLICY IF EXISTS "Usuarios autenticados pueden subir fotos de espacios" ON storage.objects;
+DROP POLICY IF EXISTS "Dueños suben fotos de sus espacios" ON storage.objects;
 CREATE POLICY "Dueños suben fotos de sus espacios"
   ON storage.objects FOR INSERT
   WITH CHECK (
@@ -604,6 +640,7 @@ CREATE POLICY "Dueños suben fotos de sus espacios"
   );
 
 DROP POLICY IF EXISTS "Dueños o admins pueden modificar fotos de espacios" ON storage.objects;
+DROP POLICY IF EXISTS "Dueños modifican fotos de sus espacios" ON storage.objects;
 CREATE POLICY "Dueños modifican fotos de sus espacios"
   ON storage.objects FOR UPDATE
   USING (
@@ -613,9 +650,15 @@ CREATE POLICY "Dueños modifican fotos de sus espacios"
       (storage.foldername(name))[1] = auth.uid()::text
       OR public.is_admin()
     )
+  )
+  WITH CHECK (
+    bucket_id = 'spaces'
+    AND auth.role() = 'authenticated'
+    AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin())
   );
 
 DROP POLICY IF EXISTS "Dueños o admins pueden eliminar fotos de espacios" ON storage.objects;
+DROP POLICY IF EXISTS "Dueños eliminan fotos de sus espacios" ON storage.objects;
 CREATE POLICY "Dueños eliminan fotos de sus espacios"
   ON storage.objects FOR DELETE
   USING (
@@ -675,7 +718,11 @@ CREATE POLICY "Acceso a contratos propios o admin"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'contracts'
-    AND auth.role() = 'authenticated'
+    AND (public.is_admin() OR EXISTS (
+      SELECT 1 FROM public.reservations r
+      WHERE r.id = split_part(name, '/', 1)
+        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+    ))
   );
 
 DROP POLICY IF EXISTS "Subida de contratos por usuarios autenticados" ON storage.objects;
@@ -683,15 +730,35 @@ CREATE POLICY "Subida de contratos por usuarios autenticados"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'contracts'
-    AND auth.role() = 'authenticated'
+    AND (public.is_admin() OR EXISTS (
+      SELECT 1 FROM public.reservations r
+      WHERE r.id = split_part(name, '/', 1)
+        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+    ))
   );
+
+-- Permisos SQL: el acceso efectivo queda limitado por las políticas RLS.
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT ON public.spaces TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON
+  public.profiles, public.spaces, public.reservations, public.contracts,
+  public.audit_logs, public.disputes, public.visit_requests
+  TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 
 -- ==============================================================================
 -- FIN DEL SCHEMA V2
 -- ==============================================================================
 -- Notas de uso:
 -- 1. Al crear un space NO necesitas enviar "id": se genera solo (spc_...).
--- 2. Igual para reservations, contracts, disputes, visit_requests, saved_cards.
+-- 2. Igual para reservations, contracts, disputes y visit_requests.
 -- 3. Para Storage de spaces sube con path: {tu_user_id}/{space_id}/nombre.jpg
 -- 4. Si ya tienes datos con IDs manuales, el DEFAULT solo aplica a filas nuevas.
 -- ==============================================================================
+
+-- El rol admin no se asigna desde el registro. Después de crear y confirmar
+-- tu propia cuenta, promuévela manualmente en SQL Editor, cambiando el correo:
+-- UPDATE public.profiles SET role = 'admin' WHERE email = 'TU_CORREO';
+
+COMMIT;
+
