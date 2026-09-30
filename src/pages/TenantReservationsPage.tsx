@@ -36,7 +36,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
   onOpenOwnerUpgrade,
   onOpenAuth,
 }) => {
-  const { currentUser, allUsers, reservations, contracts, visitRequests, createDispute } = useApp();
+  const { currentUser, reservations, contracts, visitRequests, createDispute } = useApp();
 
   const [activeTab, setActiveTab] = useState<'reservations' | 'visits'>('reservations');
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
@@ -127,7 +127,6 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
     );
     if (found) return found;
 
-    const owner = allUsers.find((user) => user.id === reservation.ownerId);
     return generateDigitalContract({
       reservationId: reservation.id,
       spaceTitle: reservation.spaceTitle,
@@ -135,7 +134,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       tenantName: reservation.tenantName,
       tenantRut: reservation.tenantRut,
       ownerName: reservation.ownerName,
-      ownerRut: reservation.ownerRut || owner?.rut || '14.258.963-7',
+      ownerRut: reservation.ownerRut || '',
       totalClp: reservation.totalClp,
       guaranteeDepositClp: reservation.securityDepositClp,
       startDate: reservation.startDate,

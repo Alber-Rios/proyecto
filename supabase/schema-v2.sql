@@ -32,6 +32,8 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
+    first_names TEXT,
+    surnames TEXT,
     email TEXT NOT NULL UNIQUE,
     rut TEXT,
     phone TEXT,
@@ -50,6 +52,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS first_names TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS surnames TEXT;
 
 COMMENT ON TABLE public.profiles IS 'Perfiles de usuarios sincronizados con auth.users';
 
@@ -109,6 +114,7 @@ CREATE TABLE IF NOT EXISTS public.reservations (
     tenant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     tenant_name TEXT NOT NULL,
     tenant_email TEXT NOT NULL,
+    tenant_phone TEXT,
     tenant_rut TEXT NOT NULL,
     owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     owner_name TEXT NOT NULL,
@@ -306,6 +312,8 @@ BEGIN
   INSERT INTO public.profiles (
     id,
     full_name,
+    first_names,
+    surnames,
     email,
     rut,
     phone,
@@ -320,6 +328,8 @@ BEGIN
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', 'Usuario Spotly'),
+    COALESCE(NEW.raw_user_meta_data->>'first_names', ''),
+    COALESCE(NEW.raw_user_meta_data->>'surnames', ''),
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'rut', ''),
     COALESCE(NEW.raw_user_meta_data->>'phone', '+56 9 '),
@@ -338,6 +348,8 @@ BEGIN
   )
   ON CONFLICT (id) DO UPDATE SET
     full_name = EXCLUDED.full_name,
+    first_names = EXCLUDED.first_names,
+    surnames = EXCLUDED.surnames,
     email = EXCLUDED.email,
     updated_at = now();
   RETURN NEW;
@@ -387,22 +399,26 @@ ALTER TABLE public.saved_cards ENABLE ROW LEVEL SECURITY;
 
 -- Helper admin
 CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean AS $$
-BEGIN
-  RETURN EXISTS (
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = auth.uid() AND role = 'admin'
   );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- ------------------------------------------------------------------------------
 -- RLS: PROFILES
 -- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Lectura pública de perfiles" ON public.profiles;
-CREATE POLICY "Lectura pública de perfiles"
+DROP POLICY IF EXISTS "Lectura de perfil propio o administrador" ON public.profiles;
+CREATE POLICY "Lectura de perfil propio o administrador"
   ON public.profiles FOR SELECT
-  USING (true);
+  USING (auth.uid() = id OR public.is_admin());
 
 DROP POLICY IF EXISTS "Actualización de perfil propio o admin" ON public.profiles;
 CREATE POLICY "Actualización de perfil propio o admin"
@@ -413,7 +429,7 @@ CREATE POLICY "Actualización de perfil propio o admin"
 DROP POLICY IF EXISTS "Inserción de perfil propio" ON public.profiles;
 CREATE POLICY "Inserción de perfil propio"
   ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() = id OR public.is_admin() OR auth.uid() IS NULL);
+  WITH CHECK (auth.uid() = id OR public.is_admin());
 
 -- ------------------------------------------------------------------------------
 -- RLS: SPACES

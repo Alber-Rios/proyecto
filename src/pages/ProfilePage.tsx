@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { UserGender } from '../types.ts';
 import { formatRut, validateRut } from '../utils/formatters.ts';
+import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import {
   User,
   ShieldCheck,
@@ -34,7 +35,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   } = useApp();
 
   // Formulario de edición de datos personales
-  const [fullName, setFullName] = useState(currentUser?.fullName || '');
+  const [firstNames, setFirstNames] = useState(currentUser?.firstNames || currentUser?.fullName || '');
+  const [surnames, setSurnames] = useState(currentUser?.surnames || '');
   const [rut, setRut] = useState(currentUser?.rut || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '+56 9 ');
@@ -91,8 +93,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     setFormError(null);
     setSaveSuccess(false);
 
-    if (!fullName.trim()) {
-      setFormError('El nombre completo es obligatorio.');
+    if (!firstNames.trim() || !surnames.trim()) {
+      setFormError('Completa tus nombres y apellidos por separado.');
+      return;
+    }
+
+    if (!isAtLeast18(birthDate)) {
+      setFormError('La fecha de nacimiento debe corresponder a una persona de 18 años o más.');
       return;
     }
 
@@ -107,7 +114,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
 
     updateUserProfile({
-      fullName: fullName.trim(),
+      fullName: `${firstNames.trim()} ${surnames.trim()}`,
+      firstNames: firstNames.trim(),
+      surnames: surnames.trim(),
       rut: rut.trim(),
       email: email.trim(),
       phone: phone.trim(),
@@ -146,8 +155,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900">
-                  {currentUser.fullName}
+                  {firstNames.trim() && surnames.trim() ? `${firstNames} ${surnames}` : currentUser.fullName}
                 </h1>
+                <span className="text-xs text-slate-500">Género: {gender === 'prefiero_no_decir' ? 'Prefiero no decir' : gender === 'no_binario' ? 'No binario' : gender === 'femenino' ? 'Femenino' : gender === 'masculino' ? 'Masculino' : 'Otro'}</span>
                 {currentUser.verificationStatus === 'verified' ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -349,15 +359,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nombre Completo
+                  Nombres
                 </label>
                 <input
                   type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={firstNames}
+                  onChange={(e) => setFirstNames(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Apellidos</label>
+                <input type="text" value={surnames} onChange={(e) => setSurnames(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium" required />
               </div>
 
               <div>
@@ -422,6 +437,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <input
                   type="date"
                   value={birthDate}
+                  max={getAdultBirthDateLimit()}
                   onChange={(e) => setBirthDate(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
                   required

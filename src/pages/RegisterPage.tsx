@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { validateRut, formatRut } from '../utils/formatters.ts';
+import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
+import { UserGender } from '../types.ts';
 import {
   UserPlus,
   Mail,
@@ -24,12 +26,13 @@ interface RegisterPageProps {
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const { register } = useApp();
 
-  const [fullName, setFullName] = useState('');
+  const [firstNames, setFirstNames] = useState('');
+  const [surnames, setSurnames] = useState('');
   const [rut, setRut] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('+56 9 ');
   const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState<'masculino' | 'femenino' | 'otro' | 'prefiero_no_decir'>('prefiero_no_decir');
+  const [gender, setGender] = useState<UserGender>('prefiero_no_decir');
   const [role, setRole] = useState<'tenant' | 'owner'>('tenant');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,8 +45,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     e.preventDefault();
     setError(null);
 
-    if (!fullName.trim() || fullName.trim().length < 3) {
-      setError('Por favor ingresa tu nombre y apellido completo.');
+    if (!firstNames.trim() || !surnames.trim()) {
+      setError('Ingresa tus nombres y apellidos por separado.');
       return;
     }
 
@@ -72,6 +75,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
       return;
     }
 
+    if (!isAtLeast18(birthDate)) {
+      setError('Debes tener 18 años o más para crear una cuenta.');
+      return;
+    }
+
     if (!termsAccepted) {
       setError('Debes aceptar los Términos de Servicio y la Política de Privacidad de Datos.');
       return;
@@ -80,7 +88,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     setLoading(true);
     try {
       const res = await register({
-        fullName: fullName.trim(),
+        firstNames: firstNames.trim(),
+        surnames: surnames.trim(),
+        fullName: `${firstNames.trim()} ${surnames.trim()}`,
         rut: rut.trim(),
         email: email.trim().toLowerCase(),
         password,
@@ -92,6 +102,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
       });
 
       if (res.success) {
+        if (res.requiresEmailConfirmation) {
+          setSuccess(res.message || 'Confirma tu correo y después inicia sesión.');
+          return;
+        }
         setSuccess('¡Cuenta creada exitosamente! Redirigiendo...');
         setTimeout(() => {
           if (role === 'owner') {
@@ -223,19 +237,19 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 </div>
               </div>
 
-              {/* Nombre Completo y Fecha de Nacimiento */}
+              {/* Nombres y fecha de nacimiento */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Nombre Completo
+                    Nombres
                   </label>
                   <input
                     type="text"
                     required
-                    autoComplete="off"
+                    autoComplete="given-name"
                     data-temp-mail-org="0"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    value={firstNames}
+                    onChange={(e) => setFirstNames(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
                   />
                 </div>
@@ -247,10 +261,29 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   <input
                     type="date"
                     required
+                    max={getAdultBirthDateLimit()}
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
                   />
+                  {birthDate && !isAtLeast18(birthDate) && <p className="mt-1 text-[11px] text-rose-600">Debes tener 18 años o más.</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Apellidos</label>
+                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Género</label>
+                  <select value={gender} onChange={(e) => setGender(e.target.value as UserGender)} className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium">
+                    <option value="femenino">Femenino</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="no_binario">No binario</option>
+                    <option value="otro">Otro</option>
+                    <option value="prefiero_no_decir">Prefiero no decir</option>
+                  </select>
                 </div>
               </div>
 

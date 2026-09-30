@@ -51,6 +51,8 @@ export interface KycData {
 export interface UserProfile {
   id: string;
   fullName: string;
+  firstNames?: string;
+  surnames?: string;
   email: string;
   rut: string;
   phone: string;
@@ -165,6 +167,7 @@ export interface Reservation {
   tenantId: string;
   tenantName: string;
   tenantEmail: string;
+  tenantPhone?: string;
   tenantRut: string;
   ownerId: string;
   ownerName: string;

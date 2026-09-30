@@ -17,6 +17,7 @@ import {
 import { saveAuditLog, getAuditLogs, getClientAuditMetadata } from '../utils/auditLogger.ts';
 import { generateDigitalContract } from '../utils/contractGenerator.ts';
 import { getTodayIso } from '../utils/formatters.ts';
+import { isAtLeast18 } from '../utils/ageValidation.ts';
 import {
   supabase,
   isSupabaseConfigured,
@@ -43,6 +44,7 @@ import {
 interface AppContextType {
   currentUser: UserProfile | null;
   allUsers: UserProfile[];
+  profilesLoadError: string | null;
   spaces: Space[];
   reservations: Reservation[];
   contracts: DigitalContract[];
@@ -69,6 +71,8 @@ interface AppContextType {
   login: (emailOrRut: string, password?: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   register: (userData: {
+    firstNames: string;
+    surnames: string;
     fullName: string;
     rut: string;
     email: string;
@@ -78,7 +82,7 @@ interface AppContextType {
     agreedTerms: boolean;
     gender?: UserGender;
     birthDate?: string;
-  }) => Promise<{ success: boolean; message?: string }>;
+  }) => Promise<{ success: boolean; message?: string; requiresEmailConfirmation?: boolean }>;
   updateUserProfile: (data: Partial<UserProfile>) => void;
   updateUserRole: (newRole: UserRole) => void;
   upgradeTenantToOwner: (agreedTerms: boolean, kycVerified?: boolean) => Promise<{ success: boolean; message: string }>;
@@ -138,6 +142,9 @@ const INITIAL_SAVED_CARDS: SavedCard[] = [];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [profilesLoadError, setProfilesLoadError] = useState<string | null>(
+    isSupabaseConfigured() ? null : 'Supabase no está configurado para esta aplicación.'
+  );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -219,6 +226,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const loadedUser: UserProfile = {
               id: profile.id,
               fullName: profile.full_name,
+              firstNames: profile.first_names || undefined,
+              surnames: profile.surnames || undefined,
               email: profile.email,
               rut: profile.rut || '',
               phone: profile.phone || '',
@@ -240,6 +249,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // 2. Cargar tablas desde Supabase DB
+        let profileError: string | null = null;
+        const profilesPromise = getProfilesFromDb().catch((profileLoadErr) => {
+          profileError = profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.';
+          return [];
+        });
         const [
           dbSpaces,
           dbReservations,
@@ -255,7 +269,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           getDisputesFromDb(),
           getVisitRequestsFromDb(),
           getAuditLogsFromDb(),
-          getProfilesFromDb(),
+          profilesPromise,
         ]);
 
         if (isMounted) {
@@ -266,9 +280,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setVisitRequests(dbVisits);
           setAuditLogs(dbLogs);
           setAllUsers(dbProfiles);
+          setProfilesLoadError(profileError);
         }
       } catch (err) {
         console.warn('Error durante la inicialización de Supabase:', err);
+        if (isMounted) {
+          setProfilesLoadError(err instanceof Error ? err.message : 'No se pudieron cargar los datos de Supabase.');
+        }
       }
     }
 
@@ -292,6 +310,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentUser({
               id: profile.id,
               fullName: profile.full_name,
+              firstNames: profile.first_names || undefined,
+              surnames: profile.surnames || undefined,
               email: profile.email,
               rut: profile.rut || '',
               phone: profile.phone || '',
@@ -327,15 +347,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isSupabaseConfigured() && password) {
       let targetEmail = cleanInput;
 
-      // Si el usuario ingresó un RUT, buscamos el email asociado en profiles
+      // Supabase Auth inicia sesión con correo; no se lee la tabla de perfiles desde una sesión anónima para resolver RUT.
       if (!cleanInput.includes('@')) {
-        const cleanRutInput = cleanInput.replace(/[^0-9k]/g, '');
-        const matched = allUsers.find(
-          (u) => u.rut.toLowerCase().replace(/[^0-9k]/g, '') === cleanRutInput
-        );
-        if (matched) {
-          targetEmail = matched.email.toLowerCase();
-        }
+        return { success: false, message: 'Ingresa el correo electrónico asociado a tu cuenta.' };
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -349,6 +363,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           success: false,
           message: error.message.includes('Invalid login credentials')
             ? 'Credenciales no válidas. Revisa tu correo o RUT y contraseña.'
+            : error.message.toLowerCase().includes('email not confirmed')
+              ? 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.'
             : error.message,
         };
       }
@@ -365,6 +381,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ? {
               id: profile.id,
               fullName: profile.full_name,
+              firstNames: profile.first_names || undefined,
+              surnames: profile.surnames || undefined,
               email: profile.email,
               rut: profile.rut || '',
               phone: profile.phone || '',
@@ -384,6 +402,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : {
               id: data.user.id,
               fullName: data.user.user_metadata?.full_name || 'Usuario Spotly',
+              firstNames: data.user.user_metadata?.first_names,
+              surnames: data.user.user_metadata?.surnames,
               email: data.user.email || targetEmail,
               rut: data.user.user_metadata?.rut || '',
               phone: data.user.user_metadata?.phone || '',
@@ -394,6 +414,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
 
         setCurrentUser(loggedUser);
+        try {
+          setAllUsers(await getProfilesFromDb());
+          setProfilesLoadError(null);
+        } catch (profileLoadErr) {
+          setProfilesLoadError(profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.');
+        }
         addAuditRecord('USER_LOGGED_IN_SUPABASE', 'security', {
           userId: loggedUser.id,
           userEmail: loggedUser.email,
@@ -482,6 +508,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Registro de nuevo usuario (Supabase Auth + Base de datos)
   const register = async (userData: {
+    firstNames: string;
+    surnames: string;
     fullName: string;
     rut: string;
     email: string;
@@ -491,7 +519,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     agreedTerms: boolean;
     gender?: UserGender;
     birthDate?: string;
-  }): Promise<{ success: boolean; message?: string }> => {
+  }): Promise<{ success: boolean; message?: string; requiresEmailConfirmation?: boolean }> => {
+    if (!isAtLeast18(userData.birthDate || '')) {
+      return { success: false, message: 'Debes tener 18 años o más para crear una cuenta.' };
+    }
+
     const cleanEmail = userData.email.trim().toLowerCase();
     const cleanRut = userData.rut.replace(/[^0-9k]/gi, '').toLowerCase();
 
@@ -504,6 +536,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         options: {
           data: {
             full_name: userData.fullName,
+            first_names: userData.firstNames,
+            surnames: userData.surnames,
             rut: userData.rut,
             phone: userData.phone,
             role: userData.role,
@@ -522,10 +556,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       }
 
+      if (authData.user && !authData.session) {
+        return {
+          success: true,
+          requiresEmailConfirmation: true,
+          message: 'Cuenta creada. Confirma tu correo electrónico y luego inicia sesión.',
+        };
+      }
+
       const assignedId = authData.user?.id || `usr-custom-${Date.now()}`;
       const newUser: UserProfile = {
         id: assignedId,
         fullName: userData.fullName,
+        firstNames: userData.firstNames,
+        surnames: userData.surnames,
         email: cleanEmail,
         rut: userData.rut,
         phone: userData.phone,
@@ -588,6 +632,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newUser: UserProfile = {
       id: `usr-custom-${Date.now()}`,
       fullName: userData.fullName,
+      firstNames: userData.firstNames,
+      surnames: userData.surnames,
       email: cleanEmail,
       rut: userData.rut,
       phone: userData.phone,
@@ -846,6 +892,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             `Conflicto de disponibilidad: El recinto "${bookingData.space.title}" ya tiene una reserva activa para las fechas seleccionadas (${existing.startDate} al ${existing.endDate}). Selecciona otras fechas u horario disponible.`
           );
         }
+
       }
     }
 
@@ -885,6 +932,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       tenantId: currentUser.id,
       tenantName: currentUser.fullName,
       tenantEmail: currentUser.email,
+      tenantPhone: currentUser.phone,
       tenantRut: currentUser.rut,
       ownerId: bookingData.space.ownerId,
       ownerName: bookingData.space.ownerName,
@@ -1629,6 +1677,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentUser,
         allUsers,
+        profilesLoadError,
         spaces,
         reservations,
         contracts,

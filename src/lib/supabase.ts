@@ -10,8 +10,13 @@ import {
   SavedCard,
 } from '../types.ts';
 
-const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const envUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+const envKey = (
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  ''
+).trim();
 
 export const isSupabaseConfigured = (): boolean => {
   return (
@@ -214,6 +219,7 @@ export async function getReservationsFromDb(): Promise<Reservation[]> {
     tenantId: row.tenant_id,
     tenantName: row.tenant_name,
     tenantEmail: row.tenant_email,
+    tenantPhone: row.tenant_phone || '',
     tenantRut: row.tenant_rut,
     ownerId: row.owner_id,
     ownerName: row.owner_name,
@@ -256,6 +262,7 @@ export async function insertReservationToDb(reservation: Reservation): Promise<{
     tenant_id: reservation.tenantId,
     tenant_name: reservation.tenantName,
     tenant_email: reservation.tenantEmail,
+    tenant_phone: reservation.tenantPhone || '',
     tenant_rut: reservation.tenantRut,
     owner_id: reservation.ownerId,
     owner_name: reservation.ownerName,
@@ -549,12 +556,14 @@ export async function getProfilesFromDb(): Promise<UserProfile[]> {
   const { data, error } = await supabase.from('profiles').select('*');
   if (error) {
     console.error('Error al consultar perfiles en Supabase:', error.message);
-    return [];
+    throw new Error(`No se pudieron cargar los perfiles desde Supabase: ${error.message}`);
   }
 
   return (data || []).map((row: any) => ({
     id: row.id,
     fullName: row.full_name,
+    firstNames: row.first_names || undefined,
+    surnames: row.surnames || undefined,
     email: row.email,
     rut: row.rut || '',
     phone: row.phone || '',
@@ -581,6 +590,8 @@ export async function updateProfileInDb(
 
   const dbRow: any = {};
   if (data.fullName !== undefined) dbRow.full_name = data.fullName;
+  if (data.firstNames !== undefined) dbRow.first_names = data.firstNames;
+  if (data.surnames !== undefined) dbRow.surnames = data.surnames;
   if (data.email !== undefined) dbRow.email = data.email;
   if (data.rut !== undefined) dbRow.rut = data.rut;
   if (data.phone !== undefined) dbRow.phone = data.phone;

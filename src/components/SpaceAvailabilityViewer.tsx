@@ -68,18 +68,12 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
   maintenanceBlocks = [],
   onRemoveMaintenance,
 }) => {
-  const { reservations, allUsers } = useApp();
+  const { reservations } = useApp();
   const todayIso = useMemo(() => getTodayIso(), []);
   const availableModalities = useMemo(() => getSpaceAvailableModalities(space), [space]);
 
   const getTenantPhone = (r: Reservation): string => {
-    const matched = allUsers.find(
-      (u) =>
-        u.id === r.tenantId ||
-        (u.rut && r.tenantRut && u.rut.replace(/\D/g, '') === r.tenantRut.replace(/\D/g, '')) ||
-        (u.email && r.tenantEmail && u.email.toLowerCase() === r.tenantEmail.toLowerCase())
-    );
-    return matched?.phone || '+56 9 9123 4567';
+    return r.tenantPhone || '';
   };
 
   // Modalidades soportadas por el espacio
@@ -268,7 +262,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
       uniqueBookings,
       dayEarningsClp,
     };
-  }, [activeModality, startDate, todayIso, spaceReservations, OPERATING_HOURS, selectedHourStart, selectedHourEnd, isOwnerView, allUsers]);
+  }, [activeModality, startDate, todayIso, spaceReservations, OPERATING_HOURS, selectedHourStart, selectedHourEnd, isOwnerView]);
 
   // Cinta de días para por_hora y por_dia
   const daysStrip = useMemo(() => {

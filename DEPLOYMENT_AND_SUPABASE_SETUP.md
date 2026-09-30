@@ -140,6 +140,10 @@ En las variables de entorno de tu proyecto Vercel, agrega:
 - `VITE_SUPABASE_URL`: tu URL de Supabase
 - `VITE_SUPABASE_ANON_KEY`: tu clave anon de Supabase
 
+La app también acepta las variables públicas `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, habituales en proyectos conectados desde Vercel. Nunca uses `SUPABASE_SERVICE_ROLE_KEY` en el frontend.
+
+Para una base de datos que ya existe, aplica en el SQL Editor y en este orden las migraciones de `supabase/migrations/`: primero `20260930_add_profile_name_parts.sql` y luego `20260930_secure_profile_access.sql`. La segunda restringe la lectura de perfiles al propio usuario y a administradores; el perfil administrador debe tener `role = 'admin'`.
+
 ---
 
 ### Opción C: Despliegue Completo en Render o Railway (Servicio Único)
