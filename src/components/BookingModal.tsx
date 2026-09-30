@@ -305,7 +305,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         spaceId: space.id,
         spaceTitle: space.title,
         spaceAddress: `${space.address}, ${space.commune}`,
-        spaceImage: space.images?.[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
+        spaceImage: space.images?.[0] || '',
         tenantId: currentUser.id,
         tenantName: visitorName.trim(),
         tenantEmail: visitorEmail.trim() || currentUser.email,

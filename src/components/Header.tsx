@@ -362,14 +362,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                     {/* Avatar con indicador de verificación */}
                     <div className="relative shrink-0">
-                      <img
-                        src={
-                          currentUser.avatarUrl ||
-                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
-                        }
-                        alt={currentUser.fullName}
-                        className="w-8 h-8 sm:w-8 sm:h-8 rounded-full object-cover ring-2 ring-slate-100"
-                      />
+                      <div aria-hidden="true" className="w-8 h-8 rounded-full bg-slate-100 ring-2 ring-slate-100" />
                       {currentUser.verificationStatus === 'verified' && (
                         <span
                           className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-white rounded-full p-0.5 ring-2 ring-white"
@@ -407,14 +400,7 @@ export const Header: React.FC<HeaderProps> = ({
                           <div className="p-4 sm:px-5 sm:py-4 bg-gradient-to-b from-slate-50/90 to-white">
                             <div className="flex items-center gap-3.5">
                               <div className="relative shrink-0">
-                                <img
-                                  src={
-                                    currentUser.avatarUrl ||
-                                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
-                                  }
-                                  alt={currentUser.fullName}
-                                  className="w-12 h-12 sm:w-13 sm:h-13 rounded-full object-cover ring-2 ring-white shadow-sm"
-                                />
+                                <div aria-hidden="true" className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-slate-100 ring-2 ring-white shadow-sm" />
                                 {currentUser.verificationStatus === 'verified' && (
                                   <span
                                     className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-white rounded-full p-0.5 ring-2 ring-white shadow-2xs"

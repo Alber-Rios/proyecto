@@ -445,11 +445,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={u.avatarUrl}
-                          alt={u.fullName}
-                          className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-slate-200"
-                        />
+                        <div aria-hidden="true" className="w-10 h-10 rounded-full bg-slate-100 shrink-0 ring-1 ring-slate-200" />
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-slate-900 truncate">
                             {u.fullName}
@@ -509,11 +505,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 {/* Cabecera del Expediente y Botones de Dictamen */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
                   <div className="flex items-center gap-3.5">
-                    <img
-                      src={selectedUser.avatarUrl}
-                      alt={selectedUser.fullName}
-                      className="w-14 h-14 rounded-2xl object-cover ring-2 ring-slate-100"
-                    />
+                    <div aria-hidden="true" className="w-14 h-14 rounded-2xl bg-slate-100 ring-2 ring-slate-100" />
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-base sm:text-lg font-bold text-slate-900">

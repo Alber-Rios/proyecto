@@ -129,13 +129,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
     );
   }
 
-  const imagesList = space.images && space.images.length > 0
-    ? space.images
-    : [
-        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
-      ];
+  const imagesList = space.images || [];
 
   const handleShare = () => {
     if (navigator.clipboard) {
@@ -254,11 +248,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           {/* A. GALERÍA DE FOTOGRAFÍAS */}
           <div className="space-y-3">
             <div className="relative aspect-16/9 sm:aspect-21/10 rounded-3xl overflow-hidden bg-slate-950 border border-slate-200 shadow-md group">
-              <img
-                src={imagesList[activeImageIndex]}
-                alt={space.title}
-                className="w-full h-full object-cover transition duration-300 group-hover:scale-101"
-              />
+              {imagesList.length > 0 ? <img src={imagesList[activeImageIndex]} alt={space.title} className="w-full h-full object-cover transition duration-300 group-hover:scale-101" /> : <div className="w-full h-full" aria-label="Este espacio no tiene fotografías" />}
 
               {/* Badges superiores flotantes */}
               <div className="absolute top-4 left-4 flex items-center gap-2">
@@ -273,9 +263,9 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               </div>
 
               {/* Badge inferior de contador */}
-              <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10">
+              {imagesList.length > 0 && <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10">
                 Fotografía {activeImageIndex + 1} de {imagesList.length}
-              </div>
+              </div>}
             </div>
 
             {/* Miniaturas de la galería */}

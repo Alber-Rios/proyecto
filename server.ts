@@ -168,16 +168,16 @@ Tareas a realizar:
             success: true,
             provider: 'Gemini 3.8 Flash Vision AI',
             data: {
-              documentValid: aiResult.documentValid ?? true,
-              extractedRut: aiResult.extractedRut || expectedRut || '18.452.109-K',
-              extractedFullName: aiResult.extractedFullName || expectedName || 'CIUDADANO CHILENO REGISTRADO',
-              documentSerialNumber: aiResult.documentSerialNumber || 'DOC-' + Math.floor(100000000 + Math.random() * 900000000),
-              expirationDate: aiResult.expirationDate || '2029-11-15',
-              faceMatchScore: aiResult.faceMatchScore ?? 96.5,
-              livenessPassed: aiResult.livenessPassed ?? true,
-              rutMatchesExpected: aiResult.rutMatchesExpected ?? true,
-              summary: aiResult.summary || 'Documento analizado correctamente. Rostro coincidente con un 96.5% de certeza.',
-              recommendedAction: aiResult.recommendedAction || 'APPROVE',
+              documentValid: aiResult.documentValid === true,
+              extractedRut: aiResult.extractedRut || '',
+              extractedFullName: aiResult.extractedFullName || '',
+              documentSerialNumber: aiResult.documentSerialNumber || '',
+              expirationDate: aiResult.expirationDate || '',
+              faceMatchScore: aiResult.faceMatchScore ?? 0,
+              livenessPassed: aiResult.livenessPassed === true,
+              rutMatchesExpected: aiResult.rutMatchesExpected === true,
+              summary: aiResult.summary || 'No fue posible extraer todos los datos del documento.',
+              recommendedAction: aiResult.recommendedAction || 'PENDING_REVIEW',
             },
           });
         } catch (geminiError: any) {
@@ -185,27 +185,7 @@ Tareas a realizar:
         }
       }
 
-      // Fallback algorítmico local cuando no hay API KEY o hay error temporal
-      const mockRut = expectedRut || '19.842.103-5';
-      const mockSerial = 'A' + Math.floor(10000000 + Math.random() * 90000000);
-      const faceScore = +(94 + Math.random() * 5.5).toFixed(1);
-
-      return res.json({
-        success: true,
-        provider: 'Motor Biométrico Local Spotly Chile',
-        data: {
-          documentValid: true,
-          extractedRut: mockRut,
-          extractedFullName: expectedName || 'USUARIO VERIFICADO SPOTLY',
-          documentSerialNumber: mockSerial,
-          expirationDate: '2028-08-20',
-          faceMatchScore: faceScore,
-          livenessPassed: true,
-          rutMatchesExpected: true,
-          summary: `Identificación validada mediante visión artificial local. Cédula de Identidad chilena legible con coincidencia biométrica del ${faceScore}%.`,
-          recommendedAction: 'APPROVE',
-        },
-      });
+      return res.status(503).json({ success: false, message: 'La verificación real no está disponible. Configura GEMINI_API_KEY e inténtalo nuevamente.' });
     } catch (err: any) {
       console.error('Error en /api/verify-kyc:', err);
       res.status(500).json({

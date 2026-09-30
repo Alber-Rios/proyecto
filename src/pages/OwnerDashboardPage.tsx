@@ -1812,11 +1812,11 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             {selectedSpace && (
               <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden">
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <img
-                    src={selectedSpace.images[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80'}
+                  {selectedSpace.images[0] ? <img
+                    src={selectedSpace.images[0]}
                     alt={selectedSpace.title}
                     className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-slate-200 shadow-2xs shrink-0"
-                  />
+                  /> : <div aria-hidden="true" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-100 border border-slate-200 shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">

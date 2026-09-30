@@ -191,23 +191,8 @@ export async function verifyKycWithServer(params: {
     }
     const json = await res.json();
     return json;
-  } catch (err) {
-    return {
-      success: true,
-      provider: 'Servicio Biométrico Local Spotly',
-      data: {
-        documentValid: true,
-        extractedRut: params.expectedRut || '18.942.103-K',
-        extractedFullName: params.expectedName || 'CIUDADANO CHILENO REGISTRADO',
-        documentSerialNumber: 'A' + Math.floor(10000000 + Math.random() * 90000000),
-        expirationDate: '2029-05-20',
-        faceMatchScore: 97.2,
-        livenessPassed: true,
-        rutMatchesExpected: true,
-        summary: 'Documento procesado correctamente mediante escaneo automático y verificación biométrica facial.',
-        recommendedAction: 'APPROVE',
-      },
-    };
+  } catch {
+    throw new Error('No se pudo completar la verificación real. Inténtalo nuevamente cuando el servicio esté disponible.');
   }
 }
 

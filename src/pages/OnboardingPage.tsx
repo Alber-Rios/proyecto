@@ -301,7 +301,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
       updateUserProfile({
         verificationStatus: 'pending_review',
         kycRejectionReason: undefined,
-        avatarUrl: facialStorageUrl || currentUser.avatarUrl,
         kycData: {
           consentGiven: true,
           termsVersion: 'VERIFICACION-2026.1',

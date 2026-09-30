@@ -14,13 +14,6 @@ import {
   DigitalContract,
   VisitRequest,
 } from '../types.ts';
-import {
-  INITIAL_USERS,
-  INITIAL_SPACES,
-  INITIAL_RESERVATIONS,
-  INITIAL_DISPUTES,
-  INITIAL_VISIT_REQUESTS,
-} from '../data/mockData.ts';
 import { saveAuditLog, getAuditLogs, getClientAuditMetadata } from '../utils/auditLogger.ts';
 import { generateDigitalContract } from '../utils/contractGenerator.ts';
 import { getTodayIso } from '../utils/formatters.ts';
@@ -144,14 +137,14 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const INITIAL_SAVED_CARDS: SavedCard[] = [];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [allUsers, setAllUsers] = useState<UserProfile[]>(INITIAL_USERS);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
-  const [reservations, setReservations] = useState<Reservation[]>(INITIAL_RESERVATIONS);
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [contracts, setContracts] = useState<DigitalContract[]>([]);
-  const [disputes, setDisputes] = useState<Dispute[]>(INITIAL_DISPUTES);
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [savedCards, setSavedCards] = useState<SavedCard[]>(INITIAL_SAVED_CARDS);
-  const [visitRequests, setVisitRequests] = useState<VisitRequest[]>(INITIAL_VISIT_REQUESTS);
+  const [visitRequests, setVisitRequests] = useState<VisitRequest[]>([]);
   const [favoritesByUser, setFavoritesByUser] = useState<Record<string, string[]>>({});
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getAuditLogs());
 
@@ -266,13 +259,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]);
 
         if (isMounted) {
-          if (dbSpaces.length > 0) setSpaces(dbSpaces);
-          if (dbReservations.length > 0) setReservations(dbReservations);
-          if (dbContracts.length > 0) setContracts(dbContracts);
-          if (dbDisputes.length > 0) setDisputes(dbDisputes);
-          if (dbVisits.length > 0) setVisitRequests(dbVisits);
-          if (dbLogs.length > 0) setAuditLogs(dbLogs);
-          if (dbProfiles.length > 0) setAllUsers(dbProfiles);
+          setSpaces(dbSpaces);
+          setReservations(dbReservations);
+          setContracts(dbContracts);
+          setDisputes(dbDisputes);
+          setVisitRequests(dbVisits);
+          setAuditLogs(dbLogs);
+          setAllUsers(dbProfiles);
         }
       } catch (err) {
         console.warn('Error durante la inicialización de Supabase:', err);
@@ -538,15 +531,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone: userData.phone,
         gender: userData.gender,
         birthDate: userData.birthDate,
-        avatarUrl: userData.gender === 'femenino' 
-          ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80'
-          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+        avatarUrl: undefined,
         role: userData.role,
         ownerTermsAccepted: userData.role === 'owner' ? userData.agreedTerms : false,
         ownerApplicationDate: userData.role === 'owner' ? new Date().toISOString() : undefined,
         verificationStatus: 'unverified',
-        commune: 'Santiago',
-        city: 'Santiago',
         createdAt: new Date().toISOString(),
       };
 
@@ -604,15 +593,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: userData.phone,
       gender: userData.gender,
       birthDate: userData.birthDate,
-      avatarUrl: userData.gender === 'femenino' 
-        ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80'
-        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+      avatarUrl: undefined,
       role: userData.role,
       ownerTermsAccepted: userData.role === 'owner' ? userData.agreedTerms : false,
       ownerApplicationDate: userData.role === 'owner' ? new Date().toISOString() : undefined,
       verificationStatus: 'unverified',
-      commune: 'Santiago',
-      city: 'Santiago',
       createdAt: new Date().toISOString(),
     };
 
@@ -894,7 +879,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       spaceId: bookingData.space.id,
       spaceTitle: bookingData.space.title,
       spaceAddress: `${bookingData.space.address}, ${bookingData.space.commune}`,
-      spaceImage: bookingData.space.images[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
+      spaceImage: bookingData.space.images[0] || '',
       spaceCategory: bookingData.space.category,
       spaceEnvironment: bookingData.space.spaceEnvironment,
       tenantId: currentUser.id,

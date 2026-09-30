@@ -39,12 +39,12 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
     >
       {/* Imagen Principal con Badges */}
       <div className="relative aspect-4/3 overflow-hidden bg-slate-100">
-        <img
-          src={space.images[0] || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'}
+        {space.images?.[0] ? <img
+          src={space.images[0]}
           alt={space.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
-        />
+        /> : <div className="w-full h-full" aria-label="Este espacio no tiene imágenes" />}
 
         {/* Botón Favorito (Corazón) - Solo para usuarios registrados */}
         {currentUser && (

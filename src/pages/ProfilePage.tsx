@@ -14,7 +14,6 @@ import {
   Save,
   Clock,
   Sparkles,
-  Camera,
   Building,
 } from 'lucide-react';
 
@@ -40,9 +39,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '+56 9 ');
   const [gender, setGender] = useState<UserGender>(currentUser?.gender || 'prefiero_no_decir');
-  const [birthDate, setBirthDate] = useState(currentUser?.birthDate || '1995-05-15');
-  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '');
-  const [commune, setCommune] = useState(currentUser?.commune || 'Las Condes');
+  const [birthDate, setBirthDate] = useState(currentUser?.birthDate || '');
+  const [commune, setCommune] = useState(currentUser?.commune || '');
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -115,23 +113,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       phone: phone.trim(),
       gender,
       birthDate,
-      avatarUrl: avatarUrl.trim() || currentUser.avatarUrl,
       commune: commune.trim(),
     });
 
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 4000);
-  };
-
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setAvatarUrl(ev.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   // Calcular edad actual
@@ -154,15 +140,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
             <div className="relative group">
-              <img
-                src={avatarUrl || currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
-                alt={currentUser.fullName}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover ring-4 ring-rose-100 shadow-md"
-              />
-              <label className="absolute -bottom-2 -right-2 p-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full cursor-pointer shadow-lg transition">
-                <Camera className="w-3.5 h-3.5" />
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-              </label>
+              <div aria-hidden="true" className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-slate-100 ring-4 ring-rose-100 shadow-md" />
             </div>
 
             <div className="space-y-1">
@@ -463,18 +441,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  URL de Foto de Perfil / Avatar
-                </label>
-                <input
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
             </div>
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
