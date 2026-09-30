@@ -93,11 +93,10 @@ export async function getSpacesFromDb(): Promise<Space[]> {
   }));
 }
 
-export async function insertSpaceToDb(space: Space): Promise<{ success: boolean; error?: string }> {
+export async function insertSpaceToDb(space: Space): Promise<{ success: boolean; data?: any; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
 
-  const dbRow = {
-    id: space.id,
+  const dbRow: any = {
     owner_id: space.ownerId,
     owner_name: space.ownerName,
     owner_rut: space.ownerRut,
@@ -129,15 +128,21 @@ export async function insertSpaceToDb(space: Space): Promise<{ success: boolean;
     min_booking_days: space.minBookingDays || 1,
     min_booking_hours: space.minBookingHours || 1,
     instant_booking: space.instantBooking ?? true,
-    created_at: space.createdAt,
+    created_at: space.createdAt || new Date().toISOString(),
   };
 
-  const { error } = await supabase.from('spaces').insert([dbRow]);
+  // El id se genera automáticamente en la base de datos de Supabase.
+  // Solo se incluye si viene un ID persistido previamente (no temporal de frontend).
+  if (space.id && !space.id.startsWith('spc-') && !space.id.startsWith('mock-')) {
+    dbRow.id = space.id;
+  }
+
+  const { data, error } = await supabase.from('spaces').insert([dbRow]).select().single();
   if (error) {
     console.error('Error al insertar espacio en Supabase:', error.message);
     return { success: false, error: error.message };
   }
-  return { success: true };
+  return { success: true, data };
 }
 
 export async function updateSpaceInDb(id: string, updates: Partial<Space>): Promise<{ success: boolean; error?: string }> {
@@ -238,11 +243,10 @@ export async function getReservationsFromDb(): Promise<Reservation[]> {
   }));
 }
 
-export async function insertReservationToDb(reservation: Reservation): Promise<{ success: boolean; error?: string }> {
+export async function insertReservationToDb(reservation: Reservation): Promise<{ success: boolean; data?: any; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
 
-  const dbRow = {
-    id: reservation.id,
+  const dbRow: any = {
     space_id: reservation.spaceId,
     space_title: reservation.spaceTitle,
     space_address: reservation.spaceAddress,
@@ -277,15 +281,20 @@ export async function insertReservationToDb(reservation: Reservation): Promise<{
     digital_contract_id: reservation.digitalContractId,
     dispute_status: reservation.disputeStatus || 'none',
     dispute_reason: reservation.disputeReason,
-    created_at: reservation.createdAt,
+    created_at: reservation.createdAt || new Date().toISOString(),
   };
 
-  const { error } = await supabase.from('reservations').insert([dbRow]);
+  // Solo incluir si no es un ID temporal de frontend
+  if (reservation.id && !reservation.id.startsWith('res-') && !reservation.id.startsWith('mock-')) {
+    dbRow.id = reservation.id;
+  }
+
+  const { data, error } = await supabase.from('reservations').insert([dbRow]).select().single();
   if (error) {
     console.error('Error al insertar reserva en Supabase:', error.message);
     return { success: false, error: error.message };
   }
-  return { success: true };
+  return { success: true, data };
 }
 
 export async function updateReservationInDb(
@@ -351,11 +360,10 @@ export async function getContractsFromDb(): Promise<DigitalContract[]> {
   }));
 }
 
-export async function insertContractToDb(contract: DigitalContract): Promise<{ success: boolean; error?: string }> {
+export async function insertContractToDb(contract: DigitalContract): Promise<{ success: boolean; data?: any; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
 
-  const dbRow = {
-    id: contract.id,
+  const dbRow: any = {
     reservation_id: contract.reservationId,
     space_title: contract.spaceTitle,
     space_address: contract.spaceAddress,
@@ -378,12 +386,16 @@ export async function insertContractToDb(contract: DigitalContract): Promise<{ s
     created_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from('contracts').insert([dbRow]);
+  if (contract.id && !contract.id.startsWith('ctr-') && !contract.id.startsWith('mock-')) {
+    dbRow.id = contract.id;
+  }
+
+  const { data, error } = await supabase.from('contracts').insert([dbRow]).select().single();
   if (error) {
     console.error('Error al insertar contrato en Supabase:', error.message);
     return { success: false, error: error.message };
   }
-  return { success: true };
+  return { success: true, data };
 }
 
 // 4. REGISTROS DE AUDITORÍA (audit_logs)
@@ -417,18 +429,22 @@ export async function getAuditLogsFromDb(): Promise<AuditLog[]> {
 export async function insertAuditLogToDb(log: AuditLog): Promise<{ success: boolean }> {
   if (!isSupabaseConfigured()) return { success: true };
 
-  const dbRow = {
-    id: log.id,
+  const dbRow: any = {
     action: log.action,
     user_id: log.userId,
     user_email: log.userEmail,
     user_role: log.userRole,
     ip: log.ip,
     user_agent: log.userAgent,
-    timestamp: log.timestamp,
+    timestamp: log.timestamp || new Date().toISOString(),
     severity: log.severity,
     details: log.details,
   };
+
+  // Solo incluir id si es un UUID válido; de lo contrario Supabase usa gen_random_uuid()
+  if (log.id && log.id.includes('-') && log.id.length === 36 && !log.id.startsWith('log-')) {
+    dbRow.id = log.id;
+  }
 
   const { error } = await supabase.from('audit_logs').insert([dbRow]);
   if (error) {
@@ -474,11 +490,10 @@ export async function getDisputesFromDb(): Promise<Dispute[]> {
   }));
 }
 
-export async function insertDisputeToDb(dispute: Dispute): Promise<{ success: boolean; error?: string }> {
+export async function insertDisputeToDb(dispute: Dispute): Promise<{ success: boolean; data?: any; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
 
-  const dbRow = {
-    id: dispute.id,
+  const dbRow: any = {
     reservation_id: dispute.reservationId,
     space_id: dispute.spaceId,
     space_title: dispute.spaceTitle,
@@ -494,15 +509,19 @@ export async function insertDisputeToDb(dispute: Dispute): Promise<{ success: bo
     problem_category: dispute.problemCategory,
     reason: dispute.reason,
     status: dispute.status,
-    created_at: dispute.createdAt,
+    created_at: dispute.createdAt || new Date().toISOString(),
   };
 
-  const { error } = await supabase.from('disputes').insert([dbRow]);
+  if (dispute.id && !dispute.id.startsWith('dsp-') && !dispute.id.startsWith('mock-')) {
+    dbRow.id = dispute.id;
+  }
+
+  const { data, error } = await supabase.from('disputes').insert([dbRow]).select().single();
   if (error) {
     console.error('Error al insertar disputa en Supabase:', error.message);
     return { success: false, error: error.message };
   }
-  return { success: true };
+  return { success: true, data };
 }
 
 export async function updateDisputeInDb(
@@ -623,11 +642,10 @@ export async function getVisitRequestsFromDb(): Promise<VisitRequest[]> {
 
 export async function insertVisitRequestToDb(
   visit: VisitRequest
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; data?: any; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
 
-  const dbRow = {
-    id: visit.id,
+  const dbRow: any = {
     space_id: visit.spaceId,
     space_title: visit.spaceTitle,
     space_address: visit.spaceAddress,
@@ -645,13 +663,17 @@ export async function insertVisitRequestToDb(
     attendees_count: visit.attendeesCount,
     notes: visit.notes,
     status: visit.status,
-    created_at: visit.createdAt,
+    created_at: visit.createdAt || new Date().toISOString(),
   };
 
-  const { error } = await supabase.from('visit_requests').insert([dbRow]);
+  if (visit.id && !visit.id.startsWith('vst-') && !visit.id.startsWith('mock-')) {
+    dbRow.id = visit.id;
+  }
+
+  const { data, error } = await supabase.from('visit_requests').insert([dbRow]).select().single();
   if (error) {
     console.error('Error al insertar visita en Supabase:', error.message);
     return { success: false, error: error.message };
   }
-  return { success: true };
+  return { success: true, data };
 }
