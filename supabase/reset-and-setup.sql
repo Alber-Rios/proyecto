@@ -425,7 +425,9 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  IF public.is_admin() THEN
+  -- SQL Editor/service role (sin auth.uid) es el canal administrativo confiable.
+  -- Las llamadas normales autenticadas deben pasar además is_admin().
+  IF auth.uid() IS NULL OR public.is_admin() THEN
     RETURN NEW;
   END IF;
 
@@ -469,46 +471,6 @@ CREATE TRIGGER guard_profiles_privileged_fields
 CREATE TRIGGER set_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE PROCEDURE public.set_current_timestamp_updated_at();
-
--- Protege roles administrativos y estados KYC de cambios hechos por el usuario.
-CREATE OR REPLACE FUNCTION public.guard_profile_privileged_fields()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  IF public.is_admin() THEN
-    RETURN NEW;
-  END IF;
-
-  IF NEW.verification_status IS DISTINCT FROM OLD.verification_status
-     OR NEW.kyc_rejection_reason IS DISTINCT FROM OLD.kyc_rejection_reason
-     OR NEW.kyc_data IS DISTINCT FROM OLD.kyc_data THEN
-    RAISE EXCEPTION 'Solo un administrador puede modificar el estado o los datos KYC';
-  END IF;
-
-  IF NEW.role IS DISTINCT FROM OLD.role AND NOT (
-    OLD.role = 'tenant' AND NEW.role = 'owner'
-    AND NEW.owner_terms_accepted IS TRUE
-    AND NEW.owner_application_date IS NOT NULL
-  ) THEN
-    RAISE EXCEPTION 'Cambio de rol no autorizado';
-  END IF;
-
-  IF NEW.owner_terms_accepted IS DISTINCT FROM OLD.owner_terms_accepted
-     AND NEW.owner_terms_accepted IS NOT TRUE THEN
-    RAISE EXCEPTION 'La aceptación de términos no se puede retirar';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS guard_profiles_privileged_fields ON public.profiles;
-CREATE TRIGGER guard_profiles_privileged_fields
-  BEFORE UPDATE ON public.profiles
-  FOR EACH ROW EXECUTE PROCEDURE public.guard_profile_privileged_fields();
 
 DROP TRIGGER IF EXISTS set_spaces_updated_at ON public.spaces;
 CREATE TRIGGER set_spaces_updated_at
