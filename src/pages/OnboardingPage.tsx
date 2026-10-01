@@ -99,6 +99,22 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
   const handleCriminalRecordUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setError(null);
+      if (file.size === 0) {
+        setError('El archivo está vacío. Selecciona nuevamente el certificado.');
+        e.target.value = '';
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError('El certificado supera el límite de 10 MB. Selecciona un archivo más pequeño.');
+        e.target.value = '';
+        return;
+      }
+      if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+        setError('Formato no permitido. Adjunta el certificado en PDF, JPG o PNG.');
+        e.target.value = '';
+        return;
+      }
       setCriminalRecordFileName(file.name);
       const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
       setCriminalRecordFileSize(`${sizeMb} MB`);
@@ -106,6 +122,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
       reader.onload = (ev) => {
         setCriminalRecordFile(ev.target?.result as string);
       };
+      reader.onerror = () => setError('No se pudo leer el archivo. Intenta seleccionarlo otra vez.');
       reader.readAsDataURL(file);
     }
   };
@@ -285,14 +302,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
       let facialStorageUrl = facialPhoto;
       let criminalStorageUrl = criminalRecordFile;
 
-      try {
-        if (idFrontPhoto) frontStorageUrl = await uploadKycDocument(idFrontPhoto, currentUser.id, 'front');
-        if (idBackPhoto) backStorageUrl = await uploadKycDocument(idBackPhoto, currentUser.id, 'back');
-        if (facialPhoto) facialStorageUrl = await uploadBiometricPhoto(facialPhoto, currentUser.id);
-        if (criminalRecordFile) criminalStorageUrl = await uploadKycDocument(criminalRecordFile, currentUser.id, 'criminal_record');
-      } catch (storageErr) {
-        console.warn('Alerta al subir a Supabase Storage KYC:', storageErr);
-      }
+      if (idFrontPhoto) frontStorageUrl = await uploadKycDocument(idFrontPhoto, currentUser.id, 'front');
+      if (idBackPhoto) backStorageUrl = await uploadKycDocument(idBackPhoto, currentUser.id, 'back');
+      if (facialPhoto) facialStorageUrl = await uploadBiometricPhoto(facialPhoto, currentUser.id);
+      if (criminalRecordFile) criminalStorageUrl = await uploadKycDocument(criminalRecordFile, currentUser.id, 'criminal_record');
 
       setExtractionProgress(100);
       setExtractionMessage('¡Escaneo de Cédula y Reconocimiento Facial completados!');
@@ -691,7 +704,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   <span>{criminalRecordFile ? 'Cambiar Documento' : 'Seleccionar Certificado'}</span>
                   <input
                     type="file"
-                    accept=".pdf,image/*"
+                    accept=".pdf,image/jpeg,image/png"
                     className="hidden"
                     onChange={handleCriminalRecordUpload}
                   />
@@ -769,7 +782,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
-                  <span>Finalizar y Procesar con AI</span>
+                  <span>Finalizar</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

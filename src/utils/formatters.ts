@@ -14,6 +14,18 @@ export function cleanRut(rut: string): string {
   return rut.replace(/[^0-9kK]/g, '').toUpperCase();
 }
 
+export function capitalizeInitial(value: string): string {
+  const leadingWhitespace = value.match(/^\s*/)?.[0] || '';
+  const remainder = value.slice(leadingWhitespace.length);
+  if (!remainder) return value;
+  const [first, ...rest] = Array.from(remainder);
+  return `${leadingWhitespace}${first.toLocaleUpperCase('es-CL')}${rest.join('')}`;
+}
+
+export function getNameInitial(value: string): string {
+  return capitalizeInitial(value).trimStart().slice(0, 1) || '?';
+}
+
 export function formatRut(rawRut: string): string {
   const cleaned = cleanRut(rawRut);
   if (!cleaned) return '';

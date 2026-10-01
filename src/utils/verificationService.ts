@@ -187,12 +187,31 @@ export async function verifyKycWithServer(params: {
       body: JSON.stringify(params),
     });
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+      const errorBody = await res.json().catch(() => ({}));
+      if (res.status === 413) {
+        throw new Error('Las fotos superan el límite permitido por el servidor. Vuelve a capturarlas con menor resolución.');
+      }
+      if (res.status === 503) {
+        throw new Error(errorBody.message || 'El servicio de verificación no está disponible. Configura GEMINI_API_KEY en el servidor y vuelve a intentarlo.');
+      }
+      throw new Error(errorBody.message || `El servidor de verificación respondió con error (${res.status}).`);
     }
-    const json = await res.json();
+    const json = await res.json().catch(() => null);
+    if (!json) {
+      throw new Error('El backend respondió con un formato inesperado. Revisa VITE_API_URL y que /api/verify-kyc esté desplegado.');
+    }
+    if (json.success === false) {
+      throw new Error(json.message || 'El servidor no pudo verificar los documentos.');
+    }
     return json;
-  } catch {
-    throw new Error('No se pudo completar la verificación real. Inténtalo nuevamente cuando el servicio esté disponible.');
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error('No se pudo conectar con /api/verify-kyc. Revisa que el backend esté desplegado y que VITE_API_URL apunte a ese servidor.');
+    }
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('No se pudo completar la verificación. Intenta nuevamente.');
   }
 }
 

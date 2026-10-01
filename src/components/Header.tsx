@@ -24,7 +24,7 @@ import {
   HelpCircle,
   AlertCircle,
 } from 'lucide-react';
-import { formatRut } from '../utils/formatters.ts';
+import { formatRut, getNameInitial } from '../utils/formatters.ts';
 
 interface HeaderProps {
   currentView: string;
@@ -362,7 +362,11 @@ export const Header: React.FC<HeaderProps> = ({
 
                     {/* Avatar con indicador de verificación */}
                     <div className="relative shrink-0">
-                      <div aria-hidden="true" className="w-8 h-8 rounded-full bg-slate-100 ring-2 ring-slate-100" />
+                      <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 ring-2 ring-slate-100 overflow-hidden flex items-center justify-center font-bold text-sm">
+                        {currentUser.avatarUrl ? (
+                          <img src={currentUser.avatarUrl} alt={`Foto de ${currentUser.fullName}`} className="w-full h-full object-cover" />
+                        ) : getNameInitial(currentUser.firstNames || currentUser.fullName)}
+                      </div>
                       {currentUser.verificationStatus === 'verified' && (
                         <span
                           className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-white rounded-full p-0.5 ring-2 ring-white"
@@ -400,7 +404,11 @@ export const Header: React.FC<HeaderProps> = ({
                           <div className="p-4 sm:px-5 sm:py-4 bg-gradient-to-b from-slate-50/90 to-white">
                             <div className="flex items-center gap-3.5">
                               <div className="relative shrink-0">
-                                <div aria-hidden="true" className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-slate-100 ring-2 ring-white shadow-sm" />
+                                <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-rose-100 text-rose-700 ring-2 ring-white shadow-sm overflow-hidden flex items-center justify-center font-bold text-xl">
+                                  {currentUser.avatarUrl ? (
+                                    <img src={currentUser.avatarUrl} alt={`Foto de ${currentUser.fullName}`} className="w-full h-full object-cover" />
+                                  ) : getNameInitial(currentUser.firstNames || currentUser.fullName)}
+                                </div>
                                 {currentUser.verificationStatus === 'verified' && (
                                   <span
                                     className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 text-white rounded-full p-0.5 ring-2 ring-white shadow-2xs"

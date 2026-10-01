@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { validateRut, formatRut } from '../utils/formatters.ts';
+import { validateRut, formatRut, capitalizeInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import { UserGender } from '../types.ts';
 import {
@@ -93,9 +93,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     setLoading(true);
     try {
       const res = await register({
-        firstNames: firstNames.trim(),
-        surnames: surnames.trim(),
-        fullName: `${firstNames.trim()} ${surnames.trim()}`,
+        firstNames: capitalizeInitial(firstNames).trim(),
+        surnames: capitalizeInitial(surnames).trim(),
+        fullName: `${capitalizeInitial(firstNames).trim()} ${capitalizeInitial(surnames).trim()}`,
         rut: rut.trim(),
         email: email.trim().toLowerCase(),
         password,
@@ -254,7 +254,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     autoComplete="given-name"
                     data-temp-mail-org="0"
                     value={firstNames}
-                    onChange={(e) => setFirstNames(e.target.value)}
+                    onChange={(e) => setFirstNames(capitalizeInitial(e.target.value))}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
                   />
                 </div>
@@ -278,7 +278,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Apellidos</label>
-                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium" />
+                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Género</label>

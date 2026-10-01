@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { UserGender } from '../types.ts';
-import { formatRut, validateRut } from '../utils/formatters.ts';
+import { formatRut, validateRut, capitalizeInitial, getNameInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import {
   User,
@@ -114,9 +114,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
 
     updateUserProfile({
-      fullName: `${firstNames.trim()} ${surnames.trim()}`,
-      firstNames: firstNames.trim(),
-      surnames: surnames.trim(),
+      fullName: `${capitalizeInitial(firstNames).trim()} ${capitalizeInitial(surnames).trim()}`,
+      firstNames: capitalizeInitial(firstNames).trim(),
+      surnames: capitalizeInitial(surnames).trim(),
       rut: rut.trim(),
       email: email.trim(),
       phone: phone.trim(),
@@ -149,7 +149,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
             <div className="relative group">
-              <div aria-hidden="true" className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-slate-100 ring-4 ring-rose-100 shadow-md" />
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-rose-100 text-rose-700 ring-4 ring-rose-100 shadow-md overflow-hidden flex items-center justify-center font-black text-4xl">
+                {currentUser.avatarUrl ? (
+                  <img src={currentUser.avatarUrl} alt={`Foto de ${currentUser.fullName}`} className="w-full h-full object-cover" />
+                ) : getNameInitial(currentUser.firstNames || currentUser.fullName)}
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -364,7 +368,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <input
                   type="text"
                   value={firstNames}
-                  onChange={(e) => setFirstNames(e.target.value)}
+                  onChange={(e) => setFirstNames(capitalizeInitial(e.target.value))}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
                   required
                 />
@@ -372,7 +376,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Apellidos</label>
-                <input type="text" value={surnames} onChange={(e) => setSurnames(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium" required />
+                <input type="text" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium" required />
               </div>
 
               <div>
