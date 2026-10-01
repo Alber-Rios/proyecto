@@ -1,6 +1,7 @@
--- SPOTLY: reinicio de tablas public + esquema completo y políticas base.
--- ATENCIÓN: destructivo. Borra los datos y tablas de Spotly indicados abajo.
--- No elimina auth.users, buckets ni archivos de Storage.
+-- SPOTLY: script único para reiniciar y crear el esquema completo.
+-- ATENCIÓN: destructivo. Borra los datos de las tablas Spotly indicadas abajo.
+-- Conserva auth.users, buckets y archivos de Storage. Se recrean perfiles
+-- desde auth.users para que las cuentas existentes puedan seguir ingresando.
 -- Revisar y guardar respaldo antes de ejecutar en Supabase SQL Editor.
 -- Ejecutar este archivo completo en una sola ejecución.
 
@@ -58,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT,
     avatar_url TEXT,
     gender TEXT CHECK (gender IN ('masculino', 'femenino', 'no_binario', 'otro', 'prefiero_no_decir')),
-    birth_date DATE NOT NULL CHECK (birth_date <= (CURRENT_DATE - INTERVAL '18 years')::DATE),
+    birth_date DATE CHECK (birth_date IS NULL OR birth_date <= (CURRENT_DATE - INTERVAL '18 years')::DATE),
     role TEXT NOT NULL DEFAULT 'tenant' CHECK (role IN ('tenant', 'owner', 'admin')),
     owner_terms_accepted BOOLEAN NOT NULL DEFAULT false,
     owner_application_date TIMESTAMPTZ,
@@ -305,10 +306,23 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp   ON public.audit_logs(times
 -- DISPARADORES (TRIGGERS)
 -- ==============================================================================
 
--- Sincronización automática profiles <-> auth.users
+-- Sincronización de perfiles y auditoría para altas en Supabase Auth.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  profile_role TEXT;
 BEGIN
+  -- El registro público solo puede crear arrendatarios o propietarios,
+  -- nunca administradores. Los admin se asignan manualmente desde SQL Editor.
+  profile_role := CASE
+    WHEN NEW.raw_user_meta_data->>'role' = 'owner' THEN 'owner'
+    ELSE 'tenant'
+  END;
+
   INSERT INTO public.profiles (
     id,
     full_name,
@@ -332,7 +346,7 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'surnames', ''),
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'rut', ''),
-    COALESCE(NEW.raw_user_meta_data->>'phone', '+56 9 '),
+    COALESCE(NEW.raw_user_meta_data->>'phone', ''),
     COALESCE(NEW.raw_user_meta_data->>'gender', 'prefiero_no_decir'),
     CASE
       WHEN NEW.raw_user_meta_data->>'birth_date' IS NOT NULL
@@ -340,8 +354,8 @@ BEGIN
       THEN (NEW.raw_user_meta_data->>'birth_date')::DATE
       ELSE NULL
     END,
-    'tenant',
-    false,
+    profile_role,
+    COALESCE((NEW.raw_user_meta_data->>'owner_terms_accepted')::boolean, false),
     'unverified',
     now(),
     now()
@@ -351,15 +365,56 @@ BEGIN
     first_names = EXCLUDED.first_names,
     surnames = EXCLUDED.surnames,
     email = EXCLUDED.email,
+    rut = EXCLUDED.rut,
+    phone = EXCLUDED.phone,
+    gender = EXCLUDED.gender,
+    birth_date = EXCLUDED.birth_date,
     updated_at = now();
+
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.audit_logs (
+      action, user_id, user_email, user_role, timestamp, severity, details
+    ) VALUES (
+      'USER_REGISTERED_SUPABASE', NEW.id::text, COALESCE(NEW.email, ''),
+      profile_role, now(), 'security',
+      jsonb_build_object('ownerTermsAccepted', COALESCE((NEW.raw_user_meta_data->>'owner_terms_accepted')::boolean, false))
+    );
+  END IF;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
+CREATE TRIGGER on_auth_user_updated
+  AFTER UPDATE OF raw_user_meta_data, email ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Recupera los perfiles vinculados a cuentas Auth que existían antes del reset.
+INSERT INTO public.profiles (
+  id, full_name, first_names, surnames, email, rut, phone, gender, birth_date,
+  role, owner_terms_accepted, verification_status
+)
+SELECT
+  u.id,
+  COALESCE(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', 'Usuario Spotly'),
+  COALESCE(u.raw_user_meta_data->>'first_names', ''),
+  COALESCE(u.raw_user_meta_data->>'surnames', ''),
+  COALESCE(u.email, ''),
+  COALESCE(u.raw_user_meta_data->>'rut', ''),
+  COALESCE(u.raw_user_meta_data->>'phone', ''),
+  COALESCE(u.raw_user_meta_data->>'gender', 'prefiero_no_decir'),
+  NULLIF(u.raw_user_meta_data->>'birth_date', '')::date,
+  CASE WHEN u.raw_user_meta_data->>'role' = 'owner' THEN 'owner' ELSE 'tenant' END,
+  COALESCE((u.raw_user_meta_data->>'owner_terms_accepted')::boolean, false),
+  'unverified'
+FROM auth.users u
+ON CONFLICT (id) DO NOTHING;
 
 -- Evita que un usuario se eleve a admin o altere por sí mismo su KYC.
 -- La transición tenant -> owner requiere aceptación registrada de términos.
@@ -414,6 +469,46 @@ CREATE TRIGGER guard_profiles_privileged_fields
 CREATE TRIGGER set_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE PROCEDURE public.set_current_timestamp_updated_at();
+
+-- Protege roles administrativos y estados KYC de cambios hechos por el usuario.
+CREATE OR REPLACE FUNCTION public.guard_profile_privileged_fields()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.verification_status IS DISTINCT FROM OLD.verification_status
+     OR NEW.kyc_rejection_reason IS DISTINCT FROM OLD.kyc_rejection_reason
+     OR NEW.kyc_data IS DISTINCT FROM OLD.kyc_data THEN
+    RAISE EXCEPTION 'Solo un administrador puede modificar el estado o los datos KYC';
+  END IF;
+
+  IF NEW.role IS DISTINCT FROM OLD.role AND NOT (
+    OLD.role = 'tenant' AND NEW.role = 'owner'
+    AND NEW.owner_terms_accepted IS TRUE
+    AND NEW.owner_application_date IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'Cambio de rol no autorizado';
+  END IF;
+
+  IF NEW.owner_terms_accepted IS DISTINCT FROM OLD.owner_terms_accepted
+     AND NEW.owner_terms_accepted IS NOT TRUE THEN
+    RAISE EXCEPTION 'La aceptación de términos no se puede retirar';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS guard_profiles_privileged_fields ON public.profiles;
+CREATE TRIGGER guard_profiles_privileged_fields
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE PROCEDURE public.guard_profile_privileged_fields();
 
 DROP TRIGGER IF EXISTS set_spaces_updated_at ON public.spaces;
 CREATE TRIGGER set_spaces_updated_at

@@ -30,7 +30,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const [surnames, setSurnames] = useState('');
   const [rut, setRut] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('+56 9 ');
+  const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState<UserGender>('prefiero_no_decir');
   const [role, setRole] = useState<'tenant' | 'owner'>('tenant');
@@ -57,6 +57,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
     if (!email.includes('@') || !email.includes('.')) {
       setError('Por favor ingresa un correo electrónico válido.');
+      return;
+    }
+
+    if (!/^9\d{8}$/.test(phone)) {
+      setError('Ingresa un teléfono móvil chileno de 9 dígitos, comenzando con 9.');
       return;
     }
 
@@ -94,7 +99,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
         rut: rut.trim(),
         email: email.trim().toLowerCase(),
         password,
-        phone: phone.trim(),
+        phone: `+56${phone}`,
         gender,
         birthDate,
         role,
@@ -304,14 +309,18 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Teléfono Móvil
+                    Teléfono Móvil (+56)
                   </label>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="9[0-9]{8}"
+                    maxLength={9}
                     required
                     autoComplete="off"
+                    placeholder="912345678"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').replace(/^56/, '').slice(0, 9))}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
                   />
                 </div>

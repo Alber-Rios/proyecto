@@ -589,13 +589,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAllUsers((prev) => [newUser, ...prev]);
       setCurrentUser(newUser);
 
-      addAuditRecord('USER_REGISTERED_SUPABASE', 'security', {
-        userId: newUser.id,
-        userEmail: newUser.email,
-        userRole: newUser.role,
-        ownerTermsAccepted: newUser.ownerTermsAccepted,
-      });
-
       setNotifications((prev) => [
         {
           id: `notif-${Date.now()}`,
