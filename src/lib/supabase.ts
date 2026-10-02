@@ -51,8 +51,8 @@ export const supabase: SupabaseClient = createClient(
 // 1. ESPACIOS / PROPIEDADES (spaces)
 export async function getSpacesFromDb(): Promise<Space[]> {
   if (!isSupabaseConfigured()) return [];
-  const { data: publicSpaces, error } = await supabase
-    .from('spaces_public')
+  const { data, error } = await supabase
+    .from('spaces')
     .select('*')
     .order('created_at', { ascending: false });
 
@@ -61,24 +61,11 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     return [];
   }
 
-  const { data: authData } = await supabase.auth.getUser();
-  let privateSpaces: any[] = [];
-  if (authData.user) {
-    const { data } = await supabase.from('spaces').select('*').order('created_at', { ascending: false });
-    privateSpaces = data || [];
-  }
-
-  // La vista pública omite RUT y dirección exacta. La consulta privada solo
-  // devuelve espacios propios (o todos si la sesión pertenece a administración).
-  const rowsById = new Map<string, any>();
-  (publicSpaces || []).forEach((row: any) => rowsById.set(row.id, row));
-  privateSpaces.forEach((row: any) => rowsById.set(row.id, row));
-
-  return [...rowsById.values()].map((row: any) => ({
+  return (data || []).map((row: any) => ({
     id: row.id,
     ownerId: row.owner_id,
     ownerName: row.owner_name,
-    ownerRut: row.owner_rut || '',
+    ownerRut: row.owner_rut,
     ownerVerified: row.owner_verified,
     title: row.title,
     description: row.description || '',
@@ -89,7 +76,7 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     priceUnit: row.price_unit,
     commune: row.commune,
     region: row.region,
-    address: row.address || '',
+    address: row.address,
     pricePerDay: Number(row.price_per_day),
     pricePerHour: row.price_per_hour ? Number(row.price_per_hour) : undefined,
     pricePerMonth: row.price_per_month ? Number(row.price_per_month) : undefined,
@@ -325,9 +312,9 @@ export async function updateReservationInDb(
 
   const dbRow: any = {};
   if (updates.status !== undefined) dbRow.status = updates.status;
+  if (updates.disputeStatus !== undefined) dbRow.dispute_status = updates.disputeStatus;
+  if (updates.disputeReason !== undefined) dbRow.dispute_reason = updates.disputeReason;
   if (updates.digitalContractId !== undefined) dbRow.digital_contract_id = updates.digitalContractId;
-
-  if (Object.keys(dbRow).length === 0) return { success: true };
 
   const { error } = await supabase.from('reservations').update(dbRow).eq('id', id);
   if (error) {
@@ -406,7 +393,7 @@ export async function insertContractToDb(contract: DigitalContract): Promise<{ s
     created_at: new Date().toISOString(),
   };
 
-  if (contract.id && !contract.id.startsWith('mock-')) {
+  if (contract.id && !contract.id.startsWith('ctr-') && !contract.id.startsWith('mock-')) {
     dbRow.id = contract.id;
   }
 
