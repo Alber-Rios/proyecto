@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT,
     avatar_url TEXT,
     gender TEXT CHECK (gender IN ('masculino', 'femenino', 'no_binario', 'otro', 'prefiero_no_decir')),
-    birth_date DATE CHECK (birth_date IS NULL OR birth_date <= (CURRENT_DATE - INTERVAL '18 years')::DATE),
+    birth_date DATE NOT NULL CHECK (birth_date <= (CURRENT_DATE - INTERVAL '18 years')::DATE),
     role TEXT NOT NULL DEFAULT 'tenant' CHECK (role IN ('tenant', 'owner', 'admin')),
     owner_terms_accepted BOOLEAN NOT NULL DEFAULT false,
     owner_application_date TIMESTAMPTZ,
@@ -119,6 +119,22 @@ CREATE TABLE IF NOT EXISTS public.spaces (
 );
 
 COMMENT ON TABLE public.spaces IS 'Propiedades, oficinas, salas de eventos y recintos';
+
+-- Catálogo público: nunca publica dirección exacta, RUT ni datos de contacto.
+-- La vista pertenece al rol propietario del esquema para exponer solo estas
+-- columnas de filas activas; las escrituras siguen pasando por RLS en spaces.
+CREATE OR REPLACE VIEW public.spaces_public
+WITH (security_barrier = true)
+AS
+SELECT id, owner_id, split_part(owner_name, ' ', 1) AS owner_name,
+       owner_verified, title, description, category,
+       space_environment, rental_modality, enabled_modalities, price_unit,
+       commune, region, price_per_day, price_per_hour, price_per_month,
+       capacity, surface_m2, amenities, rules, opening_hours,
+       security_deposit, images, is_verified, status, rating, reviews_count,
+       min_booking_days, min_booking_hours, instant_booking, created_at
+FROM public.spaces
+WHERE status = 'active';
 
 -- ==============================================================================
 -- 4. TABLA: reservations
@@ -289,6 +305,8 @@ CREATE INDEX IF NOT EXISTS idx_reservations_status    ON public.reservations(sta
 CREATE INDEX IF NOT EXISTS idx_reservations_dates     ON public.reservations(start_date, end_date);
 
 CREATE INDEX IF NOT EXISTS idx_contracts_reservation  ON public.contracts(reservation_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contracts_one_per_reservation
+  ON public.contracts(reservation_id);
 
 CREATE INDEX IF NOT EXISTS idx_disputes_reservation   ON public.disputes(reservation_id);
 CREATE INDEX IF NOT EXISTS idx_disputes_tenant        ON public.disputes(tenant_id);
@@ -311,17 +329,16 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   profile_role TEXT;
 BEGIN
   -- El registro público solo puede crear arrendatarios o propietarios,
   -- nunca administradores. Los admin se asignan manualmente desde SQL Editor.
-  profile_role := CASE
-    WHEN NEW.raw_user_meta_data->>'role' = 'owner' THEN 'owner'
-    ELSE 'tenant'
-  END;
+  -- Los metadatos del registro son editables por el cliente: nunca asignar
+  -- roles privilegiados ni aceptación legal desde ese payload.
+  profile_role := 'tenant';
 
   INSERT INTO public.profiles (
     id,
@@ -341,7 +358,12 @@ BEGIN
   )
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', 'Usuario Spotly'),
+    COALESCE(
+      NULLIF(NEW.raw_user_meta_data->>'full_name', ''),
+      NULLIF(NEW.raw_user_meta_data->>'name', ''),
+      NULLIF(CONCAT_WS(' ', NULLIF(NEW.raw_user_meta_data->>'first_names', ''),
+                           NULLIF(NEW.raw_user_meta_data->>'surnames', '')), '')
+    ),
     COALESCE(NEW.raw_user_meta_data->>'first_names', ''),
     COALESCE(NEW.raw_user_meta_data->>'surnames', ''),
     NEW.email,
@@ -355,7 +377,7 @@ BEGIN
       ELSE NULL
     END,
     profile_role,
-    COALESCE((NEW.raw_user_meta_data->>'owner_terms_accepted')::boolean, false),
+    false,
     'unverified',
     now(),
     now()
@@ -402,7 +424,12 @@ INSERT INTO public.profiles (
 )
 SELECT
   u.id,
-  COALESCE(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', 'Usuario Spotly'),
+  COALESCE(
+    NULLIF(u.raw_user_meta_data->>'full_name', ''),
+    NULLIF(u.raw_user_meta_data->>'name', ''),
+    NULLIF(CONCAT_WS(' ', NULLIF(u.raw_user_meta_data->>'first_names', ''),
+                         NULLIF(u.raw_user_meta_data->>'surnames', '')), '')
+  ),
   COALESCE(u.raw_user_meta_data->>'first_names', ''),
   COALESCE(u.raw_user_meta_data->>'surnames', ''),
   COALESCE(u.email, ''),
@@ -410,8 +437,8 @@ SELECT
   COALESCE(u.raw_user_meta_data->>'phone', ''),
   COALESCE(u.raw_user_meta_data->>'gender', 'prefiero_no_decir'),
   NULLIF(u.raw_user_meta_data->>'birth_date', '')::date,
-  CASE WHEN u.raw_user_meta_data->>'role' = 'owner' THEN 'owner' ELSE 'tenant' END,
-  COALESCE((u.raw_user_meta_data->>'owner_terms_accepted')::boolean, false),
+  'tenant',
+  false,
   'unverified'
 FROM auth.users u
 ON CONFLICT (id) DO NOTHING;
@@ -524,6 +551,352 @@ AS $$
   );
 $$;
 
+-- Los datos del contrato se toman del perfil y espacio reales, no del cliente.
+CREATE OR REPLACE FUNCTION public.prepare_reservation_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_space public.spaces%ROWTYPE;
+  v_tenant public.profiles%ROWTYPE;
+  v_owner public.profiles%ROWTYPE;
+  v_rate NUMERIC;
+  v_units NUMERIC;
+  v_days INTEGER;
+  v_deposit NUMERIC;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Debes iniciar sesión para solicitar una reserva';
+  END IF;
+
+  -- Serializa solicitudes concurrentes del mismo espacio para impedir dobles reservas.
+  PERFORM pg_advisory_xact_lock(hashtext(NEW.space_id));
+
+  SELECT * INTO v_space FROM public.spaces
+   WHERE id = NEW.space_id AND status = 'active';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'El espacio no existe o no está disponible';
+  END IF;
+
+  SELECT * INTO v_tenant FROM public.profiles WHERE id = auth.uid();
+  SELECT * INTO v_owner FROM public.profiles WHERE id = v_space.owner_id;
+  IF v_tenant.id IS NULL OR v_owner.id IS NULL THEN
+    RAISE EXCEPTION 'No se encontraron los perfiles de la reserva';
+  END IF;
+  IF v_tenant.verification_status <> 'verified' THEN
+    RAISE EXCEPTION 'Debes completar la verificación de identidad para reservar';
+  END IF;
+
+  NEW.tenant_id := v_tenant.id;
+  NEW.tenant_name := v_tenant.full_name;
+  NEW.tenant_email := v_tenant.email;
+  NEW.tenant_phone := v_tenant.phone;
+  NEW.tenant_rut := v_tenant.rut;
+  NEW.owner_id := v_owner.id;
+  NEW.owner_name := v_owner.full_name;
+  NEW.owner_rut := v_owner.rut;
+  NEW.space_title := v_space.title;
+  NEW.space_address := v_space.address;
+  NEW.space_image := COALESCE(v_space.images[1], '');
+  NEW.space_category := v_space.category;
+  NEW.space_environment := v_space.space_environment;
+  NEW.rental_modality := COALESCE(NEW.rental_modality, v_space.rental_modality, 'por_dia');
+  v_days := NEW.end_date - NEW.start_date + 1;
+  IF v_days < 1 THEN RAISE EXCEPTION 'Rango de fechas inválido'; END IF;
+
+  IF NEW.rental_modality = 'por_hora' THEN
+    IF NEW.hour_start IS NULL OR NEW.hour_end IS NULL
+       OR NEW.hour_end <= NEW.hour_start OR NEW.hour_end - NEW.hour_start > 24 THEN
+      RAISE EXCEPTION 'Horario de reserva inválido';
+    END IF;
+    v_units := NEW.hour_end - NEW.hour_start;
+  ELSIF NEW.rental_modality = 'mensual' THEN
+    v_units := CEIL(v_days::NUMERIC / 30);
+  ELSE
+    v_units := v_days;
+  END IF;
+
+  NEW.duration_units := v_units;
+  NEW.total_days := v_units::INTEGER;
+
+  IF NEW.rental_modality = 'por_hora' THEN
+    v_rate := COALESCE(v_space.price_per_hour, 45000);
+    v_deposit := COALESCE(NULLIF(v_space.security_deposit, 0), 50000);
+    NEW.price_unit := 'hour';
+  ELSIF NEW.rental_modality = 'mensual' THEN
+    v_rate := COALESCE(v_space.price_per_month, 3800000);
+    v_deposit := COALESCE(NULLIF(v_space.security_deposit, 0), 150000);
+    NEW.price_unit := 'month';
+  ELSE
+    v_rate := v_space.price_per_day;
+    v_deposit := COALESCE(NULLIF(v_space.security_deposit, 0), 150000);
+    NEW.price_unit := 'day';
+  END IF;
+
+  NEW.daily_rate_clp := v_rate;
+  NEW.subtotal_clp := ROUND(v_rate * v_units);
+  NEW.platform_fee_clp := ROUND(NEW.subtotal_clp * 0.05);
+  NEW.security_deposit_clp := v_deposit;
+  NEW.total_clp := NEW.subtotal_clp + NEW.platform_fee_clp + v_deposit;
+  NEW.status := 'pending';
+  NEW.dispute_status := 'none';
+  NEW.dispute_reason := NULL;
+  NEW.digital_contract_id := NULL;
+
+  IF EXISTS (
+    SELECT 1 FROM public.reservations r
+    WHERE r.space_id = NEW.space_id
+      AND r.status IN ('pending', 'confirmed')
+      AND daterange(r.start_date, r.end_date, '[]') && daterange(NEW.start_date, NEW.end_date, '[]')
+      AND NOT (
+        r.rental_modality = 'por_hora'
+        AND NEW.rental_modality = 'por_hora'
+        AND r.start_date = NEW.start_date
+        AND r.end_date = NEW.end_date
+        AND (r.hour_end <= NEW.hour_start OR NEW.hour_end <= r.hour_start)
+      )
+  ) THEN
+    RAISE EXCEPTION 'El espacio ya tiene una reserva que se cruza con ese horario';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.guard_reservation_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.space_id IS DISTINCT FROM OLD.space_id
+     OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+     OR NEW.owner_id IS DISTINCT FROM OLD.owner_id
+     OR NEW.start_date IS DISTINCT FROM OLD.start_date
+     OR NEW.end_date IS DISTINCT FROM OLD.end_date
+     OR NEW.total_clp IS DISTINCT FROM OLD.total_clp
+     OR NEW.subtotal_clp IS DISTINCT FROM OLD.subtotal_clp
+     OR NEW.platform_fee_clp IS DISTINCT FROM OLD.platform_fee_clp
+     OR NEW.security_deposit_clp IS DISTINCT FROM OLD.security_deposit_clp
+     OR NEW.payment_simulation IS DISTINCT FROM OLD.payment_simulation
+     OR NEW.dispute_status IS DISTINCT FROM OLD.dispute_status
+     OR NEW.dispute_reason IS DISTINCT FROM OLD.dispute_reason THEN
+    RAISE EXCEPTION 'No puedes modificar los datos protegidos de una reserva';
+  END IF;
+
+  IF NEW.digital_contract_id IS DISTINCT FROM OLD.digital_contract_id
+     AND NOT EXISTS (
+       SELECT 1 FROM public.contracts c
+       WHERE c.id = NEW.digital_contract_id AND c.reservation_id = OLD.id
+     ) THEN
+    RAISE EXCEPTION 'El contrato debe pertenecer a esta reserva';
+  END IF;
+
+  IF NEW.status IS DISTINCT FROM OLD.status THEN
+    IF auth.uid() = OLD.tenant_id THEN
+      IF NOT (OLD.status = 'pending' AND NEW.status = 'cancelled') THEN
+        RAISE EXCEPTION 'El arrendatario solo puede cancelar una reserva pendiente';
+      END IF;
+    ELSIF auth.uid() = OLD.owner_id THEN
+      IF NOT (
+        (OLD.status = 'pending' AND NEW.status IN ('confirmed', 'rejected'))
+        OR (OLD.status = 'confirmed' AND NEW.status IN ('completed', 'cancelled'))
+      ) THEN
+        RAISE EXCEPTION 'Transición de estado de reserva no autorizada';
+      END IF;
+    ELSE
+      RAISE EXCEPTION 'No eres parte de esta reserva';
+    END IF;
+  ELSIF NEW.digital_contract_id IS NOT DISTINCT FROM OLD.digital_contract_id THEN
+    RAISE EXCEPTION 'La actualización no contiene ningún cambio permitido';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.prepare_visit_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_space public.spaces%ROWTYPE;
+  v_tenant public.profiles%ROWTYPE;
+  v_owner public.profiles%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Debes iniciar sesión para solicitar una visita';
+  END IF;
+  SELECT * INTO v_space FROM public.spaces
+   WHERE id = NEW.space_id AND status = 'active';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'El espacio no existe o no está disponible';
+  END IF;
+  SELECT * INTO v_tenant FROM public.profiles WHERE id = auth.uid();
+  SELECT * INTO v_owner FROM public.profiles WHERE id = v_space.owner_id;
+  NEW.tenant_id := v_tenant.id;
+  NEW.tenant_name := v_tenant.full_name;
+  NEW.tenant_email := v_tenant.email;
+  NEW.tenant_phone := v_tenant.phone;
+  NEW.owner_id := v_owner.id;
+  NEW.owner_name := split_part(v_owner.full_name, ' ', 1);
+  NEW.owner_rut := NULL;
+  NEW.space_title := v_space.title;
+  NEW.space_address := v_space.commune || ', ' || v_space.region;
+  NEW.space_image := COALESCE(v_space.images[1], '');
+  NEW.status := 'pending';
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.prepare_audit_log_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_profile public.profiles%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    -- Alta de Auth se ejecuta desde un trigger del sistema sin JWT de usuario.
+    -- Solo se acepta el registro si el perfil ya fue creado para ese UUID.
+    IF NEW.action <> 'USER_REGISTERED_SUPABASE' THEN
+      RAISE EXCEPTION 'La auditoría requiere una sesión autenticada';
+    END IF;
+    SELECT * INTO v_profile FROM public.profiles WHERE id = NEW.user_id::uuid;
+  ELSE
+    SELECT * INTO v_profile FROM public.profiles WHERE id = auth.uid();
+  END IF;
+  IF v_profile.id IS NULL THEN RAISE EXCEPTION 'Perfil no encontrado'; END IF;
+  NEW.user_id := v_profile.id::text;
+  NEW.user_email := v_profile.email;
+  NEW.user_role := v_profile.role;
+  NEW.timestamp := now();
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.prepare_contract_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_reservation public.reservations%ROWTYPE;
+BEGIN
+  SELECT * INTO v_reservation FROM public.reservations
+   WHERE id = NEW.reservation_id
+     AND (tenant_id = auth.uid() OR owner_id = auth.uid() OR public.is_admin());
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La reserva no existe o no tienes acceso';
+  END IF;
+
+  NEW.space_title := v_reservation.space_title;
+  NEW.space_address := v_reservation.space_address;
+  NEW.tenant_name := v_reservation.tenant_name;
+  NEW.tenant_rut := v_reservation.tenant_rut;
+  NEW.owner_name := v_reservation.owner_name;
+  NEW.owner_rut := v_reservation.owner_rut;
+  NEW.total_clp := v_reservation.total_clp;
+  NEW.guarantee_deposit_clp := v_reservation.security_deposit_clp;
+  NEW.start_date := v_reservation.start_date;
+  NEW.end_date := v_reservation.end_date;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.reject_contract_update()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'Los contratos firmados son inmutables';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.guard_space_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_profile public.profiles%ROWTYPE;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión'; END IF;
+    SELECT * INTO v_profile FROM public.profiles WHERE id = auth.uid();
+    IF v_profile.role <> 'owner' THEN RAISE EXCEPTION 'Solo propietarios pueden publicar'; END IF;
+    NEW.owner_id := v_profile.id;
+    NEW.owner_name := v_profile.full_name;
+    NEW.owner_rut := v_profile.rut;
+    NEW.owner_verified := v_profile.verification_status = 'verified';
+    NEW.is_verified := false;
+    NEW.status := 'pending_approval';
+    RETURN NEW;
+  END IF;
+
+  IF public.is_admin() THEN RETURN NEW; END IF;
+  IF NEW.owner_id IS DISTINCT FROM OLD.owner_id
+     OR NEW.owner_name IS DISTINCT FROM OLD.owner_name
+     OR NEW.owner_rut IS DISTINCT FROM OLD.owner_rut
+     OR NEW.owner_verified IS DISTINCT FROM OLD.owner_verified
+     OR NEW.is_verified IS DISTINCT FROM OLD.is_verified
+     OR NEW.rating IS DISTINCT FROM OLD.rating
+     OR NEW.reviews_count IS DISTINCT FROM OLD.reviews_count THEN
+    RAISE EXCEPTION 'Solo administración puede cambiar verificación y reputación';
+  END IF;
+  IF NEW.status = 'active' AND OLD.status <> 'active' THEN
+    RAISE EXCEPTION 'Solo administración puede activar un espacio';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS guard_spaces_write ON public.spaces;
+CREATE TRIGGER guard_spaces_write
+  BEFORE INSERT OR UPDATE ON public.spaces
+  FOR EACH ROW EXECUTE PROCEDURE public.guard_space_write();
+
+DROP TRIGGER IF EXISTS prepare_reservation_insert ON public.reservations;
+CREATE TRIGGER prepare_reservation_insert
+  BEFORE INSERT ON public.reservations
+  FOR EACH ROW EXECUTE PROCEDURE public.prepare_reservation_insert();
+
+DROP TRIGGER IF EXISTS guard_reservation_update ON public.reservations;
+CREATE TRIGGER guard_reservation_update
+  BEFORE UPDATE ON public.reservations
+  FOR EACH ROW EXECUTE PROCEDURE public.guard_reservation_update();
+
+DROP TRIGGER IF EXISTS prepare_visit_insert ON public.visit_requests;
+CREATE TRIGGER prepare_visit_insert
+  BEFORE INSERT ON public.visit_requests
+  FOR EACH ROW EXECUTE PROCEDURE public.prepare_visit_insert();
+
+DROP TRIGGER IF EXISTS prepare_audit_log_insert ON public.audit_logs;
+CREATE TRIGGER prepare_audit_log_insert
+  BEFORE INSERT ON public.audit_logs
+  FOR EACH ROW EXECUTE PROCEDURE public.prepare_audit_log_insert();
+
+DROP TRIGGER IF EXISTS prepare_contract_insert ON public.contracts;
+CREATE TRIGGER prepare_contract_insert
+  BEFORE INSERT ON public.contracts
+  FOR EACH ROW EXECUTE PROCEDURE public.prepare_contract_insert();
+
+DROP TRIGGER IF EXISTS reject_contract_update ON public.contracts;
+CREATE TRIGGER reject_contract_update
+  BEFORE UPDATE ON public.contracts
+  FOR EACH ROW EXECUTE PROCEDURE public.reject_contract_update();
+
 -- ------------------------------------------------------------------------------
 -- RLS: PROFILES
 -- ------------------------------------------------------------------------------
@@ -546,9 +919,10 @@ DROP POLICY IF EXISTS "Inserción de perfil propio" ON public.profiles;
 -- RLS: SPACES
 -- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Lectura pública de espacios activos" ON public.spaces;
-CREATE POLICY "Lectura pública de espacios activos"
+DROP POLICY IF EXISTS "Propietario o administración lee espacio privado" ON public.spaces;
+CREATE POLICY "Propietario o administración lee espacio privado"
   ON public.spaces FOR SELECT
-  USING (status = 'active' OR auth.uid() = owner_id OR public.is_admin());
+  USING (auth.uid() = owner_id OR public.is_admin());
 
 DROP POLICY IF EXISTS "Propietarios pueden crear espacios" ON public.spaces;
 CREATE POLICY "Propietarios pueden crear espacios"
@@ -589,7 +963,7 @@ CREATE POLICY "Partes de la reserva o admin pueden verla"
 DROP POLICY IF EXISTS "Inquilinos pueden solicitar reservas" ON public.reservations;
 CREATE POLICY "Inquilinos pueden solicitar reservas"
   ON public.reservations FOR INSERT
-  WITH CHECK (auth.uid() = tenant_id OR public.is_admin());
+  WITH CHECK (auth.uid() IS NOT NULL AND auth.uid() = tenant_id);
 
 DROP POLICY IF EXISTS "Partes o admin pueden actualizar estado de reserva" ON public.reservations;
 CREATE POLICY "Partes o admin pueden actualizar estado de reserva"
@@ -620,7 +994,7 @@ CREATE POLICY "Inserción de contratos"
     EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = reservation_id
-        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+        AND r.tenant_id = auth.uid()
     )
   );
 
@@ -643,18 +1017,24 @@ CREATE POLICY "Lectura de auditoría propia o admin"
 DROP POLICY IF EXISTS "Partes de disputa o admin pueden leerla" ON public.disputes;
 CREATE POLICY "Partes de disputa o admin pueden leerla"
   ON public.disputes FOR SELECT
-  USING (tenant_id = auth.uid() OR public.is_admin());
+  USING (
+    public.is_admin() OR EXISTS (
+      SELECT 1 FROM public.reservations r
+      WHERE r.id = disputes.reservation_id
+        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+    )
+  );
 
 DROP POLICY IF EXISTS "Creación de disputas" ON public.disputes;
 CREATE POLICY "Creación de disputas"
   ON public.disputes FOR INSERT
   WITH CHECK (
     public.is_admin() OR
-    tenant_id = auth.uid() OR
     EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = reservation_id
         AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+        AND disputes.tenant_id = r.tenant_id
     )
   );
 
@@ -678,9 +1058,8 @@ CREATE POLICY "Creación de solicitud de visita"
   WITH CHECK (tenant_id = auth.uid() OR public.is_admin());
 
 DROP POLICY IF EXISTS "Actualización de visita" ON public.visit_requests;
-CREATE POLICY "Actualización de visita"
-  ON public.visit_requests FOR UPDATE
-  USING (tenant_id = auth.uid() OR owner_id = auth.uid() OR public.is_admin());
+-- Las visitas se crean desde solicitudes. Los cambios de estado no se escriben
+-- directamente desde el cliente; requieren una función de servidor autorizada.
 
 -- ==============================================================================
 -- STORAGE: BUCKETS + POLÍTICAS ESTRICTAS
@@ -813,7 +1192,9 @@ CREATE POLICY "Subida de contratos por usuarios autenticados"
 
 -- Permisos SQL: el acceso efectivo queda limitado por las políticas RLS.
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT SELECT ON public.spaces TO anon;
+REVOKE ALL ON public.spaces_public FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.spaces_public TO anon, authenticated;
+REVOKE SELECT ON public.spaces FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   public.profiles, public.spaces, public.reservations, public.contracts,
   public.audit_logs, public.disputes, public.visit_requests

@@ -891,33 +891,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const meta = getClientAuditMetadata();
     const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // Generar contrato digital formal chileno
-    const contract = generateDigitalContract({
-      reservationId,
-      spaceTitle: bookingData.space.title,
-      spaceAddress: `${bookingData.space.address}, ${bookingData.space.commune}, ${bookingData.space.region}`,
-      tenantName: currentUser.fullName,
-      tenantRut: currentUser.rut,
-      ownerName: bookingData.space.ownerName,
-      ownerRut: bookingData.space.ownerRut,
-      totalClp: bookingData.totalClp,
-      guaranteeDepositClp: bookingData.securityDepositClp,
-      startDate: bookingData.startDate,
-      endDate: bookingData.endDate,
-      ip: meta.ip,
-      rentalModality: modality,
-      priceUnit: bookingData.priceUnit || (modality === 'por_hora' ? 'hour' : modality === 'mensual' ? 'month' : 'day'),
-      durationUnits: bookingData.durationUnits || bookingData.totalDays,
-      intendedUse: bookingData.intendedUse,
-      signatureImage: bookingData.signatureImage,
-      signatureType: bookingData.signatureType,
-    });
-
-    const newReservation: Reservation = {
+    let newReservation: Reservation = {
       id: reservationId,
       spaceId: bookingData.space.id,
       spaceTitle: bookingData.space.title,
-      spaceAddress: `${bookingData.space.address}, ${bookingData.space.commune}`,
+      spaceAddress: `${bookingData.space.commune}, ${bookingData.space.region}`,
       spaceImage: bookingData.space.images[0] || '',
       spaceCategory: bookingData.space.category,
       spaceEnvironment: bookingData.space.spaceEnvironment,
@@ -928,7 +906,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       tenantRut: currentUser.rut,
       ownerId: bookingData.space.ownerId,
       ownerName: bookingData.space.ownerName,
-      ownerRut: bookingData.space.ownerRut,
+      ownerRut: '',
       startDate: bookingData.startDate,
       endDate: bookingData.endDate,
       totalDays: bookingData.totalDays,
@@ -947,22 +925,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       intendedUse: bookingData.intendedUse,
       paymentSimulation: bookingData.paymentSimulation,
       status: 'pending',
-      digitalContractId: contract.id,
       createdAt: new Date().toISOString(),
     };
 
+    // En Supabase, el trigger valida el espacio y completa los datos privados
+    // del contrato desde la base. No se confía en los valores enviados por UI.
+    if (isSupabaseConfigured()) {
+      const savedReservation = await insertReservationToDb(newReservation);
+      if (!savedReservation.success || !savedReservation.data) {
+        throw new Error(savedReservation.error || 'No se pudo guardar la reserva.');
+      }
+      const row = savedReservation.data;
+      newReservation = {
+        ...newReservation,
+        spaceTitle: row.space_title,
+        spaceAddress: row.space_address,
+        spaceImage: row.space_image || '',
+        spaceCategory: row.space_category,
+        spaceEnvironment: row.space_environment,
+        tenantId: row.tenant_id,
+        tenantName: row.tenant_name,
+        tenantEmail: row.tenant_email,
+        tenantPhone: row.tenant_phone || '',
+        tenantRut: row.tenant_rut || '',
+        ownerId: row.owner_id,
+        ownerName: row.owner_name,
+        ownerRut: row.owner_rut || '',
+        dailyRateClp: Number(row.daily_rate_clp),
+        totalDays: Number(row.total_days),
+        durationUnits: Number(row.duration_units),
+        priceUnit: row.price_unit,
+        subtotalClp: Number(row.subtotal_clp),
+        platformFeeClp: Number(row.platform_fee_clp),
+        securityDepositClp: Number(row.security_deposit_clp),
+        totalClp: Number(row.total_clp),
+      };
+    }
+
+    // Crear el contrato con los valores que devolvió la base, no con datos
+    // privados tomados de una ficha pública del espacio.
+    const contract = generateDigitalContract({
+      reservationId,
+      spaceTitle: newReservation.spaceTitle,
+      spaceAddress: newReservation.spaceAddress,
+      tenantName: newReservation.tenantName,
+      tenantRut: newReservation.tenantRut,
+      ownerName: newReservation.ownerName,
+      ownerRut: newReservation.ownerRut,
+      totalClp: newReservation.totalClp,
+      guaranteeDepositClp: newReservation.securityDepositClp,
+      startDate: bookingData.startDate,
+      endDate: bookingData.endDate,
+      ip: meta.ip,
+      rentalModality: modality,
+      priceUnit: newReservation.priceUnit,
+      durationUnits: newReservation.durationUnits || newReservation.totalDays,
+      intendedUse: bookingData.intendedUse,
+      signatureImage: bookingData.signatureImage,
+      signatureType: bookingData.signatureType,
+    });
+    newReservation.digitalContractId = contract.id;
+
+    if (isSupabaseConfigured()) {
+      const savedContract = await insertContractToDb(contract);
+      if (!savedContract.success) {
+        await updateReservationInDb(reservationId, { status: 'cancelled' });
+        throw new Error(savedContract.error || 'No se pudo guardar el contrato.');
+      }
+      const linked = await updateReservationInDb(reservationId, { digitalContractId: contract.id });
+      if (!linked.success) {
+        console.warn('No se pudo asociar el contrato a la reserva:', linked.error);
+      }
+    }
+
     setReservations((prev) => [newReservation, ...prev]);
     setContracts((prev) => [contract, ...prev]);
-
-    // Persistir en Supabase DB
-    if (isSupabaseConfigured()) {
-      insertReservationToDb(newReservation).catch((err) =>
-        console.warn('Error al guardar reserva en Supabase DB:', err)
-      );
-      insertContractToDb(contract).catch((err) =>
-        console.warn('Error al guardar contrato en Supabase DB:', err)
-      );
-    }
 
     addAuditRecord('RESERVATION_CREATED_WITH_CONTRACT', 'info', {
       reservationId,
