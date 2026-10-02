@@ -15,11 +15,27 @@ export function cleanRut(rut: string): string {
 }
 
 export function capitalizeInitial(value: string): string {
-  const leadingWhitespace = value.match(/^\s*/)?.[0] || '';
-  const remainder = value.slice(leadingWhitespace.length);
-  if (!remainder) return value;
-  const [first, ...rest] = Array.from(remainder);
-  return `${leadingWhitespace}${first.toLocaleUpperCase('es-CL')}${rest.join('')}`;
+  let capitalizeNext = true;
+  return Array.from(value, (character) => {
+    if (/\s|-/.test(character)) {
+      capitalizeNext = true;
+      return character;
+    }
+
+    if (capitalizeNext) {
+      capitalizeNext = false;
+      return character.toLocaleUpperCase('es-CL');
+    }
+
+    return character;
+  }).join('');
+}
+
+export function formatFullName(firstNames?: string | null, surnames?: string | null, fullName?: string | null): string {
+  const fallbackParts = (fullName || '').trim().split(/\s+/).filter(Boolean);
+  const first = capitalizeInitial((firstNames || fallbackParts.shift() || '').trim());
+  const last = capitalizeInitial((surnames || fallbackParts.join(' ')).trim());
+  return [first, last].filter(Boolean).join(' ');
 }
 
 export function getNameInitial(value: string): string {

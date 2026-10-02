@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { getSimulatedFaceImage } from '../utils/mockAssets.ts';
-import { verifyFaceFrame, FaceFrameVerificationResult } from '../utils/verificationService.ts';
+import { FaceFrameVerificationResult } from '../utils/verificationService.ts';
 
 interface RealtimeFaceScannerProps {
   onFaceCaptured: (imageDataUrl: string) => void;
@@ -38,9 +38,8 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
     'Centra tu rostro dentro del óvalo guía mirando a la cámara.'
   );
 
-  // Controles de tiempo, temporizador y verificación AI
+  // Controles de tiempo, temporizador y revisión manual.
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [isVerifyingAI, setIsVerifyingAI] = useState<boolean>(false);
   const [verificationResult, setVerificationResult] = useState<FaceFrameVerificationResult | null>(null);
   const [autoCaptureEnabled, setAutoCaptureEnabled] = useState<boolean>(false);
 
@@ -133,7 +132,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
     return stream;
   }, []);
 
-  // Capturar fotograma y validar con AI
+  // Capturar la selfie para revisión posterior por un administrador.
   const executeCaptureAndVerify = useCallback(async (manualDataUrl?: string) => {
     let finalDataUrl = manualDataUrl;
 
@@ -156,31 +155,16 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
 
     setCapturedPhoto(finalDataUrl);
     stopCamera();
-    setIsVerifyingAI(true);
-    setDetectionMessage('Procesando fotografía...');
-
-    try {
-      const result = await verifyFaceFrame({ image: finalDataUrl });
-      setVerificationResult(result);
-      if (result.isFacePresent) {
-        setDetectionMessage('Fotografía capturada correctamente.');
-      } else {
-        setDetectionMessage('No se detectó un rostro claro en la imagen.');
-      }
-    } catch {
-      setVerificationResult({
-        success: true,
-        provider: 'Motor Biométrico Local Spotly',
-        isFacePresent: true,
-        isCentered: true,
-        livenessLikely: true,
-        confidence: 96,
-        feedbackMessage: 'Fotografía capturada correctamente.',
-      });
-      setDetectionMessage('Fotografía capturada correctamente.');
-    } finally {
-      setIsVerifyingAI(false);
-    }
+    setVerificationResult({
+      success: true,
+      provider: 'Revisión manual',
+      isFacePresent: true,
+      isCentered: true,
+      livenessLikely: false,
+      confidence: 0,
+      feedbackMessage: 'Selfie capturada. Un administrador revisará tu identidad.',
+    });
+    setDetectionMessage('Selfie capturada para revisión del administrador.');
   }, [stopCamera]);
 
   // Iniciar conteo regresivo de 5 segundos para acomodarse cómodamente
@@ -228,7 +212,6 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
   const handleRetry = () => {
     setCapturedPhoto(null);
     setVerificationResult(null);
-    setIsVerifyingAI(false);
     startCamera();
   };
 
@@ -473,21 +456,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
           <div className="relative w-full h-full flex flex-col items-center justify-center bg-slate-950">
             <img src={capturedPhoto} alt="Rostro Capturado" className="w-full h-full object-cover" />
 
-            {/* Overlay de Verificación AI */}
-            {isVerifyingAI && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
-                <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-white">Validando Reconocimiento Facial...</p>
-                  <p className="text-xs text-slate-300">
-                    Comprobando calidad y encuadre.
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Acciones tras captura */}
-            {!isVerifyingAI && (
               <div className="absolute inset-x-3 bottom-3 space-y-2 z-20">
                 {verificationResult?.isFacePresent !== false ? (
                   // Caso ÉXITO: Botones limpios sin textos invasivos
@@ -541,7 +510,6 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                   </div>
                 )}
               </div>
-            )}
           </div>
         ) : isCameraActive ? (
           /* VISTA 2: CÁMARA EN VIVO CON ÓVALO BIOMÉTRICO LIMPIO */

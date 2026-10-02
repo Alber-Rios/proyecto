@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createKycReviewUrl } from '../lib/storage.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceRateInfo } from '../utils/formatters.ts';
-import { getSimulatedCedulaImage, getSimulatedFaceImage } from '../utils/mockAssets.ts';
-import { downloadCriminalRecordCertificate } from '../utils/documentDownloader.ts';
 import {
   ShieldCheck,
   Users,
@@ -27,6 +26,28 @@ import {
 
 interface AdminDashboardPageProps {
   onOpenAuth?: (mode: 'login' | 'register', notice?: string) => void;
+}
+
+function useKycReviewUrl(fileReference?: string): string {
+  const [url, setUrl] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    setUrl('');
+    if (!fileReference) return () => { cancelled = true; };
+
+    createKycReviewUrl(fileReference)
+      .then((signedUrl) => {
+        if (!cancelled) setUrl(signedUrl);
+      })
+      .catch((error) => {
+        console.error('No se pudo abrir el archivo adjunto para revisión:', error);
+      });
+
+    return () => { cancelled = true; };
+  }, [fileReference]);
+
+  return url;
 }
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAuth }) => {
@@ -148,6 +169,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     if (!previewPdfCertificateUserId) return null;
     return allUsers.find((u) => u.id === previewPdfCertificateUserId) || null;
   }, [allUsers, previewPdfCertificateUserId]);
+  const frontReviewUrl = useKycReviewUrl(selectedUser?.kycData?.idFrontUrl);
+  const backReviewUrl = useKycReviewUrl(selectedUser?.kycData?.idBackUrl);
+  const faceReviewUrl = useKycReviewUrl(selectedUser?.kycData?.photoUrl);
+  const criminalRecordReviewUrl = useKycReviewUrl(selectedUser?.kycData?.criminalRecordUrl);
+  const criminalRecordUrl = useKycReviewUrl(pdfModalUser?.kycData?.criminalRecordUrl);
+  const criminalRecordIsPdf =
+    criminalRecordUrl.startsWith('data:application/pdf') || /\.pdf(?:$|[?#])/i.test(criminalRecordUrl);
 
   // Lista filtrada de espacios
   const filteredSpaces = useMemo(() => {
@@ -620,21 +648,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       <ArrowLeftRight className="w-4 h-4 text-indigo-600" />
                       1. Comparación de Datos: Perfil Registrado vs. Documentos y Biometría
                     </h4>
-                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                      Cotejo de Identidad Activo
+                    <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                      Revisión manual pendiente
                     </span>
                   </div>
 
                   {(() => {
                     const registeredRut = formatRut(selectedUser.rut);
-                    const extractedRut = formatRut(selectedUser.kycData?.rutNumber || selectedUser.rut);
-                    const rutMatches =
-                      registeredRut.replace(/\D/g, '') === extractedRut.replace(/\D/g, '');
-                    const bioScore =
-                      selectedUser.kycData?.biometricScore ??
-                      (selectedUser.kycData?.photoCaptured ? 98 : 0);
-                    const serialNum =
-                      selectedUser.kycData?.documentSerialNumber || '509.281.392';
                     const certFilename =
                       selectedUser.kycData?.criminalRecordDocCode ||
                       `Certificado_Antecedentes_${selectedUser.rut.replace(/\D/g, '')}.pdf`;
@@ -647,7 +667,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                                 <th className="py-2.5 px-4">Campo Evaluado</th>
                                 <th className="py-2.5 px-4">Datos Declarados en Cuenta</th>
-                                <th className="py-2.5 px-4">Datos Extraídos (Cédula / Biometría / PDF)</th>
+                                <th className="py-2.5 px-4">Revisión del administrador</th>
                                 <th className="py-2.5 px-4 text-right">Resultado</th>
                               </tr>
                             </thead>
@@ -655,10 +675,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               <tr className="hover:bg-slate-50/60">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">Nombre Titular</td>
                                 <td className="py-2.5 px-4 font-bold text-slate-900">{selectedUser.fullName}</td>
-                                <td className="py-2.5 px-4 font-mono text-slate-800">{selectedUser.fullName.toUpperCase()}</td>
+                                <td className="py-2.5 px-4 text-amber-700">Pendiente de cotejo visual</td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                                    ✓ Coincide
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
+                                    Pendiente
                                   </span>
                                 </td>
                               </tr>
@@ -666,28 +686,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               <tr className="hover:bg-slate-50/60">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">RUN / RUT Chileno</td>
                                 <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{registeredRut}</td>
-                                <td className="py-2.5 px-4 font-mono font-bold text-indigo-700">{extractedRut}</td>
+                                <td className="py-2.5 px-4 text-amber-700">Pendiente de lectura del documento</td>
                                 <td className="py-2.5 px-4 text-right">
-                                  {rutMatches ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                                      ✓ Coincide (Módulo 11)
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700">
-                                      ⚠ Discrepancia
-                                    </span>
-                                  )}
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Pendiente</span>
                                 </td>
                               </tr>
 
                               <tr className="hover:bg-slate-50/60">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">N° Serie Documento</td>
-                                <td className="py-2.5 px-4 text-slate-500">Registro Civil Chile</td>
-                                <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{serialNum}</td>
+                                <td className="py-2.5 px-4 text-slate-500">Cédula adjunta</td>
+                                <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{selectedUser.kycData?.documentSerialNumber || 'Pendiente de revisión'}</td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                                    ✓ Cédula Vigente
-                                  </span>
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Pendiente</span>
                                 </td>
                               </tr>
 
@@ -695,18 +705,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">Reconocimiento Facial</td>
                                 <td className="py-2.5 px-4 text-slate-600">Foto del Carnet / Perfil</td>
                                 <td className="py-2.5 px-4 font-bold text-slate-900">
-                                  {bioScore > 0 ? `${bioScore}% similitud facial (Liveness OK)` : 'Captura pendiente'}
+                                  {selectedUser.kycData?.photoCaptured ? 'Selfie adjunta' : 'Sin selfie'}
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
-                                  {bioScore >= 85 ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                                      ✓ Biométrico Aprobado
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
-                                      Pendiente
-                                    </span>
-                                  )}
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Pendiente</span>
                                 </td>
                               </tr>
 
@@ -719,7 +721,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 <td className="py-2.5 px-4 text-right">
                                   {selectedUser.kycData?.criminalRecordSubmitted ? (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                                      ✓ Sin Anotaciones
+                                      Pendiente de revisar
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
@@ -768,23 +770,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   </div>
 
                   {(() => {
-                    const frontImg =
-                      selectedUser.kycData?.idFrontUrl ||
-                      getSimulatedCedulaImage(
-                        'front',
-                        selectedUser.fullName.toUpperCase(),
-                        formatRut(selectedUser.rut)
-                      );
-                    const backImg =
-                      selectedUser.kycData?.idBackUrl ||
-                      getSimulatedCedulaImage(
-                        'back',
-                        selectedUser.fullName.toUpperCase(),
-                        formatRut(selectedUser.rut)
-                      );
-                    const faceImg =
-                      selectedUser.kycData?.photoUrl ||
-                      getSimulatedFaceImage(selectedUser.fullName.toUpperCase());
+                    const frontImg = frontReviewUrl;
+                    const backImg = backReviewUrl;
+                    const faceImg = faceReviewUrl;
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -796,31 +784,32 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               Cédula Anverso
                             </span>
                             <button
+                              disabled={!frontImg}
                               onClick={() =>
                                 setPreviewImage({
                                   title: `Cédula Anverso — ${selectedUser.fullName}`,
                                   url: frontImg,
                                 })
                               }
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
                             >
                               <Eye className="w-3.5 h-3.5" /> Ampliar
                             </button>
                           </div>
                           <div
-                            onClick={() =>
+                            onClick={() => frontImg &&
                               setPreviewImage({
                                 title: `Cédula Anverso — ${selectedUser.fullName}`,
                                 url: frontImg,
                               })
                             }
-                            className="aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 cursor-pointer group relative"
+                            className={`aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 group relative ${frontImg ? 'cursor-pointer' : ''}`}
                           >
-                            <img
+                            {frontImg ? <img
                               src={frontImg}
                               alt="Cédula Anverso"
                               className="w-full h-full object-cover group-hover:scale-105 transition"
-                            />
+                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Documento no disponible</div>}
                           </div>
                         </div>
 
@@ -832,31 +821,32 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               Cédula Reverso
                             </span>
                             <button
+                              disabled={!backImg}
                               onClick={() =>
                                 setPreviewImage({
                                   title: `Cédula Reverso — ${selectedUser.fullName}`,
                                   url: backImg,
                                 })
                               }
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
                             >
                               <Eye className="w-3.5 h-3.5" /> Ampliar
                             </button>
                           </div>
                           <div
-                            onClick={() =>
+                            onClick={() => backImg &&
                               setPreviewImage({
                                 title: `Cédula Reverso — ${selectedUser.fullName}`,
                                 url: backImg,
                               })
                             }
-                            className="aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 cursor-pointer group relative"
+                            className={`aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 group relative ${backImg ? 'cursor-pointer' : ''}`}
                           >
-                            <img
+                            {backImg ? <img
                               src={backImg}
                               alt="Cédula Reverso"
                               className="w-full h-full object-cover group-hover:scale-105 transition"
-                            />
+                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Documento no disponible</div>}
                           </div>
                         </div>
 
@@ -868,31 +858,32 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               Selfie Biométrica
                             </span>
                             <button
+                              disabled={!faceImg}
                               onClick={() =>
                                 setPreviewImage({
                                   title: `Reconocimiento Facial en Vivo — ${selectedUser.fullName}`,
                                   url: faceImg,
                                 })
                               }
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
                             >
                               <Eye className="w-3.5 h-3.5" /> Ampliar
                             </button>
                           </div>
                           <div
-                            onClick={() =>
+                            onClick={() => faceImg &&
                               setPreviewImage({
                                 title: `Reconocimiento Facial en Vivo — ${selectedUser.fullName}`,
                                 url: faceImg,
                               })
                             }
-                            className="aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 cursor-pointer group relative"
+                            className={`aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 group relative ${faceImg ? 'cursor-pointer' : ''}`}
                           >
-                            <img
+                            {faceImg ? <img
                               src={faceImg}
                               alt="Selfie Biométrica"
                               className="w-full h-full object-cover group-hover:scale-105 transition"
-                            />
+                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Imagen no disponible</div>}
                           </div>
                         </div>
                       </div>
@@ -907,24 +898,28 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                       <FileCheck2 className="w-4 h-4 text-amber-600" />
-                      3. Certificado PDF Enviado (Registro Civil de Chile)
+                      3. Certificado de antecedentes adjunto
                     </h4>
 
                     <div className="flex items-center gap-2">
                       <button
+                        disabled={!selectedUser.kycData?.criminalRecordUrl}
                         onClick={() => setPreviewPdfCertificateUserId(selectedUser.id)}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition enabled:cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed shadow-2xs"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        Visualizar Certificado PDF Completo
+                        Ver adjunto del certificado
                       </button>
-                      <button
-                        onClick={() => downloadCriminalRecordCertificate(selectedUser)}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                      <a
+                        href={criminalRecordReviewUrl || undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-disabled={!selectedUser.kycData?.criminalRecordUrl}
+                        className={`px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition ${criminalRecordReviewUrl ? '' : 'opacity-50 pointer-events-none'}`}
                       >
                         <Download className="w-3.5 h-3.5 text-slate-500" />
-                        Descargar PDF
-                      </button>
+                        Abrir archivo original
+                      </a>
                     </div>
                   </div>
 
@@ -1535,7 +1530,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-black text-xs">
-                  PDF
+                  {criminalRecordIsPdf ? 'PDF' : 'IMG'}
                 </span>
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold truncate">
@@ -1549,13 +1544,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => downloadCriminalRecordCertificate(pdfModalUser)}
-                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                <a
+                  href={criminalRecordUrl || undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!criminalRecordUrl}
+                  className={`px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition ${criminalRecordUrl ? '' : 'opacity-50 pointer-events-none'}`}
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Descargar Certificado
-                </button>
+                  Abrir archivo original
+                </a>
                 <button
                   onClick={() => setPreviewPdfCertificateUserId(null)}
                   className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
@@ -1565,106 +1563,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               </div>
             </div>
 
-            {/* Contenido del Certificado PDF */}
-            <div className="p-6 sm:p-8 bg-slate-100 max-h-[75vh] overflow-y-auto space-y-6">
-              {pdfModalUser.kycData?.criminalRecordUrl &&
-              pdfModalUser.kycData.criminalRecordUrl.startsWith('data:image/') ? (
-                <div className="bg-white p-4 rounded-2xl border border-slate-300 shadow-sm">
-                  <img
-                    src={pdfModalUser.kycData.criminalRecordUrl}
-                    alt="Certificado subido por el usuario"
-                    className="max-w-full mx-auto rounded-lg"
-                  />
+            {/* Mostrar el adjunto real recibido, sin generar un certificado ficticio. */}
+            <div className="p-6 sm:p-8 bg-slate-100 max-h-[75vh] overflow-y-auto">
+              {!criminalRecordUrl ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+                  No hay un archivo adjunto disponible para esta solicitud.
                 </div>
-              ) : null}
-
-              {/* Hoja Oficial del Certificado de Antecedentes del Registro Civil */}
-              <div className="bg-white border-2 border-indigo-950 rounded-xl p-6 sm:p-10 shadow-md space-y-6 text-slate-800">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b-2 border-indigo-950 pb-5">
-                  <div>
-                    <div className="text-xs font-bold text-indigo-900 tracking-widest uppercase">
-                      República de Chile
-                    </div>
-                    <div className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
-                      SERVICIO DE REGISTRO CIVIL E IDENTIFICACIÓN
-                    </div>
-                    <div className="text-xs font-semibold text-slate-600 mt-1">
-                      CERTIFICADO DE ANTECEDENTES PARA FINES ESPECIALES
-                    </div>
-                  </div>
-                  <div className="font-mono text-xs bg-slate-50 p-3 rounded-lg border border-slate-200 text-right">
-                    <div>
-                      <strong>FOLIO:</strong> 50049281{pdfModalUser.rut.replace(/\D/g, '').slice(0, 4)}
-                    </div>
-                    <div>
-                      <strong>CÓDIGO VERIFICACIÓN:</strong> RC-{pdfModalUser.rut.replace(/\D/g, '').slice(0, 6)}
-                    </div>
-                    <div>
-                      <strong>FECHA EMISIÓN:</strong>{' '}
-                      {new Date(pdfModalUser.kycData?.submittedAt || pdfModalUser.createdAt).toLocaleDateString('es-CL')}
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs sm:text-sm leading-relaxed text-slate-700">
-                  El Servicio de Registro Civil e Identificación de Chile certifica que, consultado el Registro General de Condenas conforme a la Ley N° 19.628, la persona individualizada a continuación registra los siguientes datos:
-                </p>
-
-                <div className="bg-indigo-50/60 border border-indigo-200 rounded-xl p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="text-slate-500 font-bold block uppercase text-[10px]">
-                      Nombre Completo
-                    </span>
-                    <span className="text-sm font-black text-slate-900">
-                      {pdfModalUser.fullName.toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-bold block uppercase text-[10px]">
-                      RUN / RUT Oficial
-                    </span>
-                    <span className="text-sm font-mono font-black text-indigo-950">
-                      {formatRut(pdfModalUser.rut)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-bold block uppercase text-[10px]">
-                      N° Serie Cédula de Identidad
-                    </span>
-                    <span className="font-mono font-bold text-slate-800">
-                      {pdfModalUser.kycData?.documentSerialNumber || '509.281.392'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 font-bold block uppercase text-[10px]">
-                      Estado de Validación en Plataforma
-                    </span>
-                    <span className="font-bold text-emerald-700">
-                      ✓ Cotejado con Cédula y Biometría
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border-2 border-emerald-600 bg-emerald-50/60 rounded-xl p-5 text-center space-y-1">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
-                    Registro General de Condenas · Informe Oficial
-                  </div>
-                  <div className="text-base sm:text-lg font-black text-emerald-950 tracking-wide">
-                    SIN ANOTACIONES PENALES NI JUDICIALES VIGENTES
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] text-slate-500">
-                  <div>
-                    <strong>Firma Electrónica Avanzada (Ley N° 19.799)</strong>
-                    <br />
-                    Timbre Digital Registro Civil de Chile · Documento íntegro y verificable.
-                  </div>
-                  <div className="font-mono text-indigo-900 font-bold">
-                    HASH: SHA256-{pdfModalUser.id.toUpperCase()}-CERT
-                  </div>
-                </div>
-              </div>
+              ) : criminalRecordIsPdf ? (
+                <iframe src={criminalRecordUrl} title="Certificado adjunto del usuario" className="w-full h-[70vh] rounded-xl border border-slate-300 bg-white" />
+              ) : (
+                <img src={criminalRecordUrl} alt="Certificado adjunto del usuario" className="max-w-full max-h-[70vh] mx-auto rounded-xl border border-slate-300 bg-white object-contain" />
+              )}
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ import {
   Barcode,
 } from 'lucide-react';
 import { getSimulatedCedulaImage } from '../utils/mockAssets.ts';
-import { verifyIdCardFrame, IdFrameVerificationResult } from '../utils/verificationService.ts';
+import { IdFrameVerificationResult } from '../utils/verificationService.ts';
 
 interface DocumentScannerProps {
   onDocumentCaptured: (imageDataUrl: string, documentType: string) => void;
@@ -31,7 +31,7 @@ interface DocumentScannerProps {
 export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   onDocumentCaptured,
   onCancel,
-  title = 'Escaneo Inteligente de Documento',
+  title = 'Captura de documento',
   subtitle = 'Alinea tu cédula de identidad dentro del marco para validación.',
   side,
 }) => {
@@ -45,9 +45,8 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
     'Sostén tu cédula de identidad física dentro del recuadro.'
   );
 
-  // Estados de control de tiempo y verificación AI
+  // Estado de captura y revisión manual.
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [isVerifyingAI, setIsVerifyingAI] = useState<boolean>(false);
   const [verificationResult, setVerificationResult] = useState<IdFrameVerificationResult | null>(null);
   const [autoCaptureEnabled, setAutoCaptureEnabled] = useState<boolean>(false);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
@@ -150,7 +149,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
     return stream;
   }, []);
 
-  // Función para capturar el fotograma actual y validar si contiene una Cédula de Identidad con AI
+  // Captura local para revisión posterior por un administrador.
   const executeCaptureAndVerify = useCallback(async (manualDataUrl?: string) => {
     let finalDataUrl = manualDataUrl;
 
@@ -170,33 +169,15 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
 
     setCapturedDoc(finalDataUrl);
     stopCamera();
-    setIsVerifyingAI(true);
-    setDetectionMessage('Procesando fotografía...');
-
-    try {
-      const result = await verifyIdCardFrame({
-        image: finalDataUrl,
-        side,
-      });
-      setVerificationResult(result);
-
-      if (result.isIdCardPresent) {
-        setDetectionMessage('Documento capturado correctamente.');
-      } else {
-        setDetectionMessage('No se detectó una cédula clara.');
-      }
-    } catch {
-      setVerificationResult({
-        success: true,
-        provider: 'Local',
-        isIdCardPresent: true,
-        confidence: 90,
-        feedbackMessage: 'Cédula de identidad capturada.',
-      });
-      setDetectionMessage('Documento capturado correctamente.');
-    } finally {
-      setIsVerifyingAI(false);
-    }
+    setVerificationResult({
+      success: true,
+      provider: 'Revisión manual',
+      isIdCardPresent: true,
+      detectedSide: side,
+      confidence: 0,
+      feedbackMessage: 'Imagen capturada. Un administrador revisará que corresponda a tu cédula.',
+    });
+    setDetectionMessage('Imagen capturada para revisión del administrador.');
   }, [side, stopCamera]);
 
   // Iniciar conteo regresivo (más tiempo para acomodar la cédula)
@@ -244,7 +225,6 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   const handleRetry = () => {
     setCapturedDoc(null);
     setVerificationResult(null);
-    setIsVerifyingAI(false);
     startCamera();
   };
 
@@ -481,26 +461,13 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
 
       {/* VISOR PRINCIPAL */}
       <div className="relative aspect-16/10 max-w-lg mx-auto rounded-3xl overflow-hidden bg-slate-950 border-2 border-slate-800 shadow-xl flex items-center justify-center">
-        {/* VISTA 1: FOTOGRAFÍA YA CAPTURADA + EVALUACIÓN AI */}
+        {/* VISTA 1: FOTOGRAFÍA CAPTURADA PARA REVISIÓN MANUAL */}
         {capturedDoc ? (
           <div className="relative w-full h-full flex flex-col items-center justify-center bg-slate-950">
             <img src={capturedDoc} alt="Cédula Capturada" className="w-full h-full object-contain" />
 
-            {/* Overlay de Verificación AI */}
-            {isVerifyingAI && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
-                <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-white">Validando Cédula...</p>
-                  <p className="text-xs text-slate-300">
-                    Comprobando encuadre y nitidez.
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Resultado de la Verificación */}
-            {!isVerifyingAI && verificationResult && (
+            {verificationResult && (
               <div className="absolute inset-x-3 bottom-3 space-y-2 z-20">
                 {verificationResult.isIdCardPresent ? (
                   // Caso ÉXITO: Cédula capturada
@@ -533,7 +500,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                         No se detectó una Cédula de Identidad
                       </span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold">
-                        Revisión AI
+                        Revisión manual
                       </span>
                     </div>
 
@@ -718,7 +685,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                 Escaneo de Cédula: {side === 'front' ? 'Frente (Anverso)' : 'Reverso (Dorso)'}
               </p>
               <p className="text-xs text-slate-400 max-w-xs">
-                Sostén tu carnet físico frente a la cámara. Tendrás tiempo para acomodarlo y verificarlo con Spotly AI.
+                Sostén tu cédula frente a la cámara. Un administrador revisará la imagen que envíes.
               </p>
             </div>
 

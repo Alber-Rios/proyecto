@@ -24,7 +24,7 @@ import {
   HelpCircle,
   AlertCircle,
 } from 'lucide-react';
-import { formatRut, getNameInitial } from '../utils/formatters.ts';
+import { capitalizeInitial, formatRut, getNameInitial } from '../utils/formatters.ts';
 
 interface HeaderProps {
   currentView: string;
@@ -350,7 +350,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {/* Nombre y rol visibles desde Tablet (sm) y PC */}
                     <div className="text-left hidden sm:block max-w-[120px] md:max-w-[150px]">
                       <div className="text-xs font-bold text-slate-900 leading-tight truncate">
-                        {currentUser.fullName.split(' ')[0]}
+                        {capitalizeInitial(currentUser.fullName.split(' ')[0])}
                       </div>
                       <div className="text-[11px] leading-tight flex items-center gap-1 mt-0.5">
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${roleMeta.dotColor}`} />

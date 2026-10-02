@@ -424,6 +424,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
+DECLARE
+  valid_manual_submission BOOLEAN;
 BEGIN
   -- SQL Editor/service role (sin auth.uid) es el canal administrativo confiable.
   -- Las llamadas normales autenticadas deben pasar además is_admin().
@@ -434,7 +436,22 @@ BEGIN
   IF NEW.verification_status IS DISTINCT FROM OLD.verification_status
      OR NEW.kyc_rejection_reason IS DISTINCT FROM OLD.kyc_rejection_reason
      OR NEW.kyc_data IS DISTINCT FROM OLD.kyc_data THEN
-    RAISE EXCEPTION 'Solo un administrador puede modificar el estado o los datos KYC';
+    valid_manual_submission :=
+      NEW.verification_status = 'pending_review'
+      AND NEW.kyc_data->>'consentGiven' = 'true'
+      AND NEW.kyc_data->>'idFrontCaptured' = 'true'
+      AND NEW.kyc_data->>'idBackCaptured' = 'true'
+      AND NEW.kyc_data->>'photoCaptured' = 'true'
+      AND NEW.kyc_data->>'criminalRecordSubmitted' = 'true'
+      AND NULLIF(NEW.kyc_data->>'idFrontUrl', '') IS NOT NULL
+      AND NULLIF(NEW.kyc_data->>'idBackUrl', '') IS NOT NULL
+      AND NULLIF(NEW.kyc_data->>'photoUrl', '') IS NOT NULL
+      AND NULLIF(NEW.kyc_data->>'criminalRecordUrl', '') IS NOT NULL
+      AND NULLIF(NEW.kyc_data->>'submittedAt', '') IS NOT NULL;
+
+    IF NOT COALESCE(valid_manual_submission, false) THEN
+      RAISE EXCEPTION 'Solo un administrador puede modificar el estado o los datos KYC, excepto al enviar una solicitud completa para revisión manual';
+    END IF;
   END IF;
 
   IF NEW.role IS DISTINCT FROM OLD.role AND NOT (

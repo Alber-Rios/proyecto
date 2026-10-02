@@ -19,6 +19,7 @@ function base64ToBlob(base64Data: string, defaultContentType = 'image/jpeg'): Bl
 
 const KYC_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const KYC_ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+const KYC_SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 function getKycFileExtension(blob: Blob): string {
   if (blob.type === 'application/pdf') return 'pdf';
@@ -114,14 +115,7 @@ export async function uploadKycDocument(
     throw new Error(`No se pudo guardar el documento (${error.message}). Verifica la conexión y las políticas de Storage en Supabase.`);
   }
 
-  const { data: signedData, error: signError } = await supabase.storage
-    .from('kyc-documents')
-    .createSignedUrl(data.path, 60 * 60 * 48);
-  if (signError || !signedData) {
-    console.error('Error al generar enlace privado para documento KYC:', signError?.message);
-    throw new Error('El archivo se subió, pero no se pudo preparar el acceso privado para su revisión.');
-  }
-  return signedData.signedUrl;
+  return `storage://kyc-documents/${data.path}`;
 }
 
 /**
@@ -150,14 +144,25 @@ export async function uploadBiometricPhoto(
     throw new Error(`No se pudo guardar la foto biométrica (${error.message}). Verifica las políticas de Storage en Supabase.`);
   }
 
-  const { data: signedData, error: signError } = await supabase.storage
-    .from('kyc-biometrics')
-    .createSignedUrl(data.path, 60 * 60 * 48);
-  if (signError || !signedData) {
-    console.error('Error al generar enlace privado para foto biométrica:', signError?.message);
-    throw new Error('La foto se subió, pero no se pudo preparar el acceso privado para su revisión.');
+  return `storage://kyc-biometrics/${data.path}`;
+}
+
+/** Genera un enlace privado temporal para que un administrador revise un archivo KYC. */
+export async function createKycReviewUrl(fileReference: string): Promise<string> {
+  const match = fileReference.match(/^storage:\/\/(kyc-documents|kyc-biometrics)\/(.+)$/);
+  if (!match) return fileReference;
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase no está configurado; no se puede abrir el documento privado.');
   }
-  return signedData.signedUrl;
+
+  const [, bucket, path] = match;
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, KYC_SIGNED_URL_TTL_SECONDS);
+  if (error || !data?.signedUrl) {
+    throw new Error(`No se pudo abrir el archivo privado: ${error?.message || 'enlace no disponible'}`);
+  }
+  return data.signedUrl;
 }
 
 /**

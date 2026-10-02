@@ -602,6 +602,7 @@ export async function updateProfileInDb(
   if (data.ownerTermsAccepted !== undefined) dbRow.owner_terms_accepted = data.ownerTermsAccepted;
   if (data.ownerApplicationDate !== undefined) dbRow.owner_application_date = data.ownerApplicationDate;
   if (data.verificationStatus !== undefined) dbRow.verification_status = data.verificationStatus;
+  if (data.verificationStatus === 'pending_review') dbRow.kyc_rejection_reason = null;
   if (data.kycRejectionReason !== undefined) dbRow.kyc_rejection_reason = data.kycRejectionReason;
   if (data.kycData !== undefined) dbRow.kyc_data = data.kycData;
   if (data.commune !== undefined) dbRow.commune = data.commune;

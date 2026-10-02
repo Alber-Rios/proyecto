@@ -35,8 +35,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   } = useApp();
 
   // Formulario de edición de datos personales
-  const [firstNames, setFirstNames] = useState(currentUser?.firstNames || currentUser?.fullName || '');
-  const [surnames, setSurnames] = useState(currentUser?.surnames || '');
+  const [firstNames, setFirstNames] = useState(capitalizeInitial(currentUser?.firstNames || currentUser?.fullName || ''));
+  const [surnames, setSurnames] = useState(capitalizeInitial(currentUser?.surnames || ''));
   const [rut, setRut] = useState(currentUser?.rut || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '+56 9 ');
@@ -88,7 +88,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   }
 
   // Manejo de actualización de perfil
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setSaveSuccess(false);
@@ -113,20 +113,23 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       return;
     }
 
-    updateUserProfile({
-      fullName: `${capitalizeInitial(firstNames).trim()} ${capitalizeInitial(surnames).trim()}`,
-      firstNames: capitalizeInitial(firstNames).trim(),
-      surnames: capitalizeInitial(surnames).trim(),
-      rut: rut.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      gender,
-      birthDate,
-      commune: commune.trim(),
-    });
-
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 4000);
+    try {
+      await updateUserProfile({
+        fullName: `${capitalizeInitial(firstNames).trim()} ${capitalizeInitial(surnames).trim()}`,
+        firstNames: capitalizeInitial(firstNames).trim(),
+        surnames: capitalizeInitial(surnames).trim(),
+        rut: rut.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        gender,
+        birthDate,
+        commune: commune.trim(),
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'No se pudieron guardar los cambios.');
+    }
   };
 
   // Calcular edad actual

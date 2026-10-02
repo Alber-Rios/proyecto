@@ -3,7 +3,6 @@ import { useApp } from '../context/AppContext.tsx';
 import { formatRut } from '../utils/formatters.ts';
 import { DocumentScanner } from '../components/DocumentScanner.tsx';
 import { RealtimeFaceScanner } from '../components/RealtimeFaceScanner.tsx';
-import { verifyKycWithServer } from '../utils/verificationService.ts';
 import { uploadKycDocument, uploadBiometricPhoto } from '../lib/storage.ts';
 
 import {
@@ -263,55 +262,39 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
     setCurrentStep(3);
   };
 
-  // VALIDACIÓN PASO 3 Y ENVÍO FINAL: Extracción AI y Verificación Automática de Cédula y Rostro
+  // Envío final de documentos para revisión manual del administrador.
   const handleFinalSubmit = async () => {
     setError(null);
     if (!criminalRecordFile) {
       setError('Debes subir tu Certificado de Antecedentes para Fines Especiales antes de finalizar.');
       return;
     }
+    if (!idFrontPhoto || !idBackPhoto || !facialPhoto) {
+      setError('Completa la captura del frente, reverso y selfie antes de enviar tu solicitud.');
+      return;
+    }
 
     setLoading(true);
     setExtractionProgress(10);
-    setExtractionMessage('Iniciando escaneo inteligente de Cédula y reconocimiento facial...');
+    setExtractionMessage('Preparando documentos para enviarlos al administrador...');
 
     try {
-      setExtractionProgress(30);
-      setExtractionMessage('Enviando imágenes al servidor AI de verificación biométrica...');
+      setExtractionProgress(20);
+      setExtractionMessage('Guardando tus documentos de forma privada...');
 
-      // Llamada real al backend Gemini 3.8 Flash Vision AI
-      const kycRes = await verifyKycWithServer({
-        idFrontPhoto: idFrontPhoto!,
-        idBackPhoto: idBackPhoto || undefined,
-        facialPhoto: facialPhoto!,
-        expectedRut: currentUser.rut,
-        expectedName: currentUser.fullName,
-      });
-
-      setExtractionProgress(70);
-      setExtractionMessage(`Coincidencia biométrica del ${kycRes.data.faceMatchScore}%. Validando cédula...`);
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      setExtractionProgress(85);
-      setExtractionMessage('Guardando copias de seguridad cifradas en Supabase Storage...');
-
-      // Subida segura a los buckets privados de Supabase Storage
-      let frontStorageUrl = idFrontPhoto;
-      let backStorageUrl = idBackPhoto;
-      let facialStorageUrl = facialPhoto;
-      let criminalStorageUrl = criminalRecordFile;
-
-      if (idFrontPhoto) frontStorageUrl = await uploadKycDocument(idFrontPhoto, currentUser.id, 'front');
-      if (idBackPhoto) backStorageUrl = await uploadKycDocument(idBackPhoto, currentUser.id, 'back');
-      if (facialPhoto) facialStorageUrl = await uploadBiometricPhoto(facialPhoto, currentUser.id);
-      if (criminalRecordFile) criminalStorageUrl = await uploadKycDocument(criminalRecordFile, currentUser.id, 'criminal_record');
+      const frontStorageUrl = await uploadKycDocument(idFrontPhoto, currentUser.id, 'front');
+      setExtractionProgress(40);
+      const backStorageUrl = await uploadKycDocument(idBackPhoto, currentUser.id, 'back');
+      setExtractionProgress(60);
+      const facialStorageUrl = await uploadBiometricPhoto(facialPhoto, currentUser.id);
+      setExtractionProgress(80);
+      const criminalStorageUrl = await uploadKycDocument(criminalRecordFile, currentUser.id, 'criminal_record');
 
       setExtractionProgress(100);
-      setExtractionMessage('¡Escaneo de Cédula y Reconocimiento Facial completados!');
+      setExtractionMessage('Documentos enviados. Un administrador revisará tu solicitud.');
 
-      // Actualizar estado del usuario con los datos extraídos por la AI y enlaces a Storage
-      updateUserProfile({
+      // No se aprueba automáticamente: queda pendiente de revisión administrativa.
+      await updateUserProfile({
         verificationStatus: 'pending_review',
         kycRejectionReason: undefined,
         kycData: {
@@ -323,28 +306,25 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
           idBackCaptured: true,
           idFrontUrl: frontStorageUrl || undefined,
           idBackUrl: backStorageUrl || undefined,
-          rutNumber: kycRes.data.extractedRut || currentUser.rut,
-          documentSerialNumber: kycRes.data.documentSerialNumber,
+          rutNumber: currentUser.rut,
+          documentSerialNumber: '',
           criminalRecordSubmitted: true,
-          criminalRecordValid: true,
+          criminalRecordValid: undefined,
           criminalRecordDocCode: criminalRecordFileName,
           criminalRecordUrl: criminalStorageUrl || undefined,
           submittedAt: new Date().toISOString(),
           rejectionReason: undefined,
           rejectedAt: undefined,
           manualReviewRequired: true,
-          manualReviewNotes: `${kycRes.data.summary} (Proveedor: ${kycRes.provider})`,
+          manualReviewNotes: 'Documentos enviados para revisión manual por un administrador.',
         },
       });
 
-      addAuditRecord('VERIFICATION_AI_EXTRACTION_COMPLETED', 'security', {
+      addAuditRecord('VERIFICATION_SUBMITTED_FOR_ADMIN_REVIEW', 'security', {
         userId: currentUser.id,
         rut: currentUser.rut,
-        extractedRut: kycRes.data.extractedRut,
-        faceMatchScore: kycRes.data.faceMatchScore,
         status: 'pending',
-        provider: kycRes.provider,
-        automatedVerification: true,
+        manualReviewRequired: true,
       });
 
       setCurrentStep(4);
@@ -432,7 +412,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
       {/* Contenedor del Paso Activo */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
         {/* ========================================================= */}
-        {/* PASO 1: CÉDULA DE IDENTIDAD (AI-Powered) */}
+        {/* PASO 1: CÉDULA DE IDENTIDAD */}
         {/* ========================================================= */}
         {currentStep === 1 && (
           <div className="space-y-6">
@@ -445,7 +425,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   Paso 1: Cédula de Identidad (Anverso y Reverso)
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Alinea tu cédula de identidad chilena para identificación automática y captura de alta resolución.
+                  Alinea tu cédula chilena para capturar imágenes nítidas que revisará un administrador.
                 </p>
               </div>
             </div>
@@ -548,7 +528,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               <div className="flex items-center justify-between pt-2">
                 <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-                  Identificación automática con tecnología AI Spotly
+                  Las imágenes se enviarán de forma privada para revisión del administrador.
                 </span>
                 <button
                   type="button"
@@ -577,7 +557,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   Paso 2: Reconocimiento Facial Biométrico
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Tómate una selfie simple. El sistema reconocerá tus facciones automáticamente sin pedirte movimientos complejos.
+                  Tómate una selfie clara. El administrador la revisará junto con tu cédula.
                 </p>
               </div>
             </div>
@@ -757,7 +737,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 text-center italic">
-                  No cierres esta ventana mientras procesamos tus documentos con AI Spotly.
+                  No cierres esta ventana mientras guardamos tus documentos y enviamos la solicitud.
                 </p>
               </div>
             )}

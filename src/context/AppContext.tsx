@@ -16,7 +16,7 @@ import {
 } from '../types.ts';
 import { saveAuditLog, getAuditLogs, getClientAuditMetadata } from '../utils/auditLogger.ts';
 import { generateDigitalContract } from '../utils/contractGenerator.ts';
-import { getTodayIso } from '../utils/formatters.ts';
+import { getTodayIso, capitalizeInitial, formatFullName } from '../utils/formatters.ts';
 import { isAtLeast18 } from '../utils/ageValidation.ts';
 import {
   supabase,
@@ -83,7 +83,7 @@ interface AppContextType {
     gender?: UserGender;
     birthDate?: string;
   }) => Promise<{ success: boolean; message?: string; requiresEmailConfirmation?: boolean }>;
-  updateUserProfile: (data: Partial<UserProfile>) => void;
+  updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
   updateUserRole: (newRole: UserRole) => void;
   upgradeTenantToOwner: (agreedTerms: boolean, kycVerified?: boolean) => Promise<{ success: boolean; message: string }>;
   // Tenant actions
@@ -225,9 +225,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (profile && isMounted) {
             const loadedUser: UserProfile = {
               id: profile.id,
-              fullName: profile.full_name,
-              firstNames: profile.first_names || undefined,
-              surnames: profile.surnames || undefined,
+              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
+              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
+              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
               email: profile.email,
               rut: profile.rut || '',
               phone: profile.phone || '',
@@ -309,9 +309,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (profile && isMounted) {
             setCurrentUser({
               id: profile.id,
-              fullName: profile.full_name,
-              firstNames: profile.first_names || undefined,
-              surnames: profile.surnames || undefined,
+              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
+              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
+              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
               email: profile.email,
               rut: profile.rut || '',
               phone: profile.phone || '',
@@ -349,7 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Supabase Auth inicia sesión con correo; no se lee la tabla de perfiles desde una sesión anónima para resolver RUT.
       if (!cleanInput.includes('@')) {
-        return { success: false, message: 'Ingresa el correo electrónico asociado a tu cuenta.' };
+        return { success: false, message: 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.' };
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -361,11 +361,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Supabase Auth error:', error.message);
         return {
           success: false,
-          message: error.message.includes('Invalid login credentials')
-            ? 'Credenciales no válidas. Revisa tu correo o RUT y contraseña.'
-            : error.message.toLowerCase().includes('email not confirmed')
+          message: error.message.toLowerCase().includes('email not confirmed')
               ? 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.'
-            : error.message,
+              : 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.',
         };
       }
 
@@ -380,9 +378,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const loggedUser: UserProfile = profile
           ? {
               id: profile.id,
-              fullName: profile.full_name,
-              firstNames: profile.first_names || undefined,
-              surnames: profile.surnames || undefined,
+              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
+              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
+              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
               email: profile.email,
               rut: profile.rut || '',
               phone: profile.phone || '',
@@ -401,9 +399,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : {
               id: data.user.id,
-              fullName: data.user.user_metadata?.full_name || 'Usuario Spotly',
-              firstNames: data.user.user_metadata?.first_names,
-              surnames: data.user.user_metadata?.surnames,
+              fullName: formatFullName(data.user.user_metadata?.first_names, data.user.user_metadata?.surnames, data.user.user_metadata?.full_name || 'Usuario Spotly'),
+              firstNames: data.user.user_metadata?.first_names ? capitalizeInitial(data.user.user_metadata.first_names) : undefined,
+              surnames: data.user.user_metadata?.surnames ? capitalizeInitial(data.user.user_metadata.surnames) : undefined,
               email: data.user.email || targetEmail,
               rut: data.user.user_metadata?.rut || '',
               phone: data.user.user_metadata?.phone || '',
@@ -672,7 +670,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Actualizar perfil de usuario (Mi Cuenta y Supabase)
-  const updateUserProfile = (data: Partial<UserProfile>) => {
+  const updateUserProfile = async (data: Partial<UserProfile>) => {
     if (!currentUser) return;
 
     const updatedUser: UserProfile = {
@@ -680,15 +678,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...data,
     };
 
-    setCurrentUser(updatedUser);
-    setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
-
     // Actualizar en base de datos Supabase
     if (isSupabaseConfigured()) {
-      updateProfileInDb(updatedUser.id, data).catch((err) => {
-        console.warn('Error al sincronizar perfil en Supabase:', err);
-      });
+      const result = await updateProfileInDb(updatedUser.id, data);
+      if (!result.success) {
+        throw new Error(`No se pudo guardar el perfil en Supabase: ${result.error || 'error desconocido'}`);
+      }
     }
+
+    setCurrentUser(updatedUser);
+    setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
 
     addAuditRecord('USER_PROFILE_UPDATED', 'info', {
       userId: updatedUser.id,
