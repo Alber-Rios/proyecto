@@ -15,7 +15,7 @@ import { FavoritesPage } from './pages/FavoritesPage.tsx';
 import { SupportPage } from './pages/SupportPage.tsx';
 import { OwnerUpgradeModal } from './components/OwnerUpgradeModal.tsx';
 import { Space } from './types.ts';
-import { ShieldCheck, Building2 } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 function AppContent() {
@@ -184,8 +184,8 @@ function AppContent() {
 
       {/* Footer Institucional Chileno */}
       <footer className="bg-slate-900 text-slate-400 text-xs mt-16 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-rose-600 flex items-center justify-center text-white">
@@ -196,64 +196,38 @@ function AppContent() {
                 </span>
               </div>
               <p className="text-slate-400 leading-relaxed text-[11px]">
-                Plataforma líder en Chile para el arriendo por día y hora de recintos corporativos, comerciales y creativos. Contratos respaldados bajo la Ley N° 18.101.
+                Una plataforma para encontrar y publicar espacios con modalidades de arriendo flexibles. Revisa los detalles y condiciones de cada publicación.
               </p>
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-3 uppercase tracking-wider text-[10px]">
-                Mercado & Categorías
-              </h4>
-              <ul className="space-y-2 text-[11px]">
-                <li className="hover:text-white transition cursor-pointer">Oficinas Privadas y Plantas Libres</li>
-                <li className="hover:text-white transition cursor-pointer">Espacios de Coworking Flex</li>
-                <li className="hover:text-white transition cursor-pointer">Salas de Eventos & Workshops</li>
-                <li className="hover:text-white transition cursor-pointer">Estudios Creativos & Streaming</li>
-                <li className="hover:text-white transition cursor-pointer">Bodegas & Almacenaje Urbano</li>
-              </ul>
+              <h4 className="text-white font-semibold mb-3">Encuentra un espacio</h4>
+              <p className="text-[11px] leading-relaxed mb-3">Explora las publicaciones disponibles y revisa sus precios, ubicación y condiciones.</p>
+              <button type="button" onClick={() => handleNavigate('home')} className="text-rose-300 hover:text-white font-semibold transition">
+                Ir al catálogo
+              </button>
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-3 uppercase tracking-wider text-[10px]">
-                Marco Legal en Chile
-              </h4>
-              <ul className="space-y-2 text-[11px]">
-                <li>Ley N° 18.101 de Arrendamiento de Predios Urbanos</li>
-                <li>Ley N° 19.628 sobre Protección de la Vida Privada</li>
-                <li>Firma Electrónica Avanzada (Ley 19.799)</li>
-                <li>Circular N° 37 del SII (Tratamiento Tributario e IVA)</li>
-              </ul>
+              <h4 className="text-white font-semibold mb-3">Publica tu espacio</h4>
+              <p className="text-[11px] leading-relaxed mb-3">Administra tus publicaciones y solicitudes desde el panel de propietario.</p>
+              <button type="button" onClick={handleOpenOwnerUpgrade} className="text-rose-300 hover:text-white font-semibold transition">
+                Comenzar a publicar
+              </button>
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-3 uppercase tracking-wider text-[10px]">
-                Gobernanza & Verificación
-              </h4>
-              <p className="text-[11px] text-slate-400 mb-3">
-                Validación de RUT con algoritmo Módulo 11, verificación biométrica facial y aprobación de expedientes por Administración.
-              </p>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-[11px] font-medium">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                Cifrado SHA-256 en Contratos
-              </div>
+              <h4 className="text-white font-semibold mb-3">¿Necesitas ayuda?</h4>
+              <p className="text-[11px] leading-relaxed mb-3">Encuentra orientación para tu cuenta, publicaciones y reservas.</p>
+              <button type="button" onClick={() => handleNavigate('support')} className="text-rose-300 hover:text-white font-semibold transition">
+                Ir a ayuda y soporte
+              </button>
             </div>
           </div>
 
-          <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
-            <div>
-              © 2026 Spotly Chile (EspaciosChile). Todos los derechos reservados.
-            </div>
-            <div className="flex items-center gap-4">
-              <span>Términos y Condiciones</span>
-              <span>Privacidad de Datos</span>
-              <button
-                type="button"
-                onClick={() => handleNavigate('support')}
-                className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer transition"
-              >
-                Ayuda y Soporte
-              </button>
-            </div>
+          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
+            <span>© {new Date().getFullYear()} Spotly.</span>
+            <span>La disponibilidad y las condiciones dependen de cada publicación.</span>
           </div>
         </div>
       </footer>

@@ -37,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentView,
   onNavigate,
   onOpenOwnerUpgrade,
+  onOpenAuth,
 }) => {
   const {
     currentUser,
@@ -102,6 +103,25 @@ export const Header: React.FC<HeaderProps> = ({
     onNavigate(view);
   };
 
+  const handleHowItWorks = () => {
+    if (currentView !== 'home') {
+      onNavigate('home');
+      window.setTimeout(() => {
+        document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+      return;
+    }
+    document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handlePublish = () => {
+    if (!currentUser) {
+      onOpenAuth('register', 'Crea tu cuenta para publicar y administrar un espacio.');
+      return;
+    }
+    onOpenOwnerUpgrade();
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -161,7 +181,14 @@ export const Header: React.FC<HeaderProps> = ({
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
-                    Explorar Espacios
+                    Buscar espacios
+                  </button>
+
+                  <button
+                    onClick={handleHowItWorks}
+                    className="px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  >
+                    Cómo funciona
                   </button>
 
                   {currentUser && (
@@ -209,6 +236,15 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Acciones Derecha */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {currentUser?.role !== 'admin' && (
+              <button
+                type="button"
+                onClick={handlePublish}
+                className="hidden lg:inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-bold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100"
+              >
+                <Building2 className="h-4 w-4" /> Publicar
+              </button>
+            )}
             {/* CASO 1: USUARIO NO REGISTRADO (Visitante) */}
             {!currentUser ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
