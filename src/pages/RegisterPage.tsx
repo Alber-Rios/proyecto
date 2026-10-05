@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { validateRut, formatRut, capitalizeInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import { UserGender } from '../types.ts';
+import { Link } from 'react-router-dom';
 import {
   UserPlus,
   Mail,
@@ -86,7 +87,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     }
 
     if (!termsAccepted) {
-      setError('Debes aceptar los Términos de Servicio y la Política de Privacidad de Datos.');
+      setError('Debes marcar la casilla de aceptación antes de crear tu cuenta.');
       return;
     }
 
@@ -151,34 +152,34 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
             <div className="space-y-2.5 pt-1 sm:pt-2">
               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider">
-                Alta de Usuarios en Chile
+                Crea tu cuenta
               </span>
               <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug">
-                Únete a la comunidad de arriendos más confiable
+                Encuentra o publica espacios
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Regístrate para reservar oficinas, coworkings, salas de eventos o rentabilizar tus propios inmuebles comerciales bajo la Ley N° 18.101.
+                Regístrate para explorar espacios disponibles, gestionar tus reservas o publicar un espacio como propietario.
               </p>
             </div>
 
             <div className="space-y-2.5 pt-2 text-xs text-slate-300">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Identidad verificada para anfitriones y arrendatarios</span>
+                <span>Explora por ubicación, categoría y modalidad</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Firma digital de contratos válida en Chile</span>
+                <span>Consulta tus solicitudes desde tu cuenta</span>
               </div>
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Garantías protegidas y pagos seguros</span>
+                <span>Elige si quieres arrendar o publicar</span>
               </div>
             </div>
           </div>
 
           <div className="text-[11px] text-slate-400 pt-4 mt-4 relative z-10 border-t border-slate-800/80">
-            © 2026 Spotly SpA • Cumplimiento Ley 19.628
+            © 2026 Spotly · Espacios Chile
           </div>
 
           <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-rose-600/20 blur-3xl pointer-events-none" />
@@ -381,12 +382,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
                 <input
                   type="checkbox"
+                  required
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
                 />
                 <span className="text-[11px] text-slate-600 leading-snug">
-                  Acepto los Términos y Condiciones de Uso y autorizo el tratamiento de mis datos personales según la Ley N° 19.628 de Chile.
+                  Al tocar «Crear cuenta», aceptas los <Link to="/terminos" className="font-semibold text-blue-700 hover:underline">Términos y Condiciones</Link> de Spotly y confirmas que has leído la <Link to="/privacidad" className="font-semibold text-blue-700 hover:underline">Política de Privacidad</Link> y la <Link to="/cookies" className="font-semibold text-blue-700 hover:underline">Política de Cookies</Link>.
                 </span>
               </label>
 

@@ -13,6 +13,8 @@ import { OnboardingPage } from './pages/OnboardingPage.tsx';
 import { ProfilePage } from './pages/ProfilePage.tsx';
 import { FavoritesPage } from './pages/FavoritesPage.tsx';
 import { SupportPage } from './pages/SupportPage.tsx';
+import { NotFoundPage } from './pages/NotFoundPage.tsx';
+import { LegalPage } from './pages/LegalPage.tsx';
 import { OwnerUpgradeModal } from './components/OwnerUpgradeModal.tsx';
 import { Space } from './types.ts';
 import { Building2 } from 'lucide-react';
@@ -65,7 +67,10 @@ function AppContent() {
       'admin': '/admin',
       'onboarding': '/onboarding',
       'profile': '/profile',
-      'support': '/support'
+      'support': '/support',
+      'terms': '/terminos',
+      'privacy': '/privacidad',
+      'cookies': '/cookies'
     };
     
     navigate(routes[view] || '/');
@@ -82,6 +87,9 @@ function AppContent() {
   const currentViewString = location.pathname === '/' ? 'home' 
     : location.pathname.startsWith('/space') ? 'space-detail'
     : location.pathname.slice(1);
+  const canAccessOwnerDashboard = currentUser?.role === 'admin'
+    || currentUser?.role === 'owner'
+    || Boolean(currentUser?.ownerTermsAccepted);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff_0%,_#f8fafc_44%,_#eef2ff_100%)] text-slate-800 flex flex-col font-sans antialiased selection:bg-rose-500 selection:text-white">
@@ -140,14 +148,19 @@ function AppContent() {
             />
           } />
 
-          <Route path="/owner" element={
-            <OwnerDashboardPage
-              onOpenOwnerUpgrade={handleOpenOwnerUpgrade}
-              onOpenAuth={handleOpenAuth}
-            />
-          } />
+          <Route path="/owner" element={canAccessOwnerDashboard ? (
+              <OwnerDashboardPage
+                onOpenOwnerUpgrade={handleOpenOwnerUpgrade}
+                onOpenAuth={handleOpenAuth}
+              />
+            ) : (
+              <NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} restricted />
+            )} />
 
-          <Route path="/admin" element={<AdminDashboardPage onOpenAuth={handleOpenAuth} />} />
+          <Route path="/admin" element={currentUser?.role === 'admin'
+            ? <AdminDashboardPage onOpenAuth={handleOpenAuth} />
+            : <NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} restricted />
+          } />
 
           <Route path="/onboarding" element={
             <OnboardingPage
@@ -170,6 +183,12 @@ function AppContent() {
               onOpenAuth={handleOpenAuth}
             />
           } />
+
+          <Route path="/terminos" element={<LegalPage document="terms" />} />
+          <Route path="/privacidad" element={<LegalPage document="privacy" />} />
+          <Route path="/cookies" element={<LegalPage document="cookies" />} />
+
+          <Route path="*" element={<NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} />} />
         </Routes>
       </main>
 
@@ -185,7 +204,7 @@ function AppContent() {
       {/* Footer Institucional Chileno */}
       <footer className="bg-slate-900 text-slate-400 text-xs mt-16 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-rose-600 flex items-center justify-center text-white">
@@ -222,6 +241,15 @@ function AppContent() {
               <button type="button" onClick={() => handleNavigate('support')} className="text-rose-300 hover:text-white font-semibold transition">
                 Ir a ayuda y soporte
               </button>
+            </div>
+
+            <div>
+              <h4 className="text-white font-semibold mb-3">Información legal</h4>
+              <ul className="space-y-2 text-[11px]">
+                <li><button type="button" onClick={() => handleNavigate('terms')} className="text-slate-400 hover:text-white transition">Términos y condiciones</button></li>
+                <li><button type="button" onClick={() => handleNavigate('privacy')} className="text-slate-400 hover:text-white transition">Política de privacidad</button></li>
+                <li><button type="button" onClick={() => handleNavigate('cookies')} className="text-slate-400 hover:text-white transition">Política de cookies</button></li>
+              </ul>
             </div>
           </div>
 
