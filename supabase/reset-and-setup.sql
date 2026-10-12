@@ -544,13 +544,13 @@ DROP POLICY IF EXISTS "Lectura pública de perfiles" ON public.profiles;
 DROP POLICY IF EXISTS "Lectura de perfil propio o administrador" ON public.profiles;
 CREATE POLICY "Lectura de perfil propio o administrador"
   ON public.profiles FOR SELECT
-  USING (auth.uid() = id OR public.is_admin());
+  USING ((SELECT auth.uid()) = id OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Actualización de perfil propio o admin" ON public.profiles;
 CREATE POLICY "Actualización de perfil propio o admin"
   ON public.profiles FOR UPDATE
-  USING (auth.uid() = id OR public.is_admin())
-  WITH CHECK (auth.uid() = id OR public.is_admin());
+  USING ((SELECT auth.uid()) = id OR (SELECT public.is_admin()))
+  WITH CHECK ((SELECT auth.uid()) = id OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Inserción de perfil propio" ON public.profiles;
 -- El alta de perfiles la hace el trigger SECURITY DEFINER desde auth.users.
@@ -561,15 +561,15 @@ DROP POLICY IF EXISTS "Inserción de perfil propio" ON public.profiles;
 DROP POLICY IF EXISTS "Lectura pública de espacios activos" ON public.spaces;
 CREATE POLICY "Lectura pública de espacios activos"
   ON public.spaces FOR SELECT
-  USING (status = 'active' OR auth.uid() = owner_id OR public.is_admin());
+  USING (status = 'active' OR (SELECT auth.uid()) = owner_id OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Propietarios pueden crear espacios" ON public.spaces;
 CREATE POLICY "Propietarios pueden crear espacios"
   ON public.spaces FOR INSERT
   WITH CHECK (
-    public.is_admin() OR (
-      auth.uid() = owner_id AND EXISTS (
-        SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'owner'
+    (SELECT public.is_admin()) OR (
+      (SELECT auth.uid()) = owner_id AND EXISTS (
+        SELECT 1 FROM public.profiles p WHERE p.id = (SELECT auth.uid()) AND p.role = 'owner'
       )
     )
   );
@@ -577,11 +577,11 @@ CREATE POLICY "Propietarios pueden crear espacios"
 DROP POLICY IF EXISTS "Propietarios pueden actualizar sus espacios" ON public.spaces;
 CREATE POLICY "Propietarios pueden actualizar sus espacios"
   ON public.spaces FOR UPDATE
-  USING (auth.uid() = owner_id OR public.is_admin())
+  USING ((SELECT auth.uid()) = owner_id OR (SELECT public.is_admin()))
   WITH CHECK (
-    public.is_admin() OR (
-      auth.uid() = owner_id AND EXISTS (
-        SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'owner'
+    (SELECT public.is_admin()) OR (
+      (SELECT auth.uid()) = owner_id AND EXISTS (
+        SELECT 1 FROM public.profiles p WHERE p.id = (SELECT auth.uid()) AND p.role = 'owner'
       )
     )
   );
@@ -589,7 +589,7 @@ CREATE POLICY "Propietarios pueden actualizar sus espacios"
 DROP POLICY IF EXISTS "Propietarios pueden eliminar sus espacios" ON public.spaces;
 CREATE POLICY "Propietarios pueden eliminar sus espacios"
   ON public.spaces FOR DELETE
-  USING (auth.uid() = owner_id OR public.is_admin());
+  USING ((SELECT auth.uid()) = owner_id OR (SELECT public.is_admin()));
 
 -- ------------------------------------------------------------------------------
 -- RLS: RESERVATIONS
@@ -597,18 +597,18 @@ CREATE POLICY "Propietarios pueden eliminar sus espacios"
 DROP POLICY IF EXISTS "Partes de la reserva o admin pueden verla" ON public.reservations;
 CREATE POLICY "Partes de la reserva o admin pueden verla"
   ON public.reservations FOR SELECT
-  USING (auth.uid() = tenant_id OR auth.uid() = owner_id OR public.is_admin());
+  USING ((SELECT auth.uid()) = tenant_id OR (SELECT auth.uid()) = owner_id OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Inquilinos pueden solicitar reservas" ON public.reservations;
 CREATE POLICY "Inquilinos pueden solicitar reservas"
   ON public.reservations FOR INSERT
-  WITH CHECK (auth.uid() = tenant_id OR public.is_admin());
+  WITH CHECK ((SELECT auth.uid()) = tenant_id OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Partes o admin pueden actualizar estado de reserva" ON public.reservations;
 CREATE POLICY "Partes o admin pueden actualizar estado de reserva"
   ON public.reservations FOR UPDATE
-  USING (auth.uid() = tenant_id OR auth.uid() = owner_id OR public.is_admin())
-  WITH CHECK (auth.uid() = tenant_id OR auth.uid() = owner_id OR public.is_admin());
+  USING ((SELECT auth.uid()) = tenant_id OR (SELECT auth.uid()) = owner_id OR (SELECT public.is_admin()))
+  WITH CHECK ((SELECT auth.uid()) = tenant_id OR (SELECT auth.uid()) = owner_id OR (SELECT public.is_admin()));
 
 -- ------------------------------------------------------------------------------
 -- RLS: CONTRACTS  (INSERT más seguro)
@@ -617,11 +617,11 @@ DROP POLICY IF EXISTS "Partes de contrato o admin pueden leerlo" ON public.contr
 CREATE POLICY "Partes de contrato o admin pueden leerlo"
   ON public.contracts FOR SELECT
   USING (
-    public.is_admin() OR
+    (SELECT public.is_admin()) OR
     EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = contracts.reservation_id
-        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+        AND (r.tenant_id = (SELECT auth.uid()) OR r.owner_id = (SELECT auth.uid()))
     )
   );
 
@@ -629,11 +629,11 @@ DROP POLICY IF EXISTS "Inserción de contratos" ON public.contracts;
 CREATE POLICY "Inserción de contratos"
   ON public.contracts FOR INSERT
   WITH CHECK (
-    public.is_admin() OR
+    (SELECT public.is_admin()) OR
     EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = reservation_id
-        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+        AND (r.tenant_id = (SELECT auth.uid()) OR r.owner_id = (SELECT auth.uid()))
     )
   );
 
@@ -648,7 +648,7 @@ DROP POLICY IF EXISTS "Inserción de auditoría propia" ON public.audit_logs;
 DROP POLICY IF EXISTS "Lectura de auditoría propia o admin" ON public.audit_logs;
 CREATE POLICY "Lectura de auditoría propia o admin"
   ON public.audit_logs FOR SELECT
-  USING (user_id = auth.uid()::text OR public.is_admin());
+  USING (user_id = (SELECT auth.uid())::text OR (SELECT public.is_admin()));
 
 -- ------------------------------------------------------------------------------
 -- RLS: DISPUTES
@@ -656,26 +656,26 @@ CREATE POLICY "Lectura de auditoría propia o admin"
 DROP POLICY IF EXISTS "Partes de disputa o admin pueden leerla" ON public.disputes;
 CREATE POLICY "Partes de disputa o admin pueden leerla"
   ON public.disputes FOR SELECT
-  USING (tenant_id = auth.uid() OR public.is_admin());
+  USING (tenant_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Creación de disputas" ON public.disputes;
 CREATE POLICY "Creación de disputas"
   ON public.disputes FOR INSERT
   WITH CHECK (
-    public.is_admin() OR
-    tenant_id = auth.uid() OR
+    (SELECT public.is_admin()) OR
+    tenant_id = (SELECT auth.uid()) OR
     EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = reservation_id
-        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+        AND (r.tenant_id = (SELECT auth.uid()) OR r.owner_id = (SELECT auth.uid()))
     )
   );
 
 DROP POLICY IF EXISTS "Resolución de disputas por admin" ON public.disputes;
 CREATE POLICY "Resolución de disputas por admin"
   ON public.disputes FOR UPDATE
-  USING (public.is_admin())
-  WITH CHECK (public.is_admin());
+  USING ((SELECT public.is_admin()))
+  WITH CHECK ((SELECT public.is_admin()));
 
 -- ------------------------------------------------------------------------------
 -- RLS: VISIT_REQUESTS
@@ -683,17 +683,17 @@ CREATE POLICY "Resolución de disputas por admin"
 DROP POLICY IF EXISTS "Partes de visita pueden ver la solicitud" ON public.visit_requests;
 CREATE POLICY "Partes de visita pueden ver la solicitud"
   ON public.visit_requests FOR SELECT
-  USING (tenant_id = auth.uid() OR owner_id = auth.uid() OR public.is_admin());
+  USING (tenant_id = (SELECT auth.uid()) OR owner_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Creación de solicitud de visita" ON public.visit_requests;
 CREATE POLICY "Creación de solicitud de visita"
   ON public.visit_requests FOR INSERT
-  WITH CHECK (tenant_id = auth.uid() OR public.is_admin());
+  WITH CHECK (tenant_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 
 DROP POLICY IF EXISTS "Actualización de visita" ON public.visit_requests;
 CREATE POLICY "Actualización de visita"
   ON public.visit_requests FOR UPDATE
-  USING (tenant_id = auth.uid() OR owner_id = auth.uid() OR public.is_admin());
+  USING (tenant_id = (SELECT auth.uid()) OR owner_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 
 -- ==============================================================================
 -- STORAGE: BUCKETS + POLÍTICAS ESTRICTAS
@@ -723,7 +723,7 @@ CREATE POLICY "Dueños suben fotos de sus espacios"
   WITH CHECK (
     bucket_id = 'spaces'
     AND auth.role() = 'authenticated'
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
   );
 
 DROP POLICY IF EXISTS "Dueños o admins pueden modificar fotos de espacios" ON storage.objects;
@@ -734,14 +734,14 @@ CREATE POLICY "Dueños modifican fotos de sus espacios"
     bucket_id = 'spaces'
     AND auth.role() = 'authenticated'
     AND (
-      (storage.foldername(name))[1] = auth.uid()::text
-      OR public.is_admin()
+      (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      OR (SELECT public.is_admin())
     )
   )
   WITH CHECK (
     bucket_id = 'spaces'
     AND auth.role() = 'authenticated'
-    AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin())
+    AND ((storage.foldername(name))[1] = (SELECT auth.uid())::text OR (SELECT public.is_admin()))
   );
 
 DROP POLICY IF EXISTS "Dueños o admins pueden eliminar fotos de espacios" ON storage.objects;
@@ -752,8 +752,8 @@ CREATE POLICY "Dueños eliminan fotos de sus espacios"
     bucket_id = 'spaces'
     AND auth.role() = 'authenticated'
     AND (
-      (storage.foldername(name))[1] = auth.uid()::text
-      OR public.is_admin()
+      (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      OR (SELECT public.is_admin())
     )
   );
 
@@ -765,8 +765,8 @@ CREATE POLICY "Acceso a documentos KYC propios o admin"
   USING (
     bucket_id = 'kyc-documents'
     AND (
-      (storage.foldername(name))[1] = auth.uid()::text
-      OR public.is_admin()
+      (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      OR (SELECT public.is_admin())
     )
   );
 
@@ -775,7 +775,7 @@ CREATE POLICY "Subida de documentos KYC propios"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'kyc-documents'
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
   );
 
 -- ---------- Bucket: kyc-biometrics ----------
@@ -785,8 +785,8 @@ CREATE POLICY "Acceso a biometría propia o admin"
   USING (
     bucket_id = 'kyc-biometrics'
     AND (
-      (storage.foldername(name))[1] = auth.uid()::text
-      OR public.is_admin()
+      (storage.foldername(name))[1] = (SELECT auth.uid())::text
+      OR (SELECT public.is_admin())
     )
   );
 
@@ -795,7 +795,7 @@ CREATE POLICY "Subida de biometría propia"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'kyc-biometrics'
-    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
   );
 
 -- ---------- Bucket: contracts ----------
@@ -805,10 +805,10 @@ CREATE POLICY "Acceso a contratos propios o admin"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'contracts'
-    AND (public.is_admin() OR EXISTS (
+    AND ((SELECT public.is_admin()) OR EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = split_part(name, '/', 1)
-        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+        AND (r.tenant_id = (SELECT auth.uid()) OR r.owner_id = (SELECT auth.uid()))
     ))
   );
 
@@ -817,10 +817,10 @@ CREATE POLICY "Subida de contratos por usuarios autenticados"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'contracts'
-    AND (public.is_admin() OR EXISTS (
+    AND ((SELECT public.is_admin()) OR EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = split_part(name, '/', 1)
-        AND (r.tenant_id = auth.uid() OR r.owner_id = auth.uid())
+        AND (r.tenant_id = (SELECT auth.uid()) OR r.owner_id = (SELECT auth.uid()))
     ))
   );
 
@@ -1035,16 +1035,16 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Notificaciones propias" ON public.notifications;
 CREATE POLICY "Notificaciones propias"
-  ON public.notifications FOR SELECT USING (user_id = auth.uid());
+  ON public.notifications FOR SELECT USING (user_id = (SELECT auth.uid()));
 DROP POLICY IF EXISTS "Crear notificaciones propias" ON public.notifications;
 CREATE POLICY "Crear notificaciones propias"
-  ON public.notifications FOR INSERT WITH CHECK (user_id = auth.uid());
+  ON public.notifications FOR INSERT WITH CHECK (user_id = (SELECT auth.uid()));
 DROP POLICY IF EXISTS "Marcar notificaciones propias" ON public.notifications;
 CREATE POLICY "Marcar notificaciones propias"
-  ON public.notifications FOR UPDATE USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  ON public.notifications FOR UPDATE USING (user_id = (SELECT auth.uid())) WITH CHECK (user_id = (SELECT auth.uid()));
 DROP POLICY IF EXISTS "Eliminar notificaciones propias" ON public.notifications;
 CREATE POLICY "Eliminar notificaciones propias"
-  ON public.notifications FOR DELETE USING (user_id = auth.uid());
+  ON public.notifications FOR DELETE USING (user_id = (SELECT auth.uid()));
 
 CREATE OR REPLACE FUNCTION public.notify_user(
   p_user_id UUID,
@@ -1155,7 +1155,7 @@ CREATE INDEX IF NOT EXISTS idx_kyc_verifications_user ON public.kyc_verification
 ALTER TABLE public.kyc_verifications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "KYC propio o admin" ON public.kyc_verifications;
 CREATE POLICY "KYC propio o admin"
-  ON public.kyc_verifications FOR SELECT USING (user_id = auth.uid() OR public.is_admin());
+  ON public.kyc_verifications FOR SELECT USING (user_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 
 CREATE OR REPLACE FUNCTION public.track_kyc_status()
 RETURNS trigger
@@ -1326,6 +1326,11 @@ BEGIN
     RETURN jsonb_build_object('locked', false);
   END IF;
 
+  -- Mantenimiento liviano: se purgan registros vencidos en ~1 de cada 50 llamadas.
+  IF random() < 0.02 THEN
+    PERFORM public.purge_old_login_attempts();
+  END IF;
+
   v_account := public.bump_login_counter(v_email, v_ip, c_max_per_account);
   v_global := public.bump_login_counter('*', v_ip, c_max_per_ip);
   v_locked := COALESCE(v_account.locked_until > now(), false) OR COALESCE(v_global.locked_until > now(), false);
@@ -1436,7 +1441,7 @@ CREATE TABLE IF NOT EXISTS public.discount_codes (
 ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Administración de códigos de descuento" ON public.discount_codes;
 CREATE POLICY "Administración de códigos de descuento"
-  ON public.discount_codes FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+  ON public.discount_codes FOR ALL USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()));
 
 INSERT INTO public.discount_codes (code, description, percent_off, max_discount_clp, max_uses)
 VALUES ('SPOTLY10', 'Descuento de bienvenida del piloto (10% sobre el arriendo)', 10, 50000, 500)
@@ -1992,8 +1997,8 @@ DROP POLICY IF EXISTS "Pagos visibles para las partes o admin" ON public.payment
 CREATE POLICY "Pagos visibles para las partes o admin"
   ON public.payments FOR SELECT
   USING (
-    tenant_id = auth.uid() OR public.is_admin() OR EXISTS (
-      SELECT 1 FROM public.reservations r WHERE r.id = payments.reservation_id AND r.owner_id = auth.uid()
+    tenant_id = (SELECT auth.uid()) OR (SELECT public.is_admin()) OR EXISTS (
+      SELECT 1 FROM public.reservations r WHERE r.id = payments.reservation_id AND r.owner_id = (SELECT auth.uid())
     )
   );
 
@@ -2120,7 +2125,7 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Favoritos propios" ON public.favorites;
 CREATE POLICY "Favoritos propios"
-  ON public.favorites FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  ON public.favorites FOR ALL USING (user_id = (SELECT auth.uid())) WITH CHECK (user_id = (SELECT auth.uid()));
 
 -- ==============================================================================
 -- 11. VALORACIONES (RF-29, KPI-08)
@@ -2149,10 +2154,10 @@ DROP POLICY IF EXISTS "Arrendatario valora reservas finalizadas" ON public.revie
 CREATE POLICY "Arrendatario valora reservas finalizadas"
   ON public.reviews FOR INSERT
   WITH CHECK (
-    tenant_id = auth.uid() AND EXISTS (
+    tenant_id = (SELECT auth.uid()) AND EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = reservation_id
-        AND r.tenant_id = auth.uid()
+        AND r.tenant_id = (SELECT auth.uid())
         AND r.space_id = reviews.space_id
         AND (r.status = 'completed' OR (r.status = 'confirmed' AND r.end_date <= public.chile_today()))
     )
@@ -2162,13 +2167,13 @@ DROP POLICY IF EXISTS "Autor o propietario editan la valoración" ON public.revi
 CREATE POLICY "Autor o propietario editan la valoración"
   ON public.reviews FOR UPDATE
   USING (
-    tenant_id = auth.uid() OR public.is_admin() OR EXISTS (
-      SELECT 1 FROM public.spaces s WHERE s.id = reviews.space_id AND s.owner_id = auth.uid())
+    tenant_id = (SELECT auth.uid()) OR (SELECT public.is_admin()) OR EXISTS (
+      SELECT 1 FROM public.spaces s WHERE s.id = reviews.space_id AND s.owner_id = (SELECT auth.uid()))
   );
 
 DROP POLICY IF EXISTS "Autor o admin eliminan la valoración" ON public.reviews;
 CREATE POLICY "Autor o admin eliminan la valoración"
-  ON public.reviews FOR DELETE USING (tenant_id = auth.uid() OR public.is_admin());
+  ON public.reviews FOR DELETE USING (tenant_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 
 CREATE OR REPLACE FUNCTION public.guard_review_update()
 RETURNS trigger
@@ -2278,13 +2283,13 @@ ALTER TABLE public.user_reports ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Crear reportes propios" ON public.user_reports;
 CREATE POLICY "Crear reportes propios"
-  ON public.user_reports FOR INSERT WITH CHECK (reporter_id = auth.uid() AND status = 'open');
+  ON public.user_reports FOR INSERT WITH CHECK (reporter_id = (SELECT auth.uid()) AND status = 'open');
 DROP POLICY IF EXISTS "Ver reportes propios o admin" ON public.user_reports;
 CREATE POLICY "Ver reportes propios o admin"
-  ON public.user_reports FOR SELECT USING (reporter_id = auth.uid() OR public.is_admin());
+  ON public.user_reports FOR SELECT USING (reporter_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 DROP POLICY IF EXISTS "Gestionar reportes admin" ON public.user_reports;
 CREATE POLICY "Gestionar reportes admin"
-  ON public.user_reports FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+  ON public.user_reports FOR UPDATE USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()));
 
 CREATE OR REPLACE FUNCTION public.report_events()
 RETURNS trigger
@@ -2371,10 +2376,10 @@ ALTER TABLE public.space_views ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Registrar visita al detalle" ON public.space_views;
 CREATE POLICY "Registrar visita al detalle"
   ON public.space_views FOR INSERT
-  WITH CHECK (viewer_id IS NULL OR viewer_id = auth.uid());
+  WITH CHECK (viewer_id IS NULL OR viewer_id = (SELECT auth.uid()));
 DROP POLICY IF EXISTS "Visitas visibles para admin" ON public.space_views;
 CREATE POLICY "Visitas visibles para admin"
-  ON public.space_views FOR SELECT USING (public.is_admin());
+  ON public.space_views FOR SELECT USING ((SELECT public.is_admin()));
 
 -- ==============================================================================
 -- 14. TABLERO DE KPI (Capítulo XI, Tabla 66)
@@ -2510,6 +2515,53 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 
 -- ==============================================================================
+-- RENDIMIENTO PARA MUCHOS USUARIOS: índices de las consultas y políticas frecuentes
+-- ==============================================================================
+-- Catálogo público: espacios activos ordenados por fecha y filtrados por comuna/categoría.
+CREATE INDEX IF NOT EXISTS idx_spaces_active_recent ON public.spaces(created_at DESC) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_spaces_status_commune_category ON public.spaces(status, commune, category);
+-- Historial y paneles: reservas por arrendatario/propietario y estado, más recientes primero.
+CREATE INDEX IF NOT EXISTS idx_reservations_tenant_recent ON public.reservations(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reservations_owner_recent ON public.reservations(owner_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reservations_space_status ON public.reservations(space_id, status);
+-- Liberación de retenciones de pago vencidas.
+CREATE INDEX IF NOT EXISTS idx_reservations_pending_payment
+  ON public.reservations(space_id, created_at) WHERE status = 'pending' AND payment_status = 'pending';
+-- Pagos: búsqueda por token y orden de compra (retorno de Webpay) y por arrendatario.
+CREATE INDEX IF NOT EXISTS idx_payments_tenant ON public.payments(tenant_id, created_at DESC);
+-- Contratos y visitas por reserva/espacio.
+CREATE INDEX IF NOT EXISTS idx_contracts_signed_at ON public.contracts(signed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_visit_requests_space_status ON public.visit_requests(space_id, tenant_id, status);
+-- Notificaciones no leídas por usuario.
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications(user_id) WHERE NOT read;
+-- Favoritos por espacio (eliminaciones en cascada) y valoraciones por arrendatario.
+CREATE INDEX IF NOT EXISTS idx_favorites_space ON public.favorites(space_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_tenant ON public.reviews(tenant_id);
+-- Visitas al detalle (crece rápido): por espacio y por fecha para el KPI de conversión.
+CREATE INDEX IF NOT EXISTS idx_space_views_space ON public.space_views(space_id, created_at DESC);
+-- KPI: verificaciones resueltas y reportes por usuario.
+CREATE INDEX IF NOT EXISTS idx_kyc_verifications_resolved ON public.kyc_verifications(resolved_at) WHERE resolved_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_user_reports_reporter ON public.user_reports(reporter_id);
+-- Auditoría: consultas por fecha y severidad.
+CREATE INDEX IF NOT EXISTS idx_audit_logs_severity_time ON public.audit_logs(severity, timestamp DESC);
+-- Intentos de acceso: limpieza de registros antiguos.
+CREATE INDEX IF NOT EXISTS idx_login_attempts_updated ON public.login_attempts(updated_at);
+
+-- Limpieza de registros de intentos de acceso de más de 1 día (se llama al registrar
+-- un intento fallido, así la tabla no crece indefinidamente).
+CREATE OR REPLACE FUNCTION public.purge_old_login_attempts()
+RETURNS VOID
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  DELETE FROM public.login_attempts
+  WHERE updated_at < now() - interval '1 day'
+    AND (locked_until IS NULL OR locked_until < now());
+$$;
+REVOKE ALL ON FUNCTION public.purge_old_login_attempts() FROM PUBLIC, anon, authenticated;
+
+-- ==============================================================================
 -- 16. DATOS PRIVADOS DE LOS ESPACIOS (RUT del propietario y dirección exacta)
 -- ==============================================================================
 -- RLS filtra filas, no columnas. Por eso la lectura pública de spaces se limita
@@ -2629,6 +2681,11 @@ REVOKE ALL ON public.payments, public.kyc_verifications, public.notifications, p
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.spaces, public.reviews FROM anon;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.payments, public.kyc_verifications FROM authenticated;
 REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+
+-- Estadísticas iniciales para el planificador de consultas.
+ANALYZE public.spaces;
+ANALYZE public.reservations;
+ANALYZE public.profiles;
 
 COMMIT;
 

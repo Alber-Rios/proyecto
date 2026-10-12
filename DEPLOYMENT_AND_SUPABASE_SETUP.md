@@ -213,10 +213,14 @@ Sin `SUPABASE_SERVICE_ROLE_KEY` el pago responde 503 y la reserva no puede pagar
 - **Límite de Supabase Auth:** como el login pasa por el backend, Supabase ve la IP del servidor.
   Revisa en *Authentication → Rate Limits* que el límite de inicios de sesión sea suficiente.
 
-### Pruebas de permisos
-Después del script de la base, ejecuta `supabase/tests/rls_security_tests.sql` en el SQL Editor.
-Prueba 28 operaciones con los roles anon, authenticated y admin y revierte todo al final. El
-resultado aparece como un error intencional con el detalle: debe decir `28 OK, 0 FALLA`.
+### Rendimiento para muchos usuarios
+- Las políticas RLS evalúan `auth.uid()` e `is_admin()` una sola vez por consulta
+  (`(SELECT auth.uid())`), no una vez por fila.
+- Índices para el catálogo (espacios activos por fecha, comuna y categoría), historiales
+  de reservas por arrendatario y propietario, pagos, notificaciones no leídas, visitas al
+  detalle y auditoría.
+- La tabla de intentos de acceso se purga sola (registros de más de 1 día).
+- Todo está en el único script `supabase/reset-and-setup.sql`.
 
 ### 3. Pago de prueba (ambiente de integración de Transbank)
 - Tarjeta VISA `4051 8856 0044 6623`, CVV `123`, cualquier fecha futura.
