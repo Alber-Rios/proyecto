@@ -936,6 +936,9 @@ $$;
 -- 1. AUDITORÍA SOLO-ADICIÓN (RF-33, RNF-08, RNF-14)
 -- ==============================================================================
 
+-- audit_logs.user_id no es llave foránea a propósito: la bitácora debe conservarse
+-- aunque se elimine el usuario y también registra eventos anónimos o del sistema.
+
 CREATE OR REPLACE FUNCTION public.audit_logs_before_insert()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1226,6 +1229,8 @@ WHERE p.verification_status = 'pending_review'
 -- 4. BLOQUEO POR INTENTOS FALLIDOS DE INICIO DE SESIÓN (RNF-04, CP-03)
 -- ==============================================================================
 
+-- Sin llave foránea a profiles a propósito: se registran intentos sobre correos
+-- que pueden no corresponder a ninguna cuenta.
 CREATE TABLE IF NOT EXISTS public.login_attempts (
   email TEXT PRIMARY KEY,
   failed_count INTEGER NOT NULL DEFAULT 0,
@@ -1444,11 +1449,13 @@ GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticate
 -- ==============================================================================
 
 ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending';
-ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS discount_code TEXT;
+ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS discount_code TEXT
+  REFERENCES public.discount_codes(code) ON UPDATE CASCADE ON DELETE SET NULL;
 ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS discount_clp NUMERIC(12,0) NOT NULL DEFAULT 0;
 ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS refund_amount_clp NUMERIC(12,0);
 ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
-ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS cancelled_by UUID;
+ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS cancelled_by UUID
+  REFERENCES public.profiles(id) ON DELETE SET NULL;
 ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
 ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ;
 ALTER TABLE public.reservations ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
@@ -1499,6 +1506,7 @@ ALTER TABLE public.reservations ADD CONSTRAINT reservations_no_overlap
   WHERE (status IN ('pending', 'confirmed'));
 
 CREATE INDEX IF NOT EXISTS idx_reservations_payment_status ON public.reservations(payment_status);
+CREATE INDEX IF NOT EXISTS idx_reservations_discount_code ON public.reservations(discount_code);
 
 -- Libera bloques retenidos por pagos que no se completaron (20 minutos).
 CREATE OR REPLACE FUNCTION public.release_expired_payment_holds(p_space_id TEXT DEFAULT NULL)
@@ -2282,7 +2290,7 @@ GRANT EXECUTE ON FUNCTION public.admin_set_user_suspension(UUID, BOOLEAN, TEXT) 
 CREATE TABLE IF NOT EXISTS public.space_views (
   id BIGSERIAL PRIMARY KEY,
   space_id TEXT NOT NULL REFERENCES public.spaces(id) ON DELETE CASCADE,
-  viewer_id UUID,
+  viewer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_space_views_created ON public.space_views(created_at DESC);
