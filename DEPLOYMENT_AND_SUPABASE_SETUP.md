@@ -142,7 +142,7 @@ En las variables de entorno de tu proyecto Vercel, agrega:
 
 La app también acepta las variables públicas `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, habituales en proyectos conectados desde Vercel. Nunca uses `SUPABASE_SERVICE_ROLE_KEY` en el frontend.
 
-Para una base de datos que ya existe, aplica en el SQL Editor y en este orden las migraciones de `supabase/migrations/`: primero `20260930_add_profile_name_parts.sql` y luego `20260930_secure_profile_access.sql`. La segunda restringe la lectura de perfiles al propio usuario y a administradores; el perfil administrador debe tener `role = 'admin'`.
+Toda la base de datos se crea con un único script: `supabase/reset-and-setup.sql`. El perfil administrador debe tener `role = 'admin'`.
 
 ---
 
@@ -173,20 +173,18 @@ Para confirmar que todo funciona correctamente:
 
 ## Actualización 2026-10-12: cumplimiento del informe (v5)
 
-### 1. Migración de base de datos (Supabase)
-Ejecuta completo, una sola vez, en **Supabase → SQL Editor**:
+### 1. Base de datos (Supabase)
+Toda la base está en un único archivo: `supabase/reset-and-setup.sql`.
+Cópialo completo en **Supabase → SQL Editor** y ejecútalo una sola vez.
 
-`supabase/migrations/20261012_cumplimiento_informe.sql`
+Incluye las tablas base y los módulos de cumplimiento del informe: restricción
+de exclusión anti-sobreventa, tablas `payments`, `reviews`, `favorites`,
+`notifications`, `kyc_verifications`, `user_reports`, `discount_codes`,
+`space_views` y `login_attempts`, guardas de servidor sobre reservas, espacios y
+perfiles, auditoría de solo adición con IP real y la función `admin_kpis()`.
 
-Es no destructiva e idempotente. Agrega: restricción de exclusión anti-sobreventa,
-tablas `payments`, `reviews`, `favorites`, `notifications`, `kyc_verifications`,
-`user_reports`, `discount_codes`, `space_views`, `login_attempts`, guardas de
-servidor sobre reservas/espacios/perfiles, auditoría de solo adición con IP real
-y la función `admin_kpis()` del tablero de indicadores.
-
-Antes de crear la restricción anti-sobreventa, la migración anula las reservas
-heredadas que se solapaban con otra anterior del mismo espacio, y marca las
-reservas existentes con `payment_status = 'legacy_simulated'`.
+**Es destructivo:** borra los datos de las tablas de Spotly (conserva las cuentas
+de `auth.users` y los archivos de Storage). Respalda antes de ejecutarlo.
 
 ### 2. Variables de entorno del backend (Vercel → Settings → Environment Variables)
 

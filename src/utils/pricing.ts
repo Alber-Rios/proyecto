@@ -1,6 +1,6 @@
 // Cálculo de montos de una reserva (RF-15).
 // Debe mantenerse idéntico a public.expected_reservation_amounts() en
-// supabase/migrations/20261012_cumplimiento_informe.sql: la base de datos
+// supabase/reset-and-setup.sql: la base de datos
 // rechaza cualquier reserva cuyos montos no coincidan con esta regla.
 
 import type { PriceUnit, Space } from '../types.ts';

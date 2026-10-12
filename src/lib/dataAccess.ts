@@ -1,5 +1,5 @@
-// Acceso a las tablas y funciones incorporadas en la migración
-// supabase/migrations/20261012_cumplimiento_informe.sql.
+// Acceso a las tablas y funciones de cumplimiento del informe definidas en
+// supabase/reset-and-setup.sql (Parte 2).
 import { supabase, isSupabaseConfigured } from './supabase.ts';
 import {
   Reservation,
