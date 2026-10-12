@@ -5,6 +5,8 @@ import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import webpayHandler from './api/webpay.ts';
+import clientIpHandler from './api/client-ip.ts';
 
 dotenv.config();
 
@@ -35,6 +37,24 @@ async function startServer() {
 
   // Aumentar límite de body para imágenes base64 de alta resolución
   app.use(express.json({ limit: '25mb' }));
+  // Transbank retorna a /api/webpay con un formulario url-encoded.
+  app.use(express.urlencoded({ extended: false }));
+
+  // Cabeceras de seguridad (RNF-05). En Vercel se definen en vercel.json.
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self)');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    }
+    next();
+  });
+
+  // Pagos Webpay Plus e IP del cliente: mismos handlers que las Vercel Functions.
+  app.all('/api/webpay', (req, res) => webpayHandler(req as any, res as any));
+  app.get('/api/client-ip', (req, res) => clientIpHandler(req as any, res as any));
 
   // Endpoint de salud del servidor
   app.get('/api/health', (req, res) => {

@@ -115,7 +115,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
         setSuccess('¡Cuenta creada exitosamente! Redirigiendo...');
         setTimeout(() => {
           if (role === 'owner') {
-            onNavigate('onboarding');
+            onNavigate('owner');
           } else {
             onNavigate('home');
           }

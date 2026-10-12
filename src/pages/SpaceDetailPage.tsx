@@ -6,6 +6,9 @@ import { formatClp, formatRut, getSpaceAvailableModalities, getTodayIso, getOffs
 import { BookingModal } from '../components/BookingModal.tsx';
 import { ContractModal } from '../components/ContractModal.tsx';
 import { SpaceLocationMap } from '../components/SpaceLocationMap.tsx';
+import { SpaceReviews } from '../components/SpaceReviews.tsx';
+import { ReportDialog } from '../components/ReportDialog.tsx';
+import { recordSpaceView } from '../lib/dataAccess.ts';
 import { SpaceDetailBookingWidget } from '../components/SpaceDetailBookingWidget.tsx';
 import {
   MapPin,
@@ -79,6 +82,13 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
   }, [space]);
 
   const [activeModality, setActiveModality] = useState<'por_hora' | 'por_dia' | 'mensual'>(defaultModality);
+
+  // Visita al detalle para el KPI-04 (tasa de conversión).
+  useEffect(() => {
+    if (space && space.ownerId !== currentUser?.id) {
+      recordSpaceView(space.id, currentUser?.id).catch(() => undefined);
+    }
+  }, [space?.id]);
 
   useEffect(() => {
     setActiveModality(defaultModality);
@@ -550,13 +560,15 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-base font-bold text-slate-900">{space.ownerName}</h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Anfitrión Verificado</span>
-                  </span>
+                  {space.ownerVerified && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Anfitrión Verificado</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  RUT: {formatRut(space.ownerRut)} • Responsable legal y acreditación en regla
+                  RUT: {formatRut(space.ownerRut)}
                 </p>
               </div>
             </div>
@@ -577,6 +589,15 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
             region={space.region}
             landmark="Metro Bellas Artes a 150m"
           />
+
+          {/* K. VALORACIONES (RF-29) */}
+          <SpaceReviews space={space} />
+
+          {currentUser && currentUser.id !== space.ownerId && (
+            <div className="flex justify-end">
+              <ReportDialog targetType="space" targetSpaceId={space.id} targetLabel={space.title} />
+            </div>
+          )}
         </div>
 
       </div>

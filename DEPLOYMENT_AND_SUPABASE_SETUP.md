@@ -147,7 +147,7 @@ Para una base de datos que ya existe, aplica en el SQL Editor y en este orden la
 ---
 
 ### Opción C: Despliegue Completo en Render o Railway (Servicio Único)
-El archivo [`render.yaml`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/render.yaml) y el [`Dockerfile`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/Dockerfile) permiten desplegar la aplicación completa en un único servicio:
+El archivo [`render.yaml`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/render.yaml) permite desplegar la aplicación completa en un único servicio:
 
 1. El comando `npm run build` compila los archivos estáticos en `dist/`.
 2. El servidor [`server.ts`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/server.ts) en modo producción sirve tanto los endpoints de la API (`/api/*`) como los archivos estáticos de la aplicación React desde `dist/`.
@@ -168,3 +168,47 @@ Para confirmar que todo funciona correctamente:
 2. Registra un nuevo usuario en la página `/register`. Debe crearse en la tabla `auth.users` y en `public.profiles` de Supabase.
 3. Inicia sesión en `/login` con el usuario creado.
 4. Ingresa a la verificación de identidad en `/onboarding`, toma una foto de la cédula y rostro para validar el flujo completo de escaneo con Gemini AI y almacenamiento en Supabase Storage.
+
+---
+
+## Actualización 2026-10-12: cumplimiento del informe (v5)
+
+### 1. Migración de base de datos (Supabase)
+Ejecuta completo, una sola vez, en **Supabase → SQL Editor**:
+
+`supabase/migrations/20261012_cumplimiento_informe.sql`
+
+Es no destructiva e idempotente. Agrega: restricción de exclusión anti-sobreventa,
+tablas `payments`, `reviews`, `favorites`, `notifications`, `kyc_verifications`,
+`user_reports`, `discount_codes`, `space_views`, `login_attempts`, guardas de
+servidor sobre reservas/espacios/perfiles, auditoría de solo adición con IP real
+y la función `admin_kpis()` del tablero de indicadores.
+
+Antes de crear la restricción anti-sobreventa, la migración anula las reservas
+heredadas que se solapaban con otra anterior del mismo espacio, y marca las
+reservas existentes con `payment_status = 'legacy_simulated'`.
+
+### 2. Variables de entorno del backend (Vercel → Settings → Environment Variables)
+
+| Variable | Valor |
+|---|---|
+| `SUPABASE_URL` | URL del proyecto Supabase (puede omitirse si existe `VITE_SUPABASE_URL`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave `service_role` (Project Settings → API). **Solo backend.** |
+| `WEBPAY_ENV` | `integration` (por defecto). `production` solo con credenciales reales |
+| `WEBPAY_COMMERCE_CODE` / `WEBPAY_API_KEY` | Solo para producción |
+| `PUBLIC_APP_URL` | Opcional: URL pública (por ejemplo `https://tu-app.vercel.app`) |
+
+Sin `SUPABASE_SERVICE_ROLE_KEY` el pago responde 503 y la reserva no puede pagarse.
+
+### 3. Pago de prueba (ambiente de integración de Transbank)
+- Tarjeta VISA `4051 8856 0044 6623`, CVV `123`, cualquier fecha futura.
+- En la autenticación del banco: RUT `11.111.111-1`, clave `123`.
+
+### 4. Pruebas
+```
+npm test              # 30 pruebas unitarias
+npm run test:coverage # cobertura de la lógica crítica (umbral 60 %)
+```
+
+### 5. Documentación de la API
+Especificación OpenAPI en `public/openapi.yaml` (publicada en `/openapi.yaml`).

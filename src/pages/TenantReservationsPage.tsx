@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ReservationActions, PaymentStatusBadge, reservationStatusLabel } from '../components/ReservationActions.tsx';
+import { getReviewsByTenant } from '../lib/dataAccess.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut } from '../utils/formatters.ts';
 import { ContractModal } from '../components/ContractModal.tsx';
-import { DigitalContract, Reservation } from '../types.ts';
-import { generateDigitalContract } from '../utils/contractGenerator.ts';
+import { DigitalContract, Reservation, Review } from '../types.ts';
 import {
   downloadContractDocument,
   downloadReservationDocument,
@@ -36,7 +38,23 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
   onOpenOwnerUpgrade,
   onOpenAuth,
 }) => {
-  const { currentUser, reservations, contracts, visitRequests, createDispute } = useApp();
+  const { currentUser, reservations, contracts, visitRequests, createDispute, refreshReservations } = useApp();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paymentResult = searchParams.get('pago');
+  const [myReviews, setMyReviews] = useState<Review[]>([]);
+
+  // Al volver de Webpay se recargan reservas y pagos con el estado definitivo.
+  useEffect(() => {
+    if (paymentResult) {
+      refreshReservations().catch(console.warn);
+    }
+  }, [paymentResult]);
+
+  useEffect(() => {
+    if (currentUser) {
+      getReviewsByTenant(currentUser.id).then(setMyReviews).catch(console.warn);
+    }
+  }, [currentUser?.id]);
 
   const [activeTab, setActiveTab] = useState<'reservations' | 'visits'>('reservations');
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
@@ -121,41 +139,24 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
     );
   }, [visitRequests, currentUser]);
 
-  const resolveOrCreateContract = (reservation: Reservation): DigitalContract => {
-    const found = contracts.find(
-      (c) => c.id === reservation.digitalContractId || c.reservationId === reservation.id
-    );
-    if (found) return found;
-
-    return generateDigitalContract({
-      reservationId: reservation.id,
-      spaceTitle: reservation.spaceTitle,
-      spaceAddress: reservation.spaceAddress,
-      tenantName: reservation.tenantName,
-      tenantRut: reservation.tenantRut,
-      ownerName: reservation.ownerName,
-      ownerRut: reservation.ownerRut || '',
-      totalClp: reservation.totalClp,
-      guaranteeDepositClp: reservation.securityDepositClp,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      ip: '200.89.68.114',
-      priceUnit: reservation.priceUnit || 'day',
-      rentalModality: reservation.rentalModality || 'por_dia',
-      durationUnits: reservation.durationUnits || reservation.totalDays || 1,
-      hourStart: reservation.hourStart,
-      hourEnd: reservation.hourEnd,
-      intendedUse: reservation.intendedUse,
-    });
-  };
+  const findContract = (reservation: Reservation): DigitalContract | undefined =>
+    contracts.find((c) => c.id === reservation.digitalContractId || c.reservationId === reservation.id);
 
   const handleOpenContract = (reservation: Reservation) => {
-    const contract = resolveOrCreateContract(reservation);
+    const contract = findContract(reservation);
+    if (!contract) {
+      alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se generan y firman al momento de reservar.');
+      return;
+    }
     setSelectedContract(contract);
   };
 
   const handleDownloadContract = (reservation: Reservation) => {
-    const contract = resolveOrCreateContract(reservation);
+    const contract = findContract(reservation);
+    if (!contract) {
+      alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se generan y firman al momento de reservar.');
+      return;
+    }
     downloadContractDocument(contract);
   };
 
@@ -269,6 +270,41 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         </div>
       )}
 
+      {paymentResult && (
+        <div
+          className={`rounded-2xl p-4 border flex items-start justify-between gap-3 ${
+            paymentResult === 'exito' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}
+          role="status"
+        >
+          <div className="text-xs space-y-0.5">
+            <p className="font-black text-sm">
+              {paymentResult === 'exito'
+                ? 'Pago aprobado por Webpay Plus'
+                : paymentResult === 'anulado'
+                ? 'Pago anulado'
+                : paymentResult === 'expirado'
+                ? 'La reserva expiró antes de completar el pago'
+                : 'El pago no fue aprobado'}
+            </p>
+            <p>
+              {paymentResult === 'exito'
+                ? 'Tu reserva quedó registrada con su contrato firmado. Si el anfitrión requiere aprobación, te avisaremos cuando la acepte.'
+                : paymentResult === 'expirado'
+                ? 'El horario ya había sido liberado; el cobro fue reversado automáticamente.'
+                : 'No se realizó ningún cargo y el horario quedó disponible nuevamente.'}
+            </p>
+          </div>
+          <button
+            onClick={() => setSearchParams({})}
+            aria-label="Cerrar aviso"
+            className="cursor-pointer shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Pestañas: Reservas vs Visitas */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar">
         <button
@@ -341,12 +377,9 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                             : 'bg-rose-100 text-rose-800'
                         }`}
                       >
-                        {booking.status === 'confirmed'
-                          ? 'Confirmada por el Anfitrión'
-                          : booking.status === 'pending'
-                          ? 'Pendiente de Confirmación'
-                          : 'Rechazada / Cancelada'}
+                        {reservationStatusLabel(booking)}
                       </span>
+                      <PaymentStatusBadge reservation={booking} />
                       {booking.disputeStatus === 'opened' && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
                           Disputa en Arbitraje
@@ -381,6 +414,16 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                       <span className="text-slate-500">
                         Garantía: <strong>{formatClp(booking.securityDepositClp)}</strong>
                       </span>
+                      {booking.discountClp ? (
+                        <span className="text-emerald-700">
+                          Descuento {booking.discountCode}: <strong>−{formatClp(booking.discountClp)}</strong>
+                        </span>
+                      ) : null}
+                      {booking.refundAmountClp !== undefined && booking.refundAmountClp > 0 && (
+                        <span className="text-indigo-700">
+                          Reembolso: <strong>{formatClp(booking.refundAmountClp)}</strong>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -420,6 +463,12 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     <Download className="w-3.5 h-3.5 shrink-0" />
                     Descargar Contrato
                   </button>
+
+                  <ReservationActions
+                    reservation={booking}
+                    existingReview={myReviews.find((r) => r.reservationId === booking.id)}
+                    onReviewed={(review) => setMyReviews((prev) => [review, ...prev])}
+                  />
 
                   {booking.disputeStatus !== 'opened' && (
                     <button

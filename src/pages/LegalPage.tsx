@@ -141,16 +141,17 @@ function TermsContent() {
 
       <Section title="4. Solicitudes, precios y reservas">
         <p>Antes de enviar una solicitud, revisa la publicación, las fechas, modalidad, precio total, cargos y reglas del espacio. Una solicitud pendiente no equivale por sí sola a una reserva confirmada. La pantalla debe indicar expresamente cuándo se acepta una solicitud y cuándo nace una obligación de pago.</p>
-        <p>La política específica de cancelación, reembolso, cargos de servicio, impuestos y eventuales depósitos debe mostrarse antes de confirmar: <strong>[definir y publicar estas condiciones para cada operación]</strong>. Los derechos irrenunciables de consumidores establecidos por la ley prevalecen sobre cualquier cláusula de estos términos.</p>
+        <p>La reserva se registra al firmar el contrato y queda pendiente de pago durante 20 minutos; si el pago no se completa, el horario se libera automáticamente. El total incluye el arriendo, una comisión de servicio de 5 % y una garantía reembolsable, y puede incluir un descuento promocional sobre el arriendo.</p>
+        <p><strong>Cancelación y reembolso:</strong> si cancelas con 48 horas o más de anticipación se devuelve el 100 % del arriendo y la garantía; entre 24 y 48 horas, el 50 % del arriendo y la garantía; con menos de 24 horas, solo la garantía. La comisión de servicio no es reembolsable. Si el propietario rechaza o cancela la reserva se devuelve el 100 % de lo pagado. Los reembolsos se reversan al medio de pago original mediante Webpay Plus. Los derechos irrenunciables de consumidores establecidos por la ley prevalecen sobre cualquier cláusula de estos términos.</p>
       </Section>
 
       <Section title="5. Pagos y versión de prueba">
-        <p>En la versión actual, el flujo denominado Webpay es una <strong>simulación</strong>: no procesa pagos con Transbank ni confirma una transacción bancaria real. No ingreses números reales de tarjeta, códigos de seguridad, claves bancarias ni otros datos financieros. Los códigos y estados que muestra este flujo pueden ser ficticios y no constituyen comprobantes de pago.</p>
-        <p>Spotly no debe anunciar pagos, garantías, reembolsos ni custodia de fondos como operativos hasta integrar y comprobar el servicio real y explicar sus condiciones.</p>
+        <p>Los pagos se procesan con Webpay Plus de Transbank. Durante la etapa de prototipo la integración opera en el <strong>ambiente de integración</strong> de Transbank: no se realizan cargos reales y solo deben usarse las tarjetas de prueba publicadas por Transbank.</p>
+        <p>Spotly no recibe ni almacena números de tarjeta ni códigos de seguridad: se ingresan directamente en el formulario de Transbank. Spotly conserva únicamente la orden de compra, el monto, el código de autorización, los últimos cuatro dígitos informados por Transbank y el estado de la transacción.</p>
       </Section>
 
       <Section title="6. Contratos y firma">
-        <p>Los documentos que la versión actual genera o muestra son herramientas de apoyo y pueden contener datos incompletos. La generación de un PDF o una imagen de firma en pantalla no acredita por sí sola una firma electrónica avanzada ni sustituye la revisión de las partes. Revisa las condiciones y obtén asesoría independiente si lo necesitas antes de aceptar un contrato.</p>
+        <p>La firma manuscrita digitalizada que se captura en Spotly constituye una <strong>firma electrónica simple</strong> conforme a la Ley N° 19.799; no sustituye una firma electrónica avanzada. Cada contrato queda sellado con una huella SHA-256 calculada sobre su contenido íntegro, que puedes comprobar en “Verificar un contrato”. Revisa las condiciones y obtén asesoría independiente si lo necesitas antes de aceptar un contrato.</p>
       </Section>
 
       <Section title="7. Identidad y verificación">
@@ -181,7 +182,8 @@ function PrivacyContent() {
         <ul className="list-disc space-y-2 pl-5">
           <li><strong>Cuenta:</strong> nombres, apellidos, RUT, correo, teléfono, fecha de nacimiento, género declarado, rol y datos de inicio de sesión gestionados por Supabase Auth.</li>
           <li><strong>Uso del servicio:</strong> publicaciones de espacios, ubicación, dirección que ingresa el propietario, fotos, precios, disponibilidad, favoritos, solicitudes de visita, reservas, contratos, mensajes de soporte y disputas.</li>
-          <li><strong>Pagos de prueba:</strong> la simulación puede manejar en pantalla número de tarjeta y CVV ingresados por quien la usa, y generar metadatos ficticios como marca, últimos cuatro dígitos, titular, vencimiento, cuotas y códigos de autorización. No ingreses datos bancarios reales: este flujo no procesa pagos reales.</li>
+          <li><strong>Pagos:</strong> orden de compra, monto, estado, código de autorización, tipo de pago, cuotas y últimos cuatro dígitos de la tarjeta informados por Transbank (Webpay Plus). Spotly no recibe ni almacena el número completo de la tarjeta ni su código de seguridad.</li>
+          <li><strong>Seguridad y auditoría:</strong> dirección IP, navegador y fecha de los eventos críticos (inicio de sesión, reservas, pagos, firma de contratos y verificaciones), conservados al menos 12 meses en una bitácora que no admite modificación.</li>
           <li><strong>Verificación:</strong> según el flujo elegido, imágenes del frente y reverso de la cédula, selfie, RUT, nombre, número de serie, certificado u otros antecedentes aportados, resultados automáticos y notas de revisión. Estos archivos pueden incluir datos sensibles o biométricos.</li>
           <li><strong>Datos técnicos:</strong> el estado de sesión se conserva en el almacenamiento local del navegador. Los proveedores de alojamiento y autenticación pueden tratar datos técnicos necesarios para prestar, proteger y diagnosticar el servicio; deben precisarse según la configuración desplegada.</li>
         </ul>

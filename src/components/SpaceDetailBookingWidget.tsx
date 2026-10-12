@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Space, VisitRequest } from '../types.ts';
 import { formatClp, getSpaceAvailableModalities, getTodayIso } from '../utils/formatters.ts';
 import { useApp } from '../context/AppContext.tsx';
+import { useSpaceReservations } from '../hooks/useSpaceReservations.ts';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -73,17 +74,13 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
   onStartVisit,
   onOpenAuth,
 }) => {
-  const { currentUser, reservations } = useApp();
+  const { currentUser } = useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'booking' | 'visit'>('booking');
   const [monthDuration, setMonthDuration] = useState('6 meses renovables (Estándar)');
 
   // Reservas activas de este recinto (sincronizadas en tiempo real con el propietario)
-  const activeReservationsForSpace = useMemo(() => {
-    return reservations.filter(
-      (r) => r.spaceId === space.id && r.status !== 'rejected' && r.status !== 'cancelled'
-    );
-  }, [reservations, space.id]);
+  const activeReservationsForSpace = useSpaceReservations(space);
 
   // Precios base por modalidad
   const priceDay = space.pricePerDay || 350000;

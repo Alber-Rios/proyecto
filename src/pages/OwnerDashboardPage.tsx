@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Space, Reservation, SpaceCategory, SpaceEnvironment, DigitalContract, VisitRequest } from '../types.ts';
+import { OwnerRevenueReport } from '../components/OwnerRevenueReport.tsx';
+import { Space, Reservation, SpaceCategory, SpaceEnvironment, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceAvailableModalities, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
 import { ContractModal } from '../components/ContractModal.tsx';
 import { RentalModalitySelector } from '../components/RentalModalitySelector.tsx';
 import { SpaceAvailabilityViewer } from '../components/SpaceAvailabilityViewer.tsx';
-import { generateDigitalContract } from '../utils/contractGenerator.ts';
 import {
   downloadContractDocument,
   downloadReservationDocument,
@@ -54,6 +54,7 @@ import {
 
 interface OwnerDashboardPageProps {
   onOpenOwnerUpgrade: () => void;
+  onNavigate: (view: string) => void;
   onOpenAuth?: (mode: 'login' | 'register', notice?: string) => void;
 }
 
@@ -115,7 +116,7 @@ const parsePositiveIntInput = (raw: string): number | '' => {
 
 // Presets removidos por solicitud del usuario
 
-export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOwnerUpgrade, onOpenAuth }) => {
+export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOwnerUpgrade, onNavigate, onOpenAuth }) => {
   const {
     currentUser,
     spaces,
@@ -447,6 +448,11 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   };
 
   const handleStartEdit = (space: Space) => {
+    if (currentUser.verificationStatus !== 'verified') {
+      onNavigate('onboarding');
+      return;
+    }
+
     setEditingSpace(space);
     setNewTitle(space.title);
     setNewDescription(space.description);
@@ -526,6 +532,21 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     setNewImages([]);
   };
 
+  // La base valida la transición (p. ej., no se acepta sin pago aprobado) y calcula reembolsos.
+  const changeReservationStatus = (reservationId: string, status: ReservationStatus) => {
+    updateReservationStatus(reservationId, status).catch((err) =>
+      alert(err instanceof Error ? err.message : 'No se pudo actualizar la reserva.')
+    );
+  };
+
+  const handleOpenPublishModal = () => {
+    if (currentUser.verificationStatus !== 'verified') {
+      onNavigate('onboarding');
+      return;
+    }
+    setIsPublishModalOpen(true);
+  };
+
   const handleNavigateToBookingInCalendar = (booking: Reservation) => {
     setSelectedSpaceId(booking.spaceId);
     setOwnerSelectedDate(booking.startDate);
@@ -542,7 +563,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     e.preventDefault();
 
     if (currentUser.verificationStatus !== 'verified') {
-      alert('Tu cuenta debe estar verificada y aprobada por el administrador para publicar o modificar espacios.');
+      onNavigate('onboarding');
       return;
     }
 
@@ -690,28 +711,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
       return;
     }
 
-    // Generar contrato digital formal con RUTs, garantías y token hash si no fue creado previamente
-    const generated = generateDigitalContract({
-      reservationId: reservation.id,
-      spaceTitle: reservation.spaceTitle,
-      spaceAddress: reservation.spaceAddress,
-      tenantName: reservation.tenantName,
-      tenantRut: reservation.tenantRut,
-      ownerName: reservation.ownerName,
-      ownerRut: reservation.ownerRut || currentUser?.rut || '14.258.963-7',
-      totalClp: reservation.totalClp,
-      guaranteeDepositClp: reservation.securityDepositClp,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      ip: '200.89.68.114',
-      priceUnit: reservation.priceUnit || 'day',
-      rentalModality: reservation.rentalModality || 'por_dia',
-      durationUnits: reservation.durationUnits || reservation.totalDays || 1,
-      hourStart: reservation.hourStart,
-      hourEnd: reservation.hourEnd,
-      intendedUse: reservation.intendedUse,
-    });
-    setSelectedContract(generated);
+    alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se generan y firman al momento de reservar.');
   };
 
   const handleViewContract = (contractId?: string) => {
@@ -880,18 +880,8 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
           <button
             id="owner-publish-space-btn"
-            onClick={() => {
-              if (currentUser.verificationStatus !== 'verified') {
-                alert('Debes completar la verificación de identidad y contar con la aprobación del Administrador antes de publicar espacios.');
-                return;
-              }
-              setIsPublishModalOpen(true);
-            }}
-            className={`w-full sm:w-auto px-5 py-2.5 rounded-2xl font-bold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ${
-              currentUser.verificationStatus === 'verified'
-                ? 'bg-rose-600 hover:bg-rose-700 text-white hover:shadow'
-                : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
-            }`}
+            onClick={handleOpenPublishModal}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl font-bold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap bg-rose-600 hover:bg-rose-700 text-white hover:shadow"
           >
             <PlusCircle className="w-4 h-4 shrink-0" />
             <span>Publicar Nuevo Espacio</span>
@@ -1091,7 +1081,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                 Comienza publicando tu primera oficina, estudio o sala para empezar a recibir solicitudes de clientes en Chile.
               </p>
               <button
-                onClick={() => setIsPublishModalOpen(true)}
+                onClick={handleOpenPublishModal}
                 className="mt-2 px-5 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition inline-flex items-center gap-2"
               >
                 <PlusCircle className="w-4 h-4" /> Publicar Mi Primer Espacio
@@ -1415,27 +1405,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                               downloadContractDocument(existing);
                               return;
                             }
-                            const generated = generateDigitalContract({
-                              reservationId: res.id,
-                              spaceTitle: res.spaceTitle,
-                              spaceAddress: res.spaceAddress,
-                              tenantName: res.tenantName,
-                              tenantRut: res.tenantRut,
-                              ownerName: res.ownerName,
-                              ownerRut: res.ownerRut || currentUser?.rut || '14.258.963-7',
-                              totalClp: res.totalClp,
-                              guaranteeDepositClp: res.securityDepositClp,
-                              startDate: res.startDate,
-                              endDate: res.endDate,
-                              ip: '200.89.68.114',
-                              priceUnit: res.priceUnit || 'day',
-                              rentalModality: res.rentalModality || 'por_dia',
-                              durationUnits: res.durationUnits || res.totalDays || 1,
-                              hourStart: res.hourStart,
-                              hourEnd: res.hourEnd,
-                              intendedUse: res.intendedUse,
-                            });
-                            downloadContractDocument(generated);
+alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se generan y firman al momento de reservar.');
                           }}
                           className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
                           title="Descargar contrato digital"
@@ -1468,7 +1438,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                                       alert('Las reservas para aprobar deben ser del día actual hacia adelante.');
                                       return;
                                     }
-                                    updateReservationStatus(res.id, 'confirmed');
+                                    changeReservationStatus(res.id, 'confirmed');
                                   }}
                                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition shadow-xs cursor-pointer"
                                 >
@@ -1481,7 +1451,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                                       alert('No se pueden modificar solicitudes con fecha anterior a hoy.');
                                       return;
                                     }
-                                    updateReservationStatus(res.id, 'rejected');
+                                    changeReservationStatus(res.id, 'rejected');
                                   }}
                                   className="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
                                 >
@@ -1561,6 +1531,8 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
               </div>
             </div>
           </div>
+
+          <OwnerRevenueReport reservations={myReceivedBookings} />
 
           {/* Desglose Real por cada Lugar del Propietario */}
           <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -1769,7 +1741,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                     alert('No se pueden aprobar ni modificar reservas de fechas pasadas.');
                     return;
                   }
-                  updateReservationStatus(resId, 'confirmed');
+                  changeReservationStatus(resId, 'confirmed');
                 }}
                 onBlockMaintenance={(date) => {
                   if (date < todayIso) {
@@ -1794,11 +1766,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                 <button
                   type="button"
                   onClick={() => {
-                    if (currentUser.verificationStatus !== 'verified') {
-                      alert('Debes completar la verificación de identidad y contar con la aprobación del Administrador antes de publicar espacios.');
-                      return;
-                    }
-                    setIsPublishModalOpen(true);
+                    handleOpenPublishModal();
                   }}
                   className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
                 >
@@ -2015,7 +1983,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                               alert('Las reservas para aprobar deben ser del día actual hacia adelante.');
                               return;
                             }
-                            updateReservationStatus(res.id, 'confirmed');
+                            changeReservationStatus(res.id, 'confirmed');
                           }}
                           className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer whitespace-nowrap"
                         >
@@ -2998,7 +2966,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                                     alert('Las reservas para aprobar deben ser del día actual hacia adelante.');
                                     return;
                                   }
-                                  updateReservationStatus(booking.id, 'confirmed');
+                                  changeReservationStatus(booking.id, 'confirmed');
                                   setSelectedDayInfo(null);
                                 }}
                                 className="py-2 px-2 rounded-xl font-bold text-xs transition cursor-pointer text-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
@@ -3011,7 +2979,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                                     alert('No se pueden modificar reservas de fechas pasadas.');
                                     return;
                                   }
-                                  updateReservationStatus(booking.id, 'rejected');
+                                  changeReservationStatus(booking.id, 'rejected');
                                   setSelectedDayInfo(null);
                                 }}
                                 className="py-2 px-2 rounded-xl bg-white border border-rose-300 text-rose-700 hover:bg-rose-50 font-bold text-xs transition cursor-pointer text-center"

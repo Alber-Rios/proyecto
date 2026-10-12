@@ -833,6 +833,9 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 -- El rol admin no se asigna desde el registro. Después de crear y confirmar
 -- tu propia cuenta, promuévela manualmente en SQL Editor, cambiando el correo:
 -- UPDATE public.profiles SET role = 'admin' WHERE email = 'TU_CORREO';
+--
+-- Después de este script ejecuta las migraciones de supabase/migrations/ en orden
+-- (por ejemplo 20261012_cumplimiento_informe.sql).
 
 COMMIT;
 

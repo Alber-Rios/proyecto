@@ -1,5 +1,6 @@
-import { DigitalContract, Reservation, UserProfile } from '../types.ts';
+import { DigitalContract, Reservation } from '../types.ts';
 import { formatClp, formatRut } from './formatters.ts';
+import { downloadContractPdf } from './contractPdf.ts';
 
 function triggerHtmlFileDownload(filename: string, htmlContent: string) {
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -13,7 +14,16 @@ function triggerHtmlFileDownload(filename: string, htmlContent: string) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+// RF-25: el contrato se descarga en PDF; si el navegador no puede generarlo,
+// se entrega la versión HTML imprimible.
 export function downloadContractDocument(contract: DigitalContract) {
+  downloadContractPdf(contract).catch((err) => {
+    console.warn('No se pudo generar el PDF, se descarga la versión HTML:', err);
+    downloadContractHtml(contract);
+  });
+}
+
+export function downloadContractHtml(contract: DigitalContract) {
   const clausesHtml = contract.clauses
     .map(
       (clause, idx) =>
@@ -73,8 +83,8 @@ export function downloadContractDocument(contract: DigitalContract) {
           <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 8px;">Firma Electrónica Arrendatario</div>
           <div style="font-size: 14px; font-weight: 700; color: #0f172a;">${contract.tenantName}</div>
           <div style="font-size: 12px; color: #475569; margin-top: 2px;">RUT: ${formatRut(contract.tenantRut)}</div>
-          <div style="font-size: 11px; font-family: monospace; color: #059669; margin-top: 8px;">Token FEA: ${contract.tenantSignature.verificationToken}</div>
-          <div style="font-size: 10px; font-family: monospace; color: #64748b; margin-top: 4px;">IP: ${contract.tenantSignature.ip}</div>
+          <div style="font-size: 11px; font-family: monospace; color: #059669; margin-top: 8px;">Código de verificación: ${contract.tenantSignature.verificationToken}</div>
+          <div style="font-size: 10px; font-family: monospace; color: #64748b; margin-top: 4px;">IP: ${contract.signerIp || contract.tenantSignature.ip}</div>
         </div>
         <div class="sig-box">
           <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 8px;">Firma Electrónica Propietario / Anfitrión</div>
@@ -206,77 +216,4 @@ export function downloadReservationDocument(reservation: Reservation) {
 </html>`;
 
   triggerHtmlFileDownload(`Reserva_${reservation.id}_Spotly.html`, html);
-}
-
-export function downloadCriminalRecordCertificate(user: UserProfile) {
-  const docCode = user.kycData?.criminalRecordDocCode || `CERT-ANT-${user.id.toUpperCase()}-2026.pdf`;
-  const folioNumber = `50049281${user.rut.replace(/\D/g, '').slice(0, 4)}`;
-  const verificationCode = `RC-${user.rut.replace(/\D/g, '').slice(0, 6)}-CHILE`;
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Certificado de Antecedentes - ${user.fullName}</title>
-  <style>
-    body { font-family: 'Arial', sans-serif; background: #f1f5f9; color: #0f172a; margin: 0; padding: 32px 16px; }
-    .page { max-width: 780px; margin: 0 auto; background: #ffffff; border: 2px solid #1e3a8a; padding: 40px; box-shadow: 0 12px 32px rgba(15,23,42,0.12); position: relative; }
-    .gov-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1e3a8a; padding-bottom: 18px; margin-bottom: 28px; }
-    .seal { background: #eff6ff; border: 1px solid #93c5fd; padding: 14px 18px; border-radius: 8px; margin: 24px 0; }
-    .record-box { border: 2px solid #cbd5e1; background: #f8fafc; padding: 20px; margin: 20px 0; text-align: center; }
-    @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; } .no-print { display: none; } }
-  </style>
-</head>
-<body>
-  <div style="max-width: 780px; margin: 0 auto 16px auto; display: flex; justify-content: flex-end;" class="no-print">
-    <button onclick="window.print()" style="background: #1e3a8a; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;">Imprimir / Guardar PDF</button>
-  </div>
-  <div class="page">
-    <div class="gov-header">
-      <div>
-        <div style="font-size: 11px; font-weight: 700; color: #1e3a8a; letter-spacing: 0.08em;">REPÚBLICA DE CHILE</div>
-        <div style="font-size: 16px; font-weight: 900; color: #0f172a; margin-top: 2px;">SERVICIO DE REGISTRO CIVIL E IDENTIFICACIÓN</div>
-        <div style="font-size: 12px; color: #475569; margin-top: 4px;">CERTIFICADO DE ANTECEDENTES PARA FINES ESPECIALES</div>
-      </div>
-      <div style="text-align: right; font-family: monospace; font-size: 12px;">
-        <div><strong>FOLIO:</strong> ${folioNumber}</div>
-        <div><strong>CÓD. VERIFICACIÓN:</strong> ${verificationCode}</div>
-        <div><strong>ARCHIVO:</strong> ${docCode}</div>
-      </div>
-    </div>
-
-    <div style="font-size: 13px; line-height: 1.7;">
-      El Servicio de Registro Civil e Identificación de Chile certifica que en el Registro General de Condenas, asociado a la persona individualizada a continuación:
-    </div>
-
-    <div class="seal">
-      <div style="display: grid; grid-template-columns: 180px 1fr; row-gap: 8px; font-size: 13px;">
-        <strong>NOMBRE COMPLETO:</strong> <span>${user.fullName.toUpperCase()}</span>
-        <strong>RUN / RUT:</strong> <span style="font-family: monospace; font-weight: 700;">${formatRut(user.rut)}</span>
-        <strong>N° SERIE CÉDULA:</strong> <span style="font-family: monospace;">${user.kycData?.documentSerialNumber || 'A12894012'}</span>
-        <strong>FECHA DE EMISIÓN:</strong> <span>${new Date(user.kycData?.submittedAt || user.createdAt).toLocaleDateString('es-CL')}</span>
-      </div>
-    </div>
-
-    <div class="record-box">
-      <div style="font-size: 12px; color: #475569; font-weight: 700; margin-bottom: 6px;">REGISTRO GENERAL DE CONDENAS (LEY N° 19.628)</div>
-      <div style="font-size: 18px; font-weight: 900; color: #065f46; letter-spacing: 0.05em;">SIN ANOTACIONES PENALES NI JUDICIALES VIGENTES</div>
-    </div>
-
-    <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px; color: #475569;">
-      <div>
-        <strong>Firma Electrónica Avanzada (Ley N° 19.799)</strong><br/>
-        Documento validado en el expediente KYC de Spotly Chile.<br/>
-        Hash de Integridad: SHA256-${folioNumber}-OK
-      </div>
-      <div style="text-align: right; font-family: monospace; color: #1e3a8a; font-weight: 700;">
-        TIMBRE ELECTRÓNICO REGISTRO CIVIL<br/>
-        VERIFICADO SIN OBSERVACIONES
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  triggerHtmlFileDownload(`Certificado_Antecedentes_${user.rut.replace(/\D/g, '')}.html`, html);
 }

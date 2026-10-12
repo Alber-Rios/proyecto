@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.tsx';
 import {
   Building2,
@@ -54,6 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDemoSwitcher, setShowDemoSwitcher] = useState(false);
 
+  const routerNavigate = useNavigate();
   const unreadNotifications = notifications.filter((n) => !n.read);
 
   // Close menus on Escape key
@@ -338,7 +340,14 @@ export const Header: React.FC<HeaderProps> = ({
                                   !n.read ? 'bg-rose-50/30' : ''
                                 }`}
                               >
-                                <div className="min-w-0 flex-1 space-y-1">
+                                <div
+                                  className={`min-w-0 flex-1 space-y-1 ${n.link ? 'cursor-pointer' : ''}`}
+                                  onClick={() => {
+                                    if (n.link) {
+                                      routerNavigate(n.link);
+                                    }
+                                  }}
+                                >
                                   <p className="break-words text-xs font-semibold text-slate-900">
                                     {n.title}
                                   </p>
@@ -346,7 +355,9 @@ export const Header: React.FC<HeaderProps> = ({
                                     {n.message}
                                   </p>
                                   <span className="text-[11px] text-slate-400 block">
-                                    {new Date(n.timestamp).toLocaleTimeString('es-CL', {
+                                    {new Date(n.timestamp).toLocaleString('es-CL', {
+                                      day: '2-digit',
+                                      month: '2-digit',
                                       hour: '2-digit',
                                       minute: '2-digit',
                                     })}

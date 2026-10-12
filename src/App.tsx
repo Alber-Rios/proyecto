@@ -15,6 +15,7 @@ import { FavoritesPage } from './pages/FavoritesPage.tsx';
 import { SupportPage } from './pages/SupportPage.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
 import { LegalPage } from './pages/LegalPage.tsx';
+import { VerifyContractPage } from './pages/VerifyContractPage.tsx';
 import { OwnerUpgradeModal } from './components/OwnerUpgradeModal.tsx';
 import { Space } from './types.ts';
 import { Building2 } from 'lucide-react';
@@ -70,7 +71,8 @@ function AppContent() {
       'support': '/support',
       'terms': '/terminos',
       'privacy': '/privacidad',
-      'cookies': '/cookies'
+      'cookies': '/cookies',
+      'verify-contract': '/verificar-contrato'
     };
     
     navigate(routes[view] || '/');
@@ -151,6 +153,7 @@ function AppContent() {
           <Route path="/owner" element={canAccessOwnerDashboard ? (
               <OwnerDashboardPage
                 onOpenOwnerUpgrade={handleOpenOwnerUpgrade}
+                onNavigate={handleNavigate}
                 onOpenAuth={handleOpenAuth}
               />
             ) : (
@@ -184,6 +187,7 @@ function AppContent() {
             />
           } />
 
+          <Route path="/verificar-contrato" element={<VerifyContractPage onOpenAuth={handleOpenAuth} />} />
           <Route path="/terminos" element={<LegalPage document="terms" />} />
           <Route path="/privacidad" element={<LegalPage document="privacy" />} />
           <Route path="/cookies" element={<LegalPage document="cookies" />} />
@@ -249,6 +253,7 @@ function AppContent() {
                 <li><button type="button" onClick={() => handleNavigate('terms')} className="text-slate-400 hover:text-white transition">Términos y condiciones</button></li>
                 <li><button type="button" onClick={() => handleNavigate('privacy')} className="text-slate-400 hover:text-white transition">Política de privacidad</button></li>
                 <li><button type="button" onClick={() => handleNavigate('cookies')} className="text-slate-400 hover:text-white transition">Política de cookies</button></li>
+                <li><button type="button" onClick={() => handleNavigate('verify-contract')} className="text-slate-400 hover:text-white transition">Verificar un contrato</button></li>
               </ul>
             </div>
           </div>

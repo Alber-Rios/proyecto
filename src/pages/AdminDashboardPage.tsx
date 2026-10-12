@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
+import { AuditLogPanel, ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceRateInfo } from '../utils/formatters.ts';
 import {
@@ -65,7 +66,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     switchUser,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'kyc' | 'spaces' | 'disputes' | 'transactions'>('kyc');
+  const [activeTab, setActiveTab] = useState<
+    'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
+  >('kyc');
 
   // Filtros de Usuarios y KYC
   const [userSearch, setUserSearch] = useState('');
@@ -398,6 +401,40 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           </div>
         </button>
       </div>
+
+      {/* Módulos de control: auditoría, reportes, KPI, descuentos y pagos */}
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Módulos de administración">
+        {(
+          [
+            ['audit', 'Auditoría'],
+            ['reports', 'Reportes y cuentas'],
+            ['kpi', 'KPI'],
+            ['payments', 'Pagos Webpay'],
+            ['discounts', 'Códigos de descuento'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === key}
+            onClick={() => setActiveTab(key)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+              activeTab === key
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'audit' && <AuditLogPanel />}
+      {activeTab === 'reports' && <ReportsPanel />}
+      {activeTab === 'kpi' && <KpiDashboard />}
+      {activeTab === 'payments' && <PaymentsPanel />}
+      {activeTab === 'discounts' && <DiscountCodesPanel />}
 
       {/* ===================================================================== */}
       {/* MÓDULO 1: VERIFICACIÓN KYC, COMPARACIÓN DE DATOS Y CERTIFICADO PDF    */}

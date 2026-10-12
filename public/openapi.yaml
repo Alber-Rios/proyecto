@@ -1,0 +1,158 @@
+openapi: 3.0.3
+info:
+  title: Spotly API
+  version: 1.1.0
+  description: |
+    API del backend de Spotly (Vercel Functions / server.ts). Los datos de negocio
+    (espacios, reservas, contratos, valoraciones, etc.) se exponen mediante la API
+    REST de Supabase (PostgREST) protegida con Row Level Security; esta
+    especificación documenta los endpoints propios del backend.
+servers:
+  - url: /
+components:
+  securitySchemes:
+    supabaseJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: access_token de la sesión de Supabase Auth.
+  schemas:
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+paths:
+  /api/health:
+    get:
+      summary: Estado del backend
+      responses:
+        '200':
+          description: Servicio operativo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  geminiConfigured: { type: boolean }
+                  timestamp: { type: string, format: date-time }
+  /api/client-ip:
+    get:
+      summary: IP pública del cliente (se consigna en el contrato firmado)
+      responses:
+        '200':
+          description: IP detectada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ip: { type: string, nullable: true }
+  /api/webpay?action=create:
+    post:
+      summary: Crea una transacción Webpay Plus para una reserva pendiente de pago (RF-17)
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reservationId]
+              properties:
+                reservationId: { type: string }
+      responses:
+        '200':
+          description: Transacción creada; el cliente debe enviar token_ws por POST a url.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  url: { type: string, format: uri }
+                  token: { type: string }
+                  environment: { type: string, enum: [integration, production] }
+        '401': { description: Sin sesión, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: La reserva no pertenece al usuario, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: La reserva ya no admite pagos, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '503': { description: Backend sin configurar, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/webpay?action=return:
+    get:
+      summary: Retorno desde Transbank; confirma (commit) o anula la transacción
+      parameters:
+        - { in: query, name: token_ws, schema: { type: string } }
+        - { in: query, name: TBK_TOKEN, schema: { type: string } }
+        - { in: query, name: TBK_ORDEN_COMPRA, schema: { type: string } }
+        - { in: query, name: TBK_ID_SESION, schema: { type: string } }
+      responses:
+        '303':
+          description: Redirige a /my-bookings?pago=exito|rechazado|anulado|expirado|error
+    post:
+      summary: Retorno desde Transbank (formulario url-encoded)
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                token_ws: { type: string }
+                TBK_TOKEN: { type: string }
+                TBK_ORDEN_COMPRA: { type: string }
+                TBK_ID_SESION: { type: string }
+      responses:
+        '303': { description: Redirige al historial de reservas con el resultado }
+  /api/webpay?action=refund:
+    post:
+      summary: Procesa en Transbank el reembolso calculado por la base al cancelar o rechazar (RF-18)
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reservationId]
+              properties:
+                reservationId: { type: string }
+      responses:
+        '200':
+          description: Reembolso procesado u omitido si no correspondía
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  refundedClp: { type: number }
+                  skipped: { type: boolean }
+  /api/verify-kyc:
+    post:
+      summary: Análisis asistido de cédula y selfie para apoyar la revisión KYC manual
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idFrontPhoto]
+              properties:
+                idFrontPhoto: { type: string, description: Imagen en data URL }
+                idBackPhoto: { type: string }
+                facialPhoto: { type: string }
+                expectedRut: { type: string }
+                expectedName: { type: string }
+      responses:
+        '200': { description: Resultado del análisis }
+        '429': { description: Límite de solicitudes excedido }
+  /api/verify-id-frame:
+    post:
+      summary: Verificación de un cuadro de la cédula en tiempo real
+      responses:
+        '200': { description: Resultado }
+  /api/verify-face-frame:
+    post:
+      summary: Verificación de un cuadro del rostro en tiempo real
+      responses:
+        '200': { description: Resultado }

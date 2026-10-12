@@ -1,42 +1,44 @@
 import { AuditLog, AuditMetadata } from '../types.ts';
+import { sha256Hex } from './contractHash.ts';
+import { apiUrl } from './api.ts';
 
 let memoryAuditLogs: AuditLog[] = [];
 
-// Genera un hash criptográfico determinista simple para firma y auditoría
-export function generateAuditHash(input: string): string {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    const char = input.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32bit integer
+// La IP real la fija el servidor: la base de datos la toma de las cabeceras del
+// request al insertar en audit_logs (RNF-14). En el cliente solo se muestra este
+// marcador hasta recargar los registros desde Supabase.
+export const SERVER_RECORDED_IP = 'registrada por el servidor';
+
+let cachedClientIp: string | null = null;
+
+// IP pública del cliente vista por nuestro backend (para consignarla en el contrato).
+export async function fetchClientIp(): Promise<string> {
+  if (cachedClientIp) return cachedClientIp;
+  try {
+    const response = await fetch(apiUrl('/api/client-ip'), { cache: 'no-store' });
+    if (response.ok) {
+      const data = (await response.json()) as { ip?: string };
+      if (data.ip) {
+        cachedClientIp = data.ip;
+        return data.ip;
+      }
+    }
+  } catch {
+    // Sin backend disponible (por ejemplo, sitio estático): se informa como no disponible.
   }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  const timestampPart = Date.now().toString(16).slice(-6);
-  return `CL-SHA256-${hex.toUpperCase()}-${timestampPart}`;
+  return 'no disponible';
 }
 
-export function getClientAuditMetadata(termsVersion = '2026.1-CL'): AuditMetadata {
+export async function buildAuditMetadata(termsVersion = '2026.1-CL'): Promise<AuditMetadata> {
   const now = new Date().toISOString();
-  const chileanIps = [
-    '190.161.42.88 (VTR Banda Ancha Chile)',
-    '200.89.70.12 (Entel PCS Chile)',
-    '181.42.18.204 (Mundo Pacífico Fibra)',
-    '201.241.112.55 (Movistar Chile)',
-  ];
-  const randomIp = chileanIps[Math.floor(Math.random() * chileanIps.length)];
-
-  const userAgent =
-    typeof navigator !== 'undefined'
-      ? navigator.userAgent
-      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
-  const rawString = `${randomIp}|${userAgent}|${now}|${termsVersion}`;
-
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'desconocido';
+  const ip = await fetchClientIp();
   return {
-    ip: randomIp,
+    ip,
     userAgent,
     timestamp: now,
     termsVersion,
-    hash: generateAuditHash(rawString),
+    hash: await sha256Hex(`${ip}|${userAgent}|${now}|${termsVersion}`),
     legalNoticeAccepted: true,
   };
 }

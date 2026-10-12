@@ -13,8 +13,10 @@ import {
   ReservationStatus,
   DigitalContract,
   VisitRequest,
+  PaymentRecord,
 } from '../types.ts';
-import { saveAuditLog, getAuditLogs, getClientAuditMetadata } from '../utils/auditLogger.ts';
+import { saveAuditLog, getAuditLogs, buildAuditMetadata, fetchClientIp, SERVER_RECORDED_IP } from '../utils/auditLogger.ts';
+import { callApi } from '../utils/api.ts';
 import { generateDigitalContract } from '../utils/contractGenerator.ts';
 import { getTodayIso, capitalizeInitial, formatFullName } from '../utils/formatters.ts';
 import { isAtLeast18 } from '../utils/ageValidation.ts';
@@ -40,6 +42,23 @@ import {
   getVisitRequestsFromDb,
   insertVisitRequestToDb,
 } from '../lib/supabase.ts';
+import {
+  getFavoriteIdsFromDb,
+  setFavoriteInDb,
+  clearFavoritesInDb,
+  getNotificationsFromDb,
+  insertNotificationToDb,
+  markNotificationsReadInDb,
+  deleteNotificationFromDb,
+  mapNotificationRow,
+  getPaymentsFromDb,
+  insertReportToDb,
+  setUserSuspensionInDb,
+  getLoginLockStatus,
+  registerFailedLogin,
+  resetLoginAttempts,
+  isRutAvailable,
+} from '../lib/dataAccess.ts';
 
 interface AppContextType {
   currentUser: UserProfile | null;
@@ -53,8 +72,8 @@ interface AppContextType {
   notifications: NotificationItem[];
   savedCards: SavedCard[];
   visitRequests: VisitRequest[];
+  payments: PaymentRecord[];
   requestVisit: (data: Omit<VisitRequest, 'id' | 'createdAt' | 'status'>) => VisitRequest;
-  quickVerifyUser: () => void;
   addSavedCard: (cardData: {
     cardBrand: 'visa' | 'mastercard' | 'redcompra';
     cardHolder: string;
@@ -106,14 +125,27 @@ interface AppContextType {
     priceUnit?: 'hour' | 'day' | 'month';
     signatureImage?: string;
     signatureType?: 'digital_canvas' | 'token_fea';
-    paymentSimulation?: PaymentSimulationData;
+    discountCode?: string;
+    discountClp?: number;
   }) => Promise<{ reservation: Reservation; contract: DigitalContract }>;
+  startWebpayPayment: (reservationId: string) => Promise<void>;
+  cancelReservation: (reservationId: string, reason?: string) => Promise<Reservation | undefined>;
+  refreshReservations: () => Promise<void>;
+  submitReport: (report: {
+    targetType: 'space' | 'user';
+    targetSpaceId?: string;
+    targetUserId?: string;
+    targetLabel: string;
+    category: string;
+    description: string;
+  }) => Promise<void>;
   // Owner actions
   createSpace: (spaceData: Omit<Space, 'id' | 'ownerId' | 'ownerName' | 'ownerRut' | 'ownerVerified' | 'rating' | 'reviewsCount' | 'createdAt'>) => void;
   updateSpace: (id: string, spaceData: Partial<Space>) => void;
   deleteSpace: (id: string) => void;
-  updateReservationStatus: (reservationId: string, status: ReservationStatus) => void;
+  updateReservationStatus: (reservationId: string, status: ReservationStatus) => Promise<void>;
   // Admin actions
+  adminSetUserSuspension: (userId: string, suspend: boolean, reason: string) => Promise<void>;
   adminApproveKyc: (userId: string) => void;
   adminRejectKyc: (userId: string, reason: string) => void;
   adminToggleSpaceStatus: (spaceId: string, status: 'active' | 'paused' | 'pending_approval') => void;
@@ -154,44 +186,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [visitRequests, setVisitRequests] = useState<VisitRequest[]>([]);
   const [favoritesByUser, setFavoritesByUser] = useState<Record<string, string[]>>({});
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getAuditLogs());
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
 
-  // Notificaciones en la sesión
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'notif-welcome-1',
-      userId: 'guest',
-      title: '🌟 ¡Bienvenido a Spotly Chile!',
-      message: 'Te damos una cálida bienvenida a la plataforma líder de arriendo de recintos comerciales, abiertos y cerrados en Chile. Explora espacios verificados con contratos digitales automáticos.',
-      type: 'success',
-      timestamp: new Date().toISOString(),
-      read: false,
-    },
-    {
-      id: 'notif-welcome-2',
-      userId: 'guest',
-      title: '🛡️ Seguridad Legal y Transbank Webpay',
-      message: 'Todas las transacciones y reservas en Spotly cuentan con custodia de garantía segura y contratos respaldados por la Ley 18.101 de Chile.',
-      type: 'info',
-      timestamp: new Date().toISOString(),
-      read: false,
-    },
-  ]);
+  // Notificaciones: se persisten en Supabase (tabla notifications) y llegan en tiempo real.
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  // Auditoría helper
+  // Carga de datos propios del usuario autenticado y suscripción en tiempo real.
+  useEffect(() => {
+    if (!currentUser || !isSupabaseConfigured()) {
+      setNotifications([]);
+      return;
+    }
+    const userId = currentUser.id;
+    let active = true;
+
+    getNotificationsFromDb(userId).then((items) => {
+      if (active) setNotifications(items);
+    });
+    getFavoriteIdsFromDb(userId).then((ids) => {
+      if (active) setFavoritesByUser((prev) => ({ ...prev, [userId]: ids }));
+    });
+    getPaymentsFromDb().then((items) => {
+      if (active) setPayments(items);
+    });
+
+    const channel = supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const item = mapNotificationRow(payload.new);
+          setNotifications((prev) => (prev.some((n) => n.id === item.id) ? prev : [item, ...prev]));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id]);
+
+  // Una cuenta suspendida no puede mantener la sesión abierta (RF-32).
+  useEffect(() => {
+    if (currentUser?.isSuspended) {
+      supabase.auth.signOut().catch(() => undefined);
+      setCurrentUser(null);
+    }
+  }, [currentUser?.isSuspended]);
+
+  // Auditoría helper. La IP y la fecha definitivas las fija la base de datos.
   const addAuditRecord = (
     action: string,
     severity: 'info' | 'warning' | 'security' | 'critical',
     details: Record<string, unknown>
   ) => {
-    const meta = getClientAuditMetadata();
     const log = saveAuditLog({
       action,
       severity,
       userId: currentUser ? currentUser.id : 'guest-anonymous',
       userEmail: currentUser ? currentUser.email : 'visitante@spotly.cl',
       userRole: currentUser ? currentUser.role : ('tenant' as UserRole),
-      ip: meta.ip,
-      userAgent: meta.userAgent,
+      ip: SERVER_RECORDED_IP,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       details,
     });
     setAuditLogs((prev) => [log, ...prev]);
@@ -242,6 +300,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               kycData: profile.kyc_data,
               commune: profile.commune,
               city: profile.city,
+              isSuspended: Boolean(profile.is_suspended),
+              suspendedReason: profile.suspended_reason || undefined,
               createdAt: profile.created_at,
             };
             setCurrentUser(loadedUser);
@@ -326,6 +386,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               kycData: profile.kyc_data,
               commune: profile.commune,
               city: profile.city,
+              isSuspended: Boolean(profile.is_suspended),
+              suspendedReason: profile.suspended_reason || undefined,
               createdAt: profile.created_at,
             });
           }
@@ -352,6 +414,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, message: 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.' };
       }
 
+      // RNF-04: bloqueo temporal tras intentos fallidos consecutivos.
+      const lock = await getLoginLockStatus(targetEmail);
+      if (lock.locked) {
+        const until = lock.lockedUntil ? new Date(lock.lockedUntil).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : '';
+        return {
+          success: false,
+          message: `Cuenta bloqueada temporalmente por intentos fallidos. Intenta nuevamente${until ? ` después de las ${until}` : ' en unos minutos'}.`,
+        };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: targetEmail,
         password: password,
@@ -359,13 +431,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (error) {
         console.warn('Supabase Auth error:', error.message);
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          return {
+            success: false,
+            message: 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.',
+          };
+        }
+        const attempt = await registerFailedLogin(targetEmail);
         return {
           success: false,
-          message: error.message.toLowerCase().includes('email not confirmed')
-              ? 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.'
-              : 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.',
+          message: attempt.locked
+            ? 'Demasiados intentos fallidos: la cuenta quedó bloqueada por 15 minutos.'
+            : `Credenciales inválidas. Revisa tu correo electrónico o contraseña.${
+                attempt.remaining !== undefined && attempt.remaining <= 2
+                  ? ` Te quedan ${attempt.remaining} intento${attempt.remaining === 1 ? '' : 's'} antes del bloqueo temporal.`
+                  : ''
+              }`,
         };
       }
+
+      await resetLoginAttempts();
 
       if (data.user) {
         // Cargar datos de perfil desde la tabla profiles
@@ -395,6 +480,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               kycData: profile.kyc_data,
               commune: profile.commune,
               city: profile.city,
+              isSuspended: Boolean(profile.is_suspended),
+              suspendedReason: profile.suspended_reason || undefined,
               createdAt: profile.created_at,
             }
           : {
@@ -411,6 +498,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               createdAt: new Date().toISOString(),
             };
 
+        if (loggedUser.isSuspended) {
+          await supabase.auth.signOut();
+          return {
+            success: false,
+            message: `Tu cuenta está suspendida por administración${
+              loggedUser.suspendedReason ? ` (motivo: ${loggedUser.suspendedReason})` : ''
+            }. Escríbenos desde Ayuda y soporte.`,
+          };
+        }
+
         setCurrentUser(loggedUser);
         try {
           setAllUsers(await getProfilesFromDb());
@@ -418,24 +515,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (profileLoadErr) {
           setProfilesLoadError(profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.');
         }
-        addAuditRecord('USER_LOGGED_IN_SUPABASE', 'security', {
+        // El registro se inserta con la sesión recién creada (user_id = auth.uid()).
+        insertAuditLogToDb({
+          id: '',
+          action: 'USER_LOGGED_IN',
+          severity: 'security',
           userId: loggedUser.id,
           userEmail: loggedUser.email,
           userRole: loggedUser.role,
-        });
-
-        setNotifications((prev) => [
-          {
-            id: `notif-${Date.now()}`,
-            userId: loggedUser.id,
-            title: `Sesión iniciada como ${loggedUser.role === 'admin' ? 'Administrador' : loggedUser.role === 'owner' ? 'Propietario' : 'Arrendatario'}`,
-            message: `Hola de nuevo, ${loggedUser.fullName}. Has ingresado a tu cuenta Spotly.`,
-            type: 'info',
-            timestamp: new Date().toISOString(),
-            read: false,
-          },
-          ...prev,
-        ]);
+          ip: SERVER_RECORDED_IP,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+          timestamp: new Date().toISOString(),
+          details: { method: 'password' },
+        }).catch(() => undefined);
 
         return {
           success: true,
@@ -527,7 +619,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 1. Registro con Supabase Auth si está configurado
     if (isSupabaseConfigured()) {
-      const userPassword = userData.password || 'SpotlyChile2026!';
+      if (!userData.password) {
+        return { success: false, message: 'Debes ingresar una contraseña.' };
+      }
+      if (!(await isRutAvailable(userData.rut))) {
+        return { success: false, message: 'Ya existe una cuenta registrada con este RUT.' };
+      }
+      const userPassword = userData.password;
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: cleanEmail,
         password: userPassword,
@@ -550,7 +648,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Error al registrar usuario en Supabase Auth:', authError.message);
         return {
           success: false,
-          message: authError.message,
+          message: authError.message.toLowerCase().includes('database error')
+            ? 'No se pudo crear la cuenta: el RUT o el correo ya están registrados.'
+            : authError.message,
         };
       }
 
@@ -771,14 +871,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Es obligatorio aceptar el contrato de adhesión de Propietarios y anfitriones Spotly.' };
     }
 
-    const auditMeta = getClientAuditMetadata('OWNER-TERMS-v2026.1');
+    const auditMeta = await buildAuditMetadata('OWNER-TERMS-v2026.1');
 
     const updatedUser: UserProfile = {
       ...currentUser,
       role: 'owner',
       ownerTermsAccepted: true,
       ownerApplicationDate: new Date().toISOString(),
-      verificationStatus: kycVerified ? 'verified' : currentUser.verificationStatus,
+      verificationStatus: currentUser.verificationStatus,
     };
 
     setCurrentUser(updatedUser);
@@ -789,7 +889,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'owner',
         ownerTermsAccepted: true,
         ownerApplicationDate: updatedUser.ownerApplicationDate,
-        verificationStatus: updatedUser.verificationStatus,
       }).catch(console.warn);
     }
 
@@ -819,7 +918,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  // Creación de reserva por un arrendatario (Base de datos + Contrato Digital)
+  // Recarga reservas y pagos desde Supabase (p. ej., al volver de Webpay).
+  const refreshReservations = async () => {
+    if (!isSupabaseConfigured()) return;
+    const [dbReservations, dbContracts, dbPayments] = await Promise.all([
+      getReservationsFromDb(),
+      getContractsFromDb(),
+      getPaymentsFromDb(),
+    ]);
+    setReservations(dbReservations);
+    setContracts(dbContracts);
+    setPayments(dbPayments);
+  };
+
+  // Creación de reserva (RF-15/16/22/23/24). La reserva queda "pendiente de pago" y
+  // bloquea el horario en la base (restricción de exclusión) hasta que Webpay
+  // confirme o rechace el pago. El contrato firmado se sella con SHA-256.
   const createBooking = async (bookingData: {
     space: Space;
     startDate: string;
@@ -839,10 +953,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     priceUnit?: 'hour' | 'day' | 'month';
     signatureImage?: string;
     signatureType?: 'digital_canvas' | 'token_fea';
-    paymentSimulation?: PaymentSimulationData;
+    discountCode?: string;
+    discountClp?: number;
   }): Promise<{ reservation: Reservation; contract: DigitalContract }> => {
     if (!currentUser) {
       throw new Error('Debes iniciar sesión para reservar un espacio.');
+    }
+    if (!isSupabaseConfigured()) {
+      throw new Error('La plataforma no está conectada a la base de datos. No es posible reservar.');
     }
 
     const todayStr = getTodayIso();
@@ -854,67 +972,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const modality = bookingData.rentalModality || bookingData.space.rentalModality || 'por_dia';
+    const priceUnit = bookingData.priceUnit || (modality === 'por_hora' ? 'hour' : modality === 'mensual' ? 'month' : 'day');
 
-    // VALIDACIÓN DE DISPONIBILIDAD ESTRICTA (ANTI-DOBLE RESERVA)
-    const activeBookings = reservations.filter(
-      (r) => r.spaceId === bookingData.space.id && r.status !== 'rejected' && r.status !== 'cancelled'
-    );
-
-    for (const existing of activeBookings) {
-      const datesOverlap = bookingData.startDate <= existing.endDate && bookingData.endDate >= existing.startDate;
-      if (datesOverlap) {
-        if (modality === 'por_hora' && existing.rentalModality === 'por_hora' && bookingData.startDate === existing.startDate) {
-          const newHStart = bookingData.hourStart ?? 9;
-          const newHEnd = bookingData.hourEnd ?? (newHStart + bookingData.totalDays);
-          const existHStart = existing.hourStart ?? 9;
-          const existHEnd = existing.hourEnd ?? (existHStart + (existing.durationUnits || existing.totalDays));
-
-          if (newHStart < existHEnd && newHEnd > existHStart) {
-            throw new Error(
-              `Conflicto de disponibilidad: El horario de ${newHStart}:00 a ${newHEnd}:00 del ${bookingData.startDate} ya se encuentra reservado en este recinto.`
-            );
-          }
-        } else {
-          const isExistingHourly = existing.rentalModality === 'por_hora';
-          const isNewHourly = modality === 'por_hora';
-          if (isNewHourly && isExistingHourly && bookingData.startDate !== existing.startDate) {
-            continue;
-          }
-          throw new Error(
-            `Conflicto de disponibilidad: El recinto "${bookingData.space.title}" ya tiene una reserva activa para las fechas seleccionadas (${existing.startDate} al ${existing.endDate}). Selecciona otras fechas u horario disponible.`
-          );
-        }
-
-      }
-    }
-
-    const meta = getClientAuditMetadata();
-    const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-    // Generar contrato digital formal chileno
-    const contract = generateDigitalContract({
-      reservationId,
-      spaceTitle: bookingData.space.title,
-      spaceAddress: `${bookingData.space.address}, ${bookingData.space.commune}, ${bookingData.space.region}`,
-      tenantName: currentUser.fullName,
-      tenantRut: currentUser.rut,
-      ownerName: bookingData.space.ownerName,
-      ownerRut: bookingData.space.ownerRut,
-      totalClp: bookingData.totalClp,
-      guaranteeDepositClp: bookingData.securityDepositClp,
-      startDate: bookingData.startDate,
-      endDate: bookingData.endDate,
-      ip: meta.ip,
-      rentalModality: modality,
-      priceUnit: bookingData.priceUnit || (modality === 'por_hora' ? 'hour' : modality === 'mensual' ? 'month' : 'day'),
-      durationUnits: bookingData.durationUnits || bookingData.totalDays,
-      intendedUse: bookingData.intendedUse,
-      signatureImage: bookingData.signatureImage,
-      signatureType: bookingData.signatureType,
-    });
-
-    const newReservation: Reservation = {
-      id: reservationId,
+    const draft: Reservation = {
+      id: `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
       spaceId: bookingData.space.id,
       spaceTitle: bookingData.space.title,
       spaceAddress: `${bookingData.space.address}, ${bookingData.space.commune}`,
@@ -935,7 +996,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dailyRateClp: bookingData.space.pricePerDay,
       rentalModality: modality,
       durationUnits: bookingData.durationUnits || bookingData.totalDays,
-      priceUnit: bookingData.priceUnit || (modality === 'por_hora' ? 'hour' : modality === 'mensual' ? 'month' : 'day'),
+      priceUnit,
       hourStart: bookingData.hourStart,
       hourEnd: bookingData.hourEnd,
       timeSlotString: bookingData.timeSlotString,
@@ -944,51 +1005,124 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       platformFeeClp: bookingData.platformFeeClp,
       securityDepositClp: bookingData.securityDepositClp,
       totalClp: bookingData.totalClp,
+      discountCode: bookingData.discountCode,
+      discountClp: bookingData.discountClp || 0,
       intendedUse: bookingData.intendedUse,
-      paymentSimulation: bookingData.paymentSimulation,
       status: 'pending',
-      digitalContractId: contract.id,
+      paymentStatus: 'pending',
       createdAt: new Date().toISOString(),
     };
 
-    setReservations((prev) => [newReservation, ...prev]);
-    setContracts((prev) => [contract, ...prev]);
-
-    // Persistir en Supabase DB
-    if (isSupabaseConfigured()) {
-      insertReservationToDb(newReservation).catch((err) =>
-        console.warn('Error al guardar reserva en Supabase DB:', err)
-      );
-      insertContractToDb(contract).catch((err) =>
-        console.warn('Error al guardar contrato en Supabase DB:', err)
-      );
+    // 1. Reserva: la base valida montos, descuento y solapamiento de forma atómica.
+    const inserted = await insertReservationToDb(draft);
+    if (!inserted.success || !inserted.data) {
+      if (inserted.code === '23P01') {
+        throw new Error(
+          'Conflicto de disponibilidad: otra persona acaba de reservar ese horario. Elige otra fecha u horario.'
+        );
+      }
+      throw new Error(inserted.error || 'No se pudo registrar la reserva.');
     }
+    const reservation = inserted.data;
 
-    addAuditRecord('RESERVATION_CREATED_WITH_CONTRACT', 'info', {
-      reservationId,
-      contractId: contract.id,
-      contractHash: contract.contractHash,
-      spaceId: bookingData.space.id,
-      totalClp: bookingData.totalClp,
+    // 2. Contrato firmado con huella SHA-256 sobre su contenido íntegro.
+    const contract = await generateDigitalContract({
+      reservationId: reservation.id,
+      spaceTitle: bookingData.space.title,
+      spaceAddress: `${bookingData.space.address}, ${bookingData.space.commune}, ${bookingData.space.region}`,
+      tenantName: currentUser.fullName,
       tenantRut: currentUser.rut,
+      ownerName: bookingData.space.ownerName,
+      ownerRut: bookingData.space.ownerRut,
+      totalClp: reservation.totalClp,
+      guaranteeDepositClp: reservation.securityDepositClp,
+      discountClp: reservation.discountClp,
+      startDate: bookingData.startDate,
+      endDate: bookingData.endDate,
+      ip: await fetchClientIp(),
+      rentalModality: modality,
+      priceUnit,
+      durationUnits: bookingData.durationUnits || bookingData.totalDays,
+      hourStart: bookingData.hourStart,
+      hourEnd: bookingData.hourEnd,
       intendedUse: bookingData.intendedUse,
-      paymentMethod: bookingData.paymentSimulation?.cardBrand,
+      signatureImage: bookingData.signatureImage,
+      signatureType: bookingData.signatureType,
     });
 
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        userId: currentUser.id,
-        title: '🎉 ¡Reserva confirmada con éxito!',
-        message: `¡Excelente noticia! Tu solicitud para "${bookingData.space.title}" por CLP ${bookingData.totalClp.toLocaleString('es-CL')} ha sido registrada. Pago procesado mediante simulación Webpay Plus (Aut: ${bookingData.paymentSimulation?.authorizationCode || '748291'}). El contrato digital está firmado y notificado.`,
-        type: 'success',
-        timestamp: new Date().toISOString(),
-        read: false,
-      },
-      ...prev,
-    ]);
+    const contractResult = await insertContractToDb(contract);
+    if (!contractResult.success) {
+      // Sin contrato no se puede pagar: se libera el horario de inmediato.
+      await updateReservationInDb(reservation.id, {
+        status: 'cancelled',
+        cancellationReason: 'No se pudo registrar el contrato firmado',
+      });
+      throw new Error(`No se pudo registrar el contrato firmado: ${contractResult.error || 'error desconocido'}`);
+    }
+    await updateReservationInDb(reservation.id, { digitalContractId: contract.id });
 
-    return { reservation: newReservation, contract };
+    const finalReservation: Reservation = { ...reservation, digitalContractId: contract.id };
+    setReservations((prev) => [finalReservation, ...prev.filter((r) => r.id !== finalReservation.id)]);
+    setContracts((prev) => [contract, ...prev]);
+
+    return { reservation: finalReservation, contract };
+  };
+
+  // Inicia el pago en Webpay Plus: el backend crea la transacción y el navegador
+  // se redirige al formulario de Transbank (RF-17).
+  const startWebpayPayment = async (reservationId: string) => {
+    const { url, token } = await callApi<{ url: string; token: string }>('/api/webpay?action=create', {
+      reservationId,
+    });
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'token_ws';
+    input.value = token;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+  };
+
+  // Solicita a Transbank la reversa cuando la base dejó un reembolso pendiente.
+  const processPendingRefund = async (reservation: Reservation | undefined) => {
+    if (!reservation || reservation.paymentStatus !== 'refund_pending') return;
+    try {
+      await callApi('/api/webpay?action=refund', { reservationId: reservation.id });
+      await refreshReservations();
+    } catch (err) {
+      console.warn('El reembolso quedó pendiente de proceso:', err);
+    }
+  };
+
+  // Cancelación con cálculo de reembolso en servidor (RF-18).
+  const cancelReservation = async (reservationId: string, reason?: string): Promise<Reservation | undefined> => {
+    const result = await updateReservationInDb(reservationId, {
+      status: 'cancelled',
+      cancellationReason: reason?.trim() || undefined,
+    });
+    if (!result.success) {
+      throw new Error(result.error || 'No se pudo cancelar la reserva.');
+    }
+    if (result.data) {
+      setReservations((prev) => prev.map((r) => (r.id === reservationId ? result.data! : r)));
+    }
+    await processPendingRefund(result.data);
+    return result.data;
+  };
+
+  const submitReport = async (report: {
+    targetType: 'space' | 'user';
+    targetSpaceId?: string;
+    targetUserId?: string;
+    targetLabel: string;
+    category: string;
+    description: string;
+  }) => {
+    if (!currentUser) throw new Error('Debes iniciar sesión para reportar.');
+    await insertReportToDb({ ...report, reporterId: currentUser.id, reporterEmail: currentUser.email });
   };
 
   // Creación de espacio por un propietario (Supabase DB)
@@ -1012,7 +1146,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ownerName: currentUser.fullName,
       ownerRut: currentUser.rut,
       ownerVerified: currentUser.verificationStatus === 'verified',
-      rating: 5.0,
+      rating: 0,
       reviewsCount: 0,
       createdAt: new Date().toISOString(),
     };
@@ -1085,56 +1219,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newVisit;
   };
 
-  const quickVerifyUser = () => {
-    if (!currentUser) return;
-    const updated: UserProfile = {
-      ...currentUser,
-      verificationStatus: 'verified',
-      kycData: {
-        ...(currentUser.kycData || {
-          consentGiven: true,
-          termsVersion: 'VERIFICACION-2026.1',
-          photoCaptured: true,
-          idFrontCaptured: true,
-          idBackCaptured: true,
-          rutNumber: currentUser.rut,
-          documentSerialNumber: '123456789',
-          criminalRecordSubmitted: true,
-        }),
-        biometricScore: 99.4,
-        isLivenessConfirmed: true,
-      },
-    };
-    setCurrentUser(updated);
-    setAllUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-
-    if (isSupabaseConfigured()) {
-      updateProfileInDb(updated.id, {
-        verificationStatus: 'verified',
-        kycData: updated.kycData,
-      }).catch(console.warn);
-    }
-
-    addAuditRecord('QUICK_VERIFICATION_ACTIVATED', 'security', {
-      userId: updated.id,
-      status: 'verified',
-      score: 99.4,
-    });
-
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        userId: updated.id,
-        title: '✅ Identidad Verificada para Arriendos',
-        message: 'Tu perfil ha sido verificado con éxito. Ya puedes formalizar reservas y contratos legales bajo la Ley 18.101.',
-        type: 'success',
-        timestamp: new Date().toISOString(),
-        read: false,
-      },
-      ...prev,
-    ]);
-  };
-
   const updateSpace = (id: string, updates: Partial<Space>) => {
     setSpaces((prev) =>
       prev.map((spc) => (spc.id === id ? { ...spc, ...updates } : spc))
@@ -1147,7 +1231,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditRecord('SPACE_UPDATED', 'info', { spaceId: id, updates });
   };
 
+  // RF-10: un espacio con reservas registradas se despublica (los contratos firmados
+  // son inmutables y deben conservarse); uno sin historial se elimina.
   const deleteSpace = (id: string) => {
+    const hasHistory = reservations.some((r) => r.spaceId === id);
+    if (hasHistory) {
+      updateSpace(id, { status: 'paused' });
+      addAuditRecord('SPACE_UNPUBLISHED', 'warning', { spaceId: id, reason: 'Tiene reservas y contratos asociados' });
+      alert('Este espacio tiene reservas y contratos asociados, por lo que se despublicó en lugar de eliminarse.');
+      return;
+    }
+
     setSpaces((prev) => prev.filter((spc) => spc.id !== id));
 
     if (isSupabaseConfigured()) {
@@ -1157,8 +1251,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditRecord('SPACE_DELETED', 'warning', { spaceId: id });
   };
 
-  // Actualización de estado de reserva (ej. Propietario acepta o rechaza solicitud de reserva)
-  const updateReservationStatus = (reservationId: string, status: ReservationStatus) => {
+  // Cambio de estado por el propietario o administración (RF-20). La base valida la
+  // transición, calcula el reembolso y genera notificaciones y auditoría.
+  const updateReservationStatus = async (reservationId: string, status: ReservationStatus) => {
     const targetReservation = reservations.find((r) => r.id === reservationId);
 
     if (status === 'confirmed' && targetReservation) {
@@ -1167,64 +1262,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (resDate < todayStr) {
         throw new Error('No es posible aprobar una reserva cuya fecha ya transcurrió.');
       }
+      if (targetReservation.paymentStatus === 'pending' || targetReservation.paymentStatus === 'failed') {
+        throw new Error('La reserva no se puede aceptar hasta que Webpay apruebe el pago.');
+      }
     }
 
-    setReservations((prev) =>
-      prev.map((res) => (res.id === reservationId ? { ...res, status } : res))
+    if (!isSupabaseConfigured()) {
+      setReservations((prev) => prev.map((res) => (res.id === reservationId ? { ...res, status } : res)));
+      return;
+    }
+
+    const result = await updateReservationInDb(reservationId, { status });
+    if (!result.success) {
+      throw new Error(result.error || 'No se pudo actualizar la reserva.');
+    }
+    if (result.data) {
+      setReservations((prev) => prev.map((res) => (res.id === reservationId ? result.data! : res)));
+    }
+    await processPendingRefund(result.data);
+  };
+
+  // RF-32: suspensión de cuentas por administración.
+  const adminSetUserSuspension = async (userId: string, suspend: boolean, reason: string) => {
+    await setUserSuspensionInDb(userId, suspend, reason);
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, isSuspended: suspend, suspendedReason: suspend ? reason : undefined } : u
+      )
     );
-
-    if (isSupabaseConfigured()) {
-      updateReservationInDb(reservationId, { status }).catch(console.warn);
-    }
-
-    addAuditRecord('RESERVATION_STATUS_CHANGED', 'info', {
-      reservationId,
-      newStatus: status,
-      actionBy: currentUser ? currentUser.id : 'system',
-      actionByRole: currentUser ? currentUser.role : 'admin',
-    });
-
-    if (currentUser) {
-      setNotifications((prev) => [
-        {
-          id: `notif-${Date.now()}`,
-          userId: currentUser.id,
-          title: `Reserva ${status === 'confirmed' ? 'Aceptada' : status === 'rejected' ? 'Rechazada' : status}`,
-          message: `La reserva #${reservationId.slice(-6)} ha sido actualizada a ${status}.`,
-          type: status === 'confirmed' ? 'success' : 'warning',
-          timestamp: new Date().toISOString(),
-          read: false,
-        },
-        ...prev,
-      ]);
-    }
-
-    if (status === 'rejected' && targetReservation) {
-      setNotifications((prev) => [
-        {
-          id: `notif-refund-${Date.now()}`,
-          userId: targetReservation.tenantId,
-          title: 'Reserva Rechazada y Reembolso Iniciado',
-          message: `El propietario ha rechazado la reserva #${reservationId.slice(-6)}. Se ha iniciado el reembolso total de tu pago a tu método original.`,
-          type: 'warning',
-          timestamp: new Date().toISOString(),
-          read: false,
-        },
-        ...prev,
-      ]);
-      
-      setNotifications((prev) => [
-        {
-          id: `notif-owner-refund-${Date.now()}`,
-          userId: targetReservation.ownerId,
-          title: 'Contrato Rechazado',
-          message: `Has rechazado el contrato de la reserva #${reservationId.slice(-6)}. Se devolverá el dinero íntegramente al arrendatario.`,
-          type: 'info',
-          timestamp: new Date().toISOString(),
-          read: false,
-        },
-        ...prev,
-      ]);
+    if (suspend) {
+      setSpaces((prev) => prev.map((s) => (s.ownerId === userId && s.status === 'active' ? { ...s, status: 'paused' } : s)));
     }
   };
 
@@ -1550,10 +1617,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const dismissNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (!id.startsWith('notif-')) {
+      deleteNotificationFromDb(id).catch(console.warn);
+    }
   };
 
   const markAllNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    if (currentUser) {
+      markNotificationsReadInDb(currentUser.id).catch(console.warn);
+    }
   };
 
   // Gestión de Tarjetas y Billetera Bancaria
@@ -1647,6 +1720,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const targetSpace = spaces.find((s) => s.id === spaceId);
     const wasFav = favoriteSpaceIds.includes(spaceId);
+    setFavoriteInDb(userKey, spaceId, !wasFav).catch(console.warn);
 
     addAuditRecord(wasFav ? 'SPACE_FAVORITE_REMOVED' : 'SPACE_FAVORITE_ADDED', 'info', {
       spaceId,
@@ -1661,6 +1735,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
       [userKey]: [],
     }));
+    clearFavoritesInDb(userKey).catch(console.warn);
     addAuditRecord('FAVORITES_CLEARED', 'info', { userId: userKey });
   };
 
@@ -1675,11 +1750,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         contracts,
         auditLogs,
         disputes,
-        notifications,
+        notifications: currentUser ? notifications.filter((n) => n.userId === currentUser.id) : [],
         savedCards,
         visitRequests,
+        payments,
         requestVisit,
-        quickVerifyUser,
         addSavedCard,
         deleteSavedCard,
         setDefaultCard,
@@ -1691,12 +1766,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUserRole,
         upgradeTenantToOwner,
         createBooking,
+        startWebpayPayment,
+        cancelReservation,
+        refreshReservations,
+        submitReport,
         createSpace,
         updateSpace,
         deleteSpace,
         updateReservationStatus,
         adminApproveKyc,
         adminRejectKyc,
+        adminSetUserSuspension,
         adminToggleSpaceStatus,
         adminResolveDispute,
         createDispute,

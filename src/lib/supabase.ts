@@ -89,7 +89,7 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     images: row.images || [],
     isVerified: row.is_verified,
     status: row.status,
-    rating: Number(row.rating || 5),
+    rating: Number(row.rating || 0),
     reviewsCount: Number(row.reviews_count || 0),
     minBookingDays: row.min_booking_days ? Number(row.min_booking_days) : 1,
     minBookingHours: row.min_booking_hours ? Number(row.min_booking_hours) : 1,
@@ -208,7 +208,11 @@ export async function getReservationsFromDb(): Promise<Reservation[]> {
     return [];
   }
 
-  return (data || []).map((row: any) => ({
+  return (data || []).map(mapReservationRow);
+}
+
+export function mapReservationRow(row: any): Reservation {
+  return {
     id: row.id,
     spaceId: row.space_id,
     spaceTitle: row.space_title,
@@ -245,11 +249,19 @@ export async function getReservationsFromDb(): Promise<Reservation[]> {
     digitalContractId: row.digital_contract_id,
     disputeStatus: row.dispute_status,
     disputeReason: row.dispute_reason,
+    paymentStatus: row.payment_status,
+    discountCode: row.discount_code || undefined,
+    discountClp: row.discount_clp ? Number(row.discount_clp) : 0,
+    refundAmountClp: row.refund_amount_clp !== null && row.refund_amount_clp !== undefined ? Number(row.refund_amount_clp) : undefined,
+    cancelledAt: row.cancelled_at || undefined,
+    cancellationReason: row.cancellation_reason || undefined,
+    confirmedAt: row.confirmed_at || undefined,
+    paidAt: row.paid_at || undefined,
     createdAt: row.created_at,
-  }));
+  };
 }
 
-export async function insertReservationToDb(reservation: Reservation): Promise<{ success: boolean; data?: any; error?: string }> {
+export async function insertReservationToDb(reservation: Reservation): Promise<{ success: boolean; data?: Reservation; error?: string; code?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
 
   const dbRow: any = {
@@ -283,7 +295,8 @@ export async function insertReservationToDb(reservation: Reservation): Promise<{
     security_deposit_clp: reservation.securityDepositClp,
     total_clp: reservation.totalClp,
     intended_use: reservation.intendedUse,
-    payment_simulation: reservation.paymentSimulation,
+    discount_code: reservation.discountCode || null,
+    discount_clp: reservation.discountClp || 0,
     status: reservation.status,
     digital_contract_id: reservation.digitalContractId,
     dispute_status: reservation.disputeStatus || 'none',
@@ -299,29 +312,30 @@ export async function insertReservationToDb(reservation: Reservation): Promise<{
   const { data, error } = await supabase.from('reservations').insert([dbRow]).select().single();
   if (error) {
     console.error('Error al insertar reserva en Supabase:', error.message);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, code: error.code };
   }
-  return { success: true, data };
+  return { success: true, data: mapReservationRow(data) };
 }
 
 export async function updateReservationInDb(
   id: string,
   updates: Partial<Reservation>
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; data?: Reservation }> {
   if (!isSupabaseConfigured()) return { success: true };
 
   const dbRow: any = {};
   if (updates.status !== undefined) dbRow.status = updates.status;
+  if (updates.cancellationReason !== undefined) dbRow.cancellation_reason = updates.cancellationReason;
   if (updates.disputeStatus !== undefined) dbRow.dispute_status = updates.disputeStatus;
   if (updates.disputeReason !== undefined) dbRow.dispute_reason = updates.disputeReason;
   if (updates.digitalContractId !== undefined) dbRow.digital_contract_id = updates.digitalContractId;
 
-  const { error } = await supabase.from('reservations').update(dbRow).eq('id', id);
+  const { data, error } = await supabase.from('reservations').update(dbRow).eq('id', id).select().maybeSingle();
   if (error) {
     console.error('Error al actualizar reserva en Supabase:', error.message);
     return { success: false, error: error.message };
   }
-  return { success: true };
+  return { success: true, data: data ? mapReservationRow(data) : undefined };
 }
 
 // 3. CONTRATOS DIGITALES (contracts)
@@ -353,6 +367,9 @@ export async function getContractsFromDb(): Promise<DigitalContract[]> {
     clauses: row.clauses || [],
     signedAt: row.signed_at,
     contractHash: row.contract_hash,
+    hashAlgorithm: row.hash_algorithm,
+    hashVersion: row.hash_version || undefined,
+    signerIp: row.signer_ip || undefined,
     priceUnit: row.price_unit,
     rentalModality: row.rental_modality,
     signatureImage: row.signature_image,
@@ -361,7 +378,7 @@ export async function getContractsFromDb(): Promise<DigitalContract[]> {
       rut: row.tenant_rut,
       fullName: row.tenant_name,
       signedAt: row.signed_at,
-      ip: '127.0.0.1',
+      ip: row.signer_ip || 'no registrada',
       verificationToken: `CHL-${row.id}`,
     },
   }));
@@ -385,12 +402,13 @@ export async function insertContractToDb(contract: DigitalContract): Promise<{ s
     clauses: contract.clauses,
     signed_at: contract.signedAt,
     contract_hash: contract.contractHash,
+    hash_algorithm: contract.hashAlgorithm || 'legacy',
+    hash_version: contract.hashVersion,
     price_unit: contract.priceUnit,
     rental_modality: contract.rentalModality,
     signature_image: contract.signatureImage,
     signature_type: contract.signatureType,
     tenant_signature: contract.tenantSignature,
-    created_at: new Date().toISOString(),
   };
 
   if (contract.id && !contract.id.startsWith('ctr-') && !contract.id.startsWith('mock-')) {
@@ -412,7 +430,7 @@ export async function getAuditLogsFromDb(): Promise<AuditLog[]> {
     .from('audit_logs')
     .select('*')
     .order('timestamp', { ascending: false })
-    .limit(100);
+    .limit(500);
 
   if (error) {
     console.error('Error al consultar auditoría en Supabase:', error.message);
@@ -425,7 +443,7 @@ export async function getAuditLogsFromDb(): Promise<AuditLog[]> {
     userId: row.user_id,
     userEmail: row.user_email,
     userRole: row.user_role,
-    ip: row.ip || '127.0.0.1',
+    ip: row.ip || 'no disponible',
     userAgent: row.user_agent || '',
     timestamp: row.timestamp,
     severity: row.severity,
@@ -441,9 +459,7 @@ export async function insertAuditLogToDb(log: AuditLog): Promise<{ success: bool
     user_id: log.userId,
     user_email: log.userEmail,
     user_role: log.userRole,
-    ip: log.ip,
     user_agent: log.userAgent,
-    timestamp: log.timestamp || new Date().toISOString(),
     severity: log.severity,
     details: log.details,
   };
@@ -578,6 +594,8 @@ export async function getProfilesFromDb(): Promise<UserProfile[]> {
     kycData: row.kyc_data,
     commune: row.commune,
     city: row.city,
+    isSuspended: Boolean(row.is_suspended),
+    suspendedReason: row.suspended_reason || undefined,
     createdAt: row.created_at,
   }));
 }

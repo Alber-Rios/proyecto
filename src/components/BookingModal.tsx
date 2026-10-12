@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Space, DigitalContract, PaymentSimulationData, VisitRequest } from '../types.ts';
+import { Space, DigitalContract, VisitRequest } from '../types.ts';
+import { calculateBookingAmounts } from '../utils/pricing.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getTodayIso, getOffsetDateIso } from '../utils/formatters.ts';
 import { SignatureCanvas } from './SignatureCanvas.tsx';
-import { WebpayPaymentBox } from './WebpayPaymentBox.tsx';
+import { WebpayPaymentBox, AppliedDiscount } from './WebpayPaymentBox.tsx';
 import {
   Calendar as CalendarIcon,
   ShieldCheck,
@@ -89,7 +90,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   initialHourEnd = 14,
   initialSelectedMonth = '2026-10',
 }) => {
-  const { currentUser, createBooking, requestVisit, quickVerifyUser, savedCards } = useApp();
+  const { currentUser, createBooking, startWebpayPayment, requestVisit } = useApp();
+  const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
   const navigate = useNavigate();
 
   // Modo activo: 'booking' (Reserva formal) o 'visit' (Solicitud de visita)
@@ -171,107 +173,85 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   }, [isOpen, initialMode, initialStep, currentUser, initialStartDate, initialEndDate, initialTimeSlots, initialIntendedUse, initialModality, initialHourStart, initialHourEnd, initialSelectedMonth, space]);
 
-  // Cálculo de unidades y montos en CLP según modalidad
+  // Cálculo de unidades y montos en CLP según modalidad (misma regla que valida la base).
+  const activeModality: 'por_hora' | 'por_dia' | 'mensual' = space
+    ? space.rentalModality === 'abierto' || !space.rentalModality
+      ? selectedModality
+      : space.rentalModality
+    : selectedModality;
+
   const calculations = useMemo(() => {
-    if (!space) return { units: 1, label: 'día', subtotal: 0, platformFee: 0, deposit: 0, total: 0, basePrice: 0 };
+    if (!space) return { units: 1, label: 'día', subtotal: 0, platformFee: 0, deposit: 0, total: 0, basePrice: 0, discount: 0 };
+    const amounts = calculateBookingAmounts({
+      space,
+      modality: activeModality,
+      startDate,
+      endDate,
+      hourStart: activeModality === 'por_hora' ? hourStart : undefined,
+      hourEnd: activeModality === 'por_hora' ? hourEnd : undefined,
+      discountClp: discount?.discountClp,
+    });
+    return {
+      units: amounts.units,
+      label: amounts.label,
+      subtotal: amounts.subtotal,
+      platformFee: amounts.platformFee,
+      deposit: amounts.deposit,
+      discount: amounts.discount,
+      total: amounts.total,
+      basePrice: amounts.basePrice,
+    };
+  }, [space, activeModality, startDate, endDate, hourStart, hourEnd, discount]);
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = end.getTime() - start.getTime();
-    let daysDiff = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    if (daysDiff <= 0) daysDiff = 1;
+  // Si cambian las fechas u horas se descarta el descuento calculado (depende del subtotal).
+  useEffect(() => {
+    setDiscount(null);
+  }, [space?.id, activeModality, startDate, endDate, hourStart, hourEnd]);
 
-    const activeModality = space.rentalModality === 'abierto' ? selectedModality : (space.rentalModality || selectedModality || 'por_dia');
-
-    let units = daysDiff;
-    let label = daysDiff === 1 ? 'día' : 'días';
-    let basePrice = space.pricePerDay;
-
-    if (activeModality === 'por_hora') {
-      units = hoursCount || (bookingTimeSlots.length > 0 ? bookingTimeSlots.length * 2 : 2);
-      label = units === 1 ? 'hora' : 'horas';
-      basePrice = space.pricePerHour || 45000;
-    } else if (activeModality === 'mensual') {
-      units = Math.ceil(daysDiff / 30) || 1;
-      label = units === 1 ? 'mes' : 'meses';
-      basePrice = space.pricePerMonth || 3800000;
-    } else {
-      // por_dia (default)
-      units = daysDiff;
-      label = units === 1 ? 'día' : 'días';
-      basePrice = space.pricePerDay;
-    }
-
-    const subtotal = units * basePrice;
-    const platformFee = Math.round(subtotal * 0.05); // 5% fee de servicio Spotly
-    const deposit = space.securityDeposit || (activeModality === 'por_hora' ? 50000 : 150000); // Garantía retornable
-    const total = subtotal + platformFee + deposit;
-
-    return { units, label, subtotal, platformFee, deposit, total, basePrice };
-  }, [space, startDate, endDate, selectedModality, hoursCount, bookingTimeSlots]);
-
-  // Enviar Reserva
-  const handlePaymentSuccess = async (paymentData: PaymentSimulationData) => {
+  // Registrar la reserva y el contrato firmado, y redirigir a Webpay Plus.
+  const handlePay = async () => {
     if (!currentUser) {
-      setError('Debes iniciar sesión con tu cuenta para formalizar la reserva.');
-      return;
+      throw new Error('Debes iniciar sesión con tu cuenta para formalizar la reserva.');
     }
-
     if (currentUser.verificationStatus !== 'verified') {
-      setError('Tu cuenta debe estar verificada. Haz clic en el botón de abajo para verificar tu identidad con 1-click.');
-      return;
+      throw new Error('Tu identidad debe estar verificada por un administrador antes de reservar.');
     }
-
     if (!acceptContract || !signatureDataUrl) {
-      setError('Debes aceptar y firmar electrónicamente el Contrato Digital de Arrendamiento (Ley 18.101).');
       setBookingStep(1);
-      return;
+      throw new Error('Debes aceptar y firmar electrónicamente el contrato de arrendamiento.');
     }
-
     if (startDate < todayStr) {
-      setError('La fecha de la reserva debe ser desde el día actual hacia adelante.');
-      return;
+      throw new Error('La fecha de la reserva debe ser desde el día actual hacia adelante.');
     }
-
     if (endDate < startDate) {
-      setError('La fecha de término no puede ser anterior a la fecha de inicio.');
-      return;
+      throw new Error('La fecha de término no puede ser anterior a la fecha de inicio.');
     }
 
-    setLoading(true);
     setError(null);
+    const res = await createBooking({
+      space: space!,
+      startDate,
+      endDate,
+      totalDays: calculations.units,
+      subtotalClp: calculations.subtotal,
+      platformFeeClp: calculations.platformFee,
+      securityDepositClp: calculations.deposit,
+      totalClp: calculations.total,
+      intendedUse: intendedUse.trim(),
+      signatureImage: signatureDataUrl,
+      signatureType: 'digital_canvas',
+      discountCode: discount?.code,
+      discountClp: calculations.discount,
+      rentalModality: activeModality,
+      hourStart: activeModality === 'por_hora' ? hourStart : undefined,
+      hourEnd: activeModality === 'por_hora' ? hourEnd : undefined,
+      timeSlotString: activeModality === 'por_hora' ? `${String(hourStart).padStart(2, '0')}:00 a ${String(hourEnd).padStart(2, '0')}:00 hrs` : undefined,
+      rentalMonth: activeModality === 'mensual' ? selectedMonth : undefined,
+      durationUnits: calculations.units,
+      priceUnit: activeModality === 'por_hora' ? 'hour' : activeModality === 'mensual' ? 'month' : 'day',
+    });
 
-    try {
-      const activeModality = space!.rentalModality === 'abierto' ? selectedModality : (space!.rentalModality || selectedModality || 'por_dia');
-      const res = await createBooking({
-        space: space!,
-        startDate,
-        endDate,
-        totalDays: calculations.units,
-        subtotalClp: calculations.subtotal,
-        platformFeeClp: calculations.platformFee,
-        securityDepositClp: calculations.deposit,
-        totalClp: calculations.total,
-        intendedUse: intendedUse.trim(),
-        signatureImage: signatureDataUrl,
-        signatureType: 'digital_canvas',
-        paymentSimulation: paymentData,
-        rentalModality: activeModality,
-        hourStart: activeModality === 'por_hora' ? hourStart : undefined,
-        hourEnd: activeModality === 'por_hora' ? hourEnd : undefined,
-        timeSlotString: activeModality === 'por_hora' ? `${String(hourStart).padStart(2, '0')}:00 a ${String(hourEnd).padStart(2, '0')}:00 hrs` : undefined,
-        rentalMonth: activeModality === 'mensual' ? selectedMonth : undefined,
-        durationUnits: calculations.units,
-        priceUnit: activeModality === 'por_hora' ? 'hour' : activeModality === 'mensual' ? 'month' : 'day',
-      });
-
-      onClose();
-      onSuccess(res.contract);
-    } catch (err: any) {
-      setError(err.message || 'Error al procesar la reserva.');
-    } finally {
-      setLoading(false);
-    }
+    await startWebpayPayment(res.reservation.id);
   };
 
   // Enviar Solicitud de Visita
@@ -609,7 +589,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                     <div className="text-xs sm:text-[13px] text-slate-800 space-y-3.5 leading-relaxed">
                       <p>
-                        En Santiago de Chile, a 18-09-2026, se celebra el presente contrato de arrendamiento entre las siguientes partes:
+                        En Santiago de Chile, a {new Date().toLocaleDateString('es-CL')}, se celebra el presente contrato de arrendamiento entre las siguientes partes:
                       </p>
                       
                       <div className="space-y-2 py-1">
@@ -769,8 +749,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-indigo-700 leading-relaxed">
-                        Para arriendos regidos por la Ley 18.101 tu identidad debe estar validada. Puedes activar la verificación rápida para continuar la prueba inmediatamente:
+                        Para arriendos regidos por la Ley 18.101 tu identidad debe estar validada por un administrador (cédula, selfie y certificado de antecedentes).
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          navigate('/onboarding');
+                        }}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        Verificar mi identidad
+                      </button>
                     </div>
                   ) : (
                     <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
@@ -781,11 +771,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                   {/* Componente Modular de Pago Webpay */}
                   <WebpayPaymentBox
-                    totalAmountClp={calculations.total}
-                    initialCardHolder={currentUser?.fullName.toUpperCase()}
-                    initialRut={currentUser?.rut}
-                    onPaymentSuccess={handlePaymentSuccess}
+                    units={calculations.units}
+                    unitLabel={calculations.label}
+                    basePrice={calculations.basePrice}
+                    subtotalClp={calculations.subtotal}
+                    platformFeeClp={calculations.platformFee}
+                    depositClp={calculations.deposit}
+                    discount={discount}
+                    onDiscountChange={setDiscount}
+                    onPay={handlePay}
                     onCancel={() => setBookingStep(1)}
+                    disabled={!currentUser || currentUser.verificationStatus !== 'verified'}
                   />
                 </div>
               )}

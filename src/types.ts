@@ -10,6 +10,16 @@ export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'rejecte
 
 export type SpaceCategory = 'office' | 'cowork' | 'event' | 'studio' | 'warehouse' | 'retail';
 
+export type PaymentStatus =
+  | 'pending'
+  | 'paid'
+  | 'failed'
+  | 'refund_pending'
+  | 'refunded'
+  | 'partially_refunded'
+  | 'not_required'
+  | 'legacy_simulated';
+
 export type DisputeStatus = 'none' | 'opened' | 'in_review' | 'resolved';
 
 export interface AuditMetadata {
@@ -68,6 +78,8 @@ export interface UserProfile {
   createdAt: string;
   commune?: string;
   city?: string;
+  isSuspended?: boolean;
+  suspendedReason?: string;
 }
 
 export type PriceUnit = 'hour' | 'day' | 'month';
@@ -188,8 +200,16 @@ export interface Reservation {
   securityDepositClp: number;
   totalClp: number;
   intendedUse: string; // Caja obligatoria donde el arrendatario expresa el uso
-  paymentSimulation?: PaymentSimulationData; // Simulación de pago con tarjeta
+  paymentSimulation?: PaymentSimulationData; // Pagos heredados del prototipo simulado
   status: ReservationStatus;
+  paymentStatus?: PaymentStatus;
+  discountCode?: string;
+  discountClp?: number;
+  refundAmountClp?: number;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  confirmedAt?: string;
+  paidAt?: string;
   digitalContractId?: string;
   createdAt: string;
   disputeStatus?: DisputeStatus;
@@ -212,6 +232,9 @@ export interface DigitalContract {
   clauses: string[];
   signedAt: string;
   contractHash: string;
+  hashAlgorithm?: string;
+  hashVersion?: string;
+  signerIp?: string;
   priceUnit?: PriceUnit;
   rentalModality?: 'por_hora' | 'por_dia' | 'mensual' | 'abierto';
   signatureImage?: string;
@@ -269,4 +292,85 @@ export interface NotificationItem {
   timestamp: string;
   read: boolean;
   link?: string;
+}
+
+export interface Review {
+  id: string;
+  spaceId: string;
+  reservationId: string;
+  tenantId: string;
+  tenantName: string;
+  rating: number;
+  comment?: string;
+  ownerReply?: string;
+  ownerRepliedAt?: string;
+  createdAt: string;
+}
+
+export type ReportStatus = 'open' | 'reviewing' | 'resolved' | 'dismissed';
+
+export interface UserReport {
+  id: string;
+  reporterId: string;
+  reporterEmail?: string;
+  targetType: 'space' | 'user';
+  targetSpaceId?: string;
+  targetUserId?: string;
+  targetLabel: string;
+  category: string;
+  description: string;
+  status: ReportStatus;
+  adminNotes?: string;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  reservationId: string;
+  buyOrder: string;
+  amountClp: number;
+  status: 'created' | 'authorized' | 'failed' | 'aborted' | 'refunded' | 'partially_refunded';
+  environment: 'integration' | 'production';
+  responseCode?: number;
+  authorizationCode?: string;
+  cardLast4?: string;
+  paymentTypeCode?: string;
+  installmentsNumber?: number;
+  transactionDate?: string;
+  refundedAmountClp: number;
+  createdAt: string;
+}
+
+export interface DiscountCode {
+  code: string;
+  description?: string;
+  percentOff: number;
+  maxDiscountClp?: number;
+  validFrom?: string;
+  validUntil?: string;
+  maxUses?: number;
+  usedCount: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface KpiSnapshot {
+  period_days: number;
+  generated_at: string;
+  kpi01_occupancy_pct: number | null;
+  kpi01_prev_occupancy_pct: number | null;
+  kpi01_variation_pct: number | null;
+  kpi02_confirmation_minutes: number | null;
+  kpi03_overbooking_count: number;
+  kpi04_conversion_pct: number | null;
+  kpi04_views: number;
+  kpi04_conversions: number;
+  kpi05_contract_pct: number | null;
+  kpi05_confirmed: number;
+  kpi06_kyc_review_hours: number | null;
+  kpi07_cancellation_pct: number | null;
+  kpi07_created: number;
+  kpi08_avg_rating: number | null;
+  kpi08_reviews: number;
 }

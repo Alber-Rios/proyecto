@@ -24,6 +24,7 @@ import {
 import { Space, Reservation } from '../types.ts';
 import { formatClp, formatRut, getSpaceAvailableModalities, getTodayIso, formatDateCl } from '../utils/formatters.ts';
 import { useApp } from '../context/AppContext.tsx';
+import { useSpaceReservations } from '../hooks/useSpaceReservations.ts';
 
 interface SpaceAvailabilityViewerProps {
   space: Space;
@@ -68,7 +69,6 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
   maintenanceBlocks = [],
   onRemoveMaintenance,
 }) => {
-  const { reservations } = useApp();
   const todayIso = useMemo(() => getTodayIso(), []);
   const availableModalities = useMemo(() => getSpaceAvailableModalities(space), [space]);
 
@@ -124,11 +124,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
   });
 
   // Reservas activas o históricas para este espacio específico
-  const spaceReservations = useMemo(() => {
-    return reservations.filter(
-      (r) => r.spaceId === space.id && r.status !== 'rejected' && r.status !== 'cancelled'
-    );
-  }, [reservations, space.id]);
+  const spaceReservations = useSpaceReservations(space);
 
   // Lista de horas operativas (08:00 a 22:00)
   const OPERATING_HOURS = useMemo(() => {

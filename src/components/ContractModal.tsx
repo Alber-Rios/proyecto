@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { verifyContractIntegrity, ContractIntegrityResult, isSha256Hex } from '../utils/contractHash.ts';
 import { DigitalContract } from '../types.ts';
 import { formatClp, formatRut } from '../utils/formatters.ts';
 import { downloadContractDocument } from '../utils/documentDownloader.ts';
@@ -9,6 +10,8 @@ import {
   CheckCircle2,
   Lock,
   Copy,
+  ShieldAlert,
+  Loader2,
 } from 'lucide-react';
 
 interface ContractModalProps {
@@ -18,7 +21,24 @@ interface ContractModalProps {
 }
 
 export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, onClose }) => {
+  const [integrity, setIntegrity] = useState<ContractIntegrityResult | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    setIntegrity(null);
+  }, [contract?.id]);
+
   if (!isOpen || !contract) return null;
+
+  // RF-26: recalcula el SHA-256 del contenido y lo compara con el sello registrado.
+  const handleVerify = async () => {
+    setVerifying(true);
+    try {
+      setIntegrity(await verifyContractIntegrity(contract));
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const handleCopyHash = () => {
     navigator.clipboard?.writeText(contract.contractHash);
@@ -58,7 +78,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
         <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
           <div className="flex items-center gap-1.5 text-slate-600 min-w-0 flex-wrap">
             <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Firma Token: </span>
+            <span>{isSha256Hex(contract.contractHash) ? 'SHA-256:' : 'Sello (formato anterior):'} </span>
             <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-800 font-semibold truncate max-w-[180px] sm:max-w-none">
               {contract.contractHash}
             </span>
@@ -111,29 +131,51 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
               <div className="text-sm font-bold text-slate-900 break-words">{contract.tenantName}</div>
               <div className="text-xs text-slate-600">RUT: {formatRut(contract.tenantRut)}</div>
               <div className="text-[10px] text-slate-400 font-mono truncate">
-                IP: {contract.tenantSignature.ip} • Hash: {contract.contractHash.slice(0, 16)}...
+                IP: {contract.signerIp || contract.tenantSignature.ip} • Hash: {contract.contractHash.slice(0, 16)}...
               </div>
               <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                <CheckCircle2 className="w-3 h-3 shrink-0" /> Suscripción Electrónica Válida
+                <CheckCircle2 className="w-3 h-3 shrink-0" /> Firma electrónica simple (Ley 19.799)
               </div>
             </div>
 
-            {/* Firma Propietario */}
+            {/* Propietario */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 min-w-0">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Firma Digital Propietario / Anfitrión
+                Propietario / Anfitrión
               </div>
               <div className="text-sm font-bold text-slate-900 break-words">{contract.ownerName}</div>
               <div className="text-xs text-slate-600">RUT: {formatRut(contract.ownerRut)}</div>
-              <div className="text-[10px] text-slate-400 font-mono">
-                Plataforma Spotly Chile (Mandataria)
-              </div>
-              <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                <CheckCircle2 className="w-3 h-3 shrink-0" /> Firmado Electrónicamente
+              <div className="text-[11px] text-slate-500">
+                Concurre mediante el Acuerdo de Adhesión de Anfitriones aceptado en la plataforma y la publicación de sus condiciones.
               </div>
             </div>
           </div>
         </div>
+
+        {integrity && (
+          <div
+            className={`px-4 sm:px-6 py-3 text-xs border-t flex items-start gap-2 ${
+              integrity.status === 'valid'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : integrity.status === 'legacy'
+                ? 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`}
+            role="status"
+          >
+            {integrity.status === 'valid' ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : (
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="font-bold">{integrity.message}</p>
+              {integrity.computedHash && (
+                <p className="font-mono text-[10px] break-all mt-1">Recalculado: {integrity.computedHash}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Footer con acciones */}
         <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
@@ -143,7 +185,15 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
               className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
             >
               <Download className="w-4 h-4 shrink-0" />
-              Descargar Contrato
+              Descargar PDF
+            </button>
+            <button
+              onClick={handleVerify}
+              disabled={verifying}
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+            >
+              {verifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4 shrink-0" />}
+              Verificar integridad
             </button>
             <button
               onClick={handlePrint}
