@@ -641,9 +641,9 @@ CREATE POLICY "Inserción de contratos"
 -- RLS: AUDIT_LOGS
 -- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Inserción de registros de auditoría" ON public.audit_logs;
-CREATE POLICY "Inserción de auditoría propia"
-  ON public.audit_logs FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL AND user_id = auth.uid()::text);
+DROP POLICY IF EXISTS "Inserción de auditoría propia" ON public.audit_logs;
+-- Sin política de INSERT: los registros solo los escriben funciones y triggers
+-- del servidor (public.write_audit), nunca el cliente.
 
 DROP POLICY IF EXISTS "Lectura de auditoría propia o admin" ON public.audit_logs;
 CREATE POLICY "Lectura de auditoría propia o admin"
@@ -944,9 +944,10 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- La IP y la fecha las fija el servidor; el cliente no puede falsificarlas.
-  NEW.ip := COALESCE(public.request_ip(), CASE WHEN public.is_trusted_context() THEN NEW.ip END, 'no disponible');
-  NEW.user_agent := COALESCE(public.request_user_agent(), NEW.user_agent);
+  -- La fecha la fija la base. La IP la informa el backend (p_ip de write_audit)
+  -- o se toma de las cabeceras del request que originó el evento.
+  NEW.ip := COALESCE(NEW.ip, public.request_ip(), 'no disponible');
+  NEW.user_agent := COALESCE(NEW.user_agent, public.request_user_agent());
   NEW.timestamp := now();
   RETURN NEW;
 END;
@@ -971,12 +972,20 @@ CREATE TRIGGER audit_logs_no_update_delete
   BEFORE UPDATE OR DELETE ON public.audit_logs
   FOR EACH ROW EXECUTE PROCEDURE public.audit_logs_append_only();
 
+-- Firmas anteriores (si existían) se eliminan para evitar llamadas ambiguas.
+DROP FUNCTION IF EXISTS public.write_audit(TEXT, TEXT, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.login_lock_status(TEXT);
+DROP FUNCTION IF EXISTS public.register_failed_login(TEXT);
+DROP FUNCTION IF EXISTS public.reset_login_attempts();
+
 -- Registro de auditoría generado por el propio servidor (no depende del cliente).
 CREATE OR REPLACE FUNCTION public.write_audit(
   p_action TEXT,
   p_severity TEXT,
   p_user_id TEXT,
-  p_details JSONB
+  p_details JSONB,
+  p_ip TEXT DEFAULT NULL,
+  p_user_agent TEXT DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -988,18 +997,21 @@ DECLARE
   v_role TEXT;
 BEGIN
   SELECT email, role INTO v_email, v_role FROM public.profiles WHERE id::text = p_user_id;
-  INSERT INTO public.audit_logs (action, user_id, user_email, user_role, severity, details)
+  INSERT INTO public.audit_logs (action, user_id, user_email, user_role, severity, details, ip, user_agent)
   VALUES (
     p_action,
     COALESCE(p_user_id, 'system'),
     COALESCE(v_email, 'sistema@spotly.cl'),
     COALESCE(v_role, 'admin'),
     p_severity,
-    COALESCE(p_details, '{}'::jsonb)
+    COALESCE(p_details, '{}'::jsonb),
+    p_ip,
+    p_user_agent
   );
 END;
 $$;
-REVOKE ALL ON FUNCTION public.write_audit(TEXT, TEXT, TEXT, JSONB) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.write_audit(TEXT, TEXT, TEXT, JSONB, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.write_audit(TEXT, TEXT, TEXT, JSONB, TEXT, TEXT) TO service_role;
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON public.audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_severity ON public.audit_logs(severity);
@@ -1055,6 +1067,7 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.notify_user(UUID, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.notify_user(UUID, TEXT, TEXT, TEXT, TEXT) TO service_role;
 
 -- Tiempo real para la campana de notificaciones.
 DO $$
@@ -1092,19 +1105,9 @@ BEGIN
   END IF;
 END $$;
 
--- Disponibilidad de RUT antes del registro (CP-02).
-CREATE OR REPLACE FUNCTION public.rut_available(p_rut TEXT)
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT NOT EXISTS (
-    SELECT 1 FROM public.profiles WHERE public.normalize_rut(rut) = public.normalize_rut(p_rut)
-  );
-$$;
-GRANT EXECUTE ON FUNCTION public.rut_available(TEXT) TO anon, authenticated;
+-- La unicidad del RUT la garantiza el índice único anterior. No se expone una
+-- función pública para consultar si un RUT existe (evita enumerar cuentas).
+DROP FUNCTION IF EXISTS public.rut_available(TEXT);
 
 -- Solo un administrador puede suspender o reactivar cuentas.
 CREATE OR REPLACE FUNCTION public.guard_profile_suspension()
@@ -1231,17 +1234,24 @@ WHERE p.verification_status = 'pending_review'
 
 -- Sin llave foránea a profiles a propósito: se registran intentos sobre correos
 -- que pueden no corresponder a ninguna cuenta.
+--
+-- El contador es por (correo, IP): un tercero desde otra red no puede bloquear
+-- una cuenta ajena. Además hay un límite global por IP (email = '*') contra la
+-- prueba masiva de contraseñas. Las funciones solo las ejecuta el backend
+-- (service_role) desde /api/auth; no están disponibles para anon/authenticated.
 CREATE TABLE IF NOT EXISTS public.login_attempts (
-  email TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  ip TEXT NOT NULL,
   failed_count INTEGER NOT NULL DEFAULT 0,
   first_failed_at TIMESTAMPTZ,
   locked_until TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (email, ip)
 );
 ALTER TABLE public.login_attempts ENABLE ROW LEVEL SECURITY;
 -- Sin políticas: solo accesible mediante las funciones siguientes.
 
-CREATE OR REPLACE FUNCTION public.login_lock_status(p_email TEXT)
+CREATE OR REPLACE FUNCTION public.login_lock_status(p_email TEXT, p_ip TEXT)
 RETURNS JSONB
 LANGUAGE sql
 STABLE
@@ -1253,29 +1263,25 @@ AS $$
     'locked_until', CASE WHEN max(locked_until) > now() THEN max(locked_until) END
   )
   FROM public.login_attempts
-  WHERE email = lower(trim(p_email));
+  WHERE ip = COALESCE(NULLIF(trim(p_ip), ''), 'desconocida')
+    AND email IN (lower(trim(p_email)), '*');
 $$;
 
-CREATE OR REPLACE FUNCTION public.register_failed_login(p_email TEXT)
-RETURNS JSONB
+-- Incrementa un contador con ventana deslizante y lo bloquea al llegar al máximo.
+CREATE OR REPLACE FUNCTION public.bump_login_counter(p_key TEXT, p_ip TEXT, p_max INTEGER)
+RETURNS public.login_attempts
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  c_max_attempts CONSTANT INTEGER := 5;
   c_window CONSTANT INTERVAL := interval '15 minutes';
   c_lock CONSTANT INTERVAL := interval '15 minutes';
-  v_email TEXT := lower(trim(p_email));
   v_row public.login_attempts;
 BEGIN
-  IF v_email IS NULL OR v_email = '' THEN
-    RETURN jsonb_build_object('locked', false, 'remaining', c_max_attempts);
-  END IF;
-
-  INSERT INTO public.login_attempts AS la (email, failed_count, first_failed_at, updated_at)
-  VALUES (v_email, 1, now(), now())
-  ON CONFLICT (email) DO UPDATE SET
+  INSERT INTO public.login_attempts AS la (email, ip, failed_count, first_failed_at, updated_at)
+  VALUES (p_key, p_ip, 1, now(), now())
+  ON CONFLICT (email, ip) DO UPDATE SET
     failed_count = CASE
       WHEN la.first_failed_at IS NULL
         OR la.first_failed_at < now() - c_window
@@ -1292,35 +1298,73 @@ BEGIN
     updated_at = now()
   RETURNING * INTO v_row;
 
-  IF v_row.failed_count >= c_max_attempts AND (v_row.locked_until IS NULL OR v_row.locked_until <= now()) THEN
-    UPDATE public.login_attempts SET locked_until = now() + c_lock WHERE email = v_email RETURNING * INTO v_row;
+  IF v_row.failed_count >= p_max AND (v_row.locked_until IS NULL OR v_row.locked_until <= now()) THEN
+    UPDATE public.login_attempts SET locked_until = now() + c_lock
+    WHERE email = p_key AND ip = p_ip
+    RETURNING * INTO v_row;
+  END IF;
+  RETURN v_row;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.register_failed_login(p_email TEXT, p_ip TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  c_max_per_account CONSTANT INTEGER := 5;
+  c_max_per_ip CONSTANT INTEGER := 20;
+  v_email TEXT := lower(trim(COALESCE(p_email, '')));
+  v_ip TEXT := COALESCE(NULLIF(trim(p_ip), ''), 'desconocida');
+  v_account public.login_attempts;
+  v_global public.login_attempts;
+  v_locked BOOLEAN;
+BEGIN
+  IF v_email = '' THEN
+    RETURN jsonb_build_object('locked', false);
+  END IF;
+
+  v_account := public.bump_login_counter(v_email, v_ip, c_max_per_account);
+  v_global := public.bump_login_counter('*', v_ip, c_max_per_ip);
+  v_locked := COALESCE(v_account.locked_until > now(), false) OR COALESCE(v_global.locked_until > now(), false);
+
+  IF v_locked AND (v_account.failed_count = c_max_per_account OR v_global.failed_count = c_max_per_ip) THEN
     PERFORM public.write_audit(
       'ACCOUNT_TEMPORARILY_LOCKED', 'security',
       COALESCE((SELECT id::text FROM public.profiles WHERE lower(email) = v_email), 'anonymous'),
-      jsonb_build_object('email', v_email, 'lockedUntil', v_row.locked_until, 'failedAttempts', v_row.failed_count)
+      jsonb_build_object('email', v_email, 'failedAttempts', v_account.failed_count,
+                         'ipAttempts', v_global.failed_count),
+      v_ip
     );
   END IF;
 
   RETURN jsonb_build_object(
-    'locked', COALESCE(v_row.locked_until > now(), false),
-    'locked_until', v_row.locked_until,
-    'remaining', GREATEST(c_max_attempts - v_row.failed_count, 0)
+    'locked', v_locked,
+    'locked_until', GREATEST(v_account.locked_until, v_global.locked_until),
+    'remaining', GREATEST(c_max_per_account - v_account.failed_count, 0)
   );
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.reset_login_attempts()
+CREATE OR REPLACE FUNCTION public.reset_login_attempts(p_email TEXT, p_ip TEXT)
 RETURNS VOID
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  DELETE FROM public.login_attempts WHERE email = lower(COALESCE(auth.email(), ''));
+  DELETE FROM public.login_attempts
+  WHERE email = lower(trim(p_email)) AND ip = COALESCE(NULLIF(trim(p_ip), ''), 'desconocida');
 $$;
 
-GRANT EXECUTE ON FUNCTION public.login_lock_status(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.register_failed_login(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.reset_login_attempts() TO authenticated;
+REVOKE ALL ON FUNCTION public.login_lock_status(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.bump_login_counter(TEXT, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.register_failed_login(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.reset_login_attempts(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.login_lock_status(TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.register_failed_login(TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.reset_login_attempts(TEXT, TEXT) TO service_role;
 
 -- ==============================================================================
 -- 5. ESPACIOS: CAMPOS PROTEGIDOS (RNF-06)
@@ -1384,9 +1428,10 @@ CREATE TABLE IF NOT EXISTS public.discount_codes (
   valid_from DATE,
   valid_until DATE,
   max_uses INTEGER CHECK (max_uses IS NULL OR max_uses > 0),
-  used_count INTEGER NOT NULL DEFAULT 0,
+  used_count INTEGER NOT NULL DEFAULT 0 CHECK (used_count >= 0),
   active BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT discount_codes_usage_limit CHECK (max_uses IS NULL OR used_count <= max_uses)
 );
 ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Administración de códigos de descuento" ON public.discount_codes;
@@ -1442,6 +1487,7 @@ BEGIN
   );
 END;
 $$;
+REVOKE ALL ON FUNCTION public.compute_discount(TEXT, NUMERIC) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticated;
 
 -- ==============================================================================
@@ -1533,6 +1579,7 @@ BEGIN
   RETURN v_count;
 END;
 $$;
+REVOKE ALL ON FUNCTION public.release_expired_payment_holds(TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.release_expired_payment_holds(TEXT) TO authenticated;
 
 -- Montos esperados según la tarifa publicada (misma regla que src/utils/pricing.ts).
@@ -1593,8 +1640,10 @@ AS $$
 DECLARE
   v_space public.spaces;
   v_expected JSONB;
-  v_discount JSONB;
   v_unit TEXT;
+  v_code TEXT;
+  v_percent INTEGER;
+  v_max_discount NUMERIC;
 BEGIN
   IF public.is_trusted_context() THEN
     RETURN NEW;
@@ -1635,15 +1684,28 @@ BEGIN
       v_expected->>'subtotal', v_expected->>'platform_fee', v_expected->>'deposit';
   END IF;
 
+  -- Descuento: validación y consumo en una sola sentencia UPDATE. La fila queda
+  -- bloqueada hasta el fin de la transacción, por lo que dos reservas simultáneas
+  -- no pueden usar el último cupo (la segunda reevalúa used_count y no lo obtiene).
   NEW.discount_clp := 0;
   IF NEW.discount_code IS NOT NULL AND trim(NEW.discount_code) <> '' THEN
-    v_discount := public.compute_discount(NEW.discount_code, NEW.subtotal_clp);
-    IF NOT (v_discount->>'valid')::boolean THEN
-      RAISE EXCEPTION 'Código de descuento inválido: %', v_discount->>'message';
+    UPDATE public.discount_codes d
+    SET used_count = d.used_count + 1
+    WHERE d.code = upper(trim(NEW.discount_code))
+      AND d.active
+      AND (d.valid_from IS NULL OR d.valid_from <= public.chile_today())
+      AND (d.valid_until IS NULL OR d.valid_until >= public.chile_today())
+      AND (d.max_uses IS NULL OR d.used_count < d.max_uses)
+    RETURNING d.code, d.percent_off, d.max_discount_clp INTO v_code, v_percent, v_max_discount;
+
+    IF v_code IS NULL THEN
+      RAISE EXCEPTION 'Código de descuento inválido, vencido o sin cupos disponibles';
     END IF;
-    NEW.discount_code := v_discount->>'code';
-    NEW.discount_clp := (v_discount->>'discount_clp')::numeric;
-    UPDATE public.discount_codes SET used_count = used_count + 1 WHERE code = NEW.discount_code;
+    NEW.discount_code := v_code;
+    NEW.discount_clp := round(NEW.subtotal_clp * v_percent / 100.0);
+    IF v_max_discount IS NOT NULL THEN
+      NEW.discount_clp := LEAST(NEW.discount_clp, v_max_discount);
+    END IF;
   ELSE
     NEW.discount_code := NULL;
   END IF;
@@ -1653,6 +1715,10 @@ BEGIN
   END IF;
 
   NEW.owner_id := v_space.owner_id;
+  NEW.owner_name := v_space.owner_name;
+  NEW.owner_rut := v_space.owner_rut;
+  NEW.space_title := v_space.title;
+  NEW.space_address := v_space.address || ', ' || v_space.commune;
   NEW.status := 'pending';
   NEW.payment_status := 'pending';
   NEW.payment_simulation := NULL;
@@ -1808,6 +1874,12 @@ BEGIN
       jsonb_build_object('reservationId', NEW.id, 'spaceId', NEW.space_id, 'totalClp', NEW.total_clp,
                          'discountClp', NEW.discount_clp, 'period', NEW.booking_period::text));
     RETURN NEW;
+  END IF;
+
+  IF NEW.discount_code IS NOT NULL AND OLD.payment_status = 'pending' AND NEW.payment_status = 'failed' THEN
+    UPDATE public.discount_codes
+    SET used_count = GREATEST(used_count - 1, 0)
+    WHERE code = NEW.discount_code;
   END IF;
 
   IF NEW.payment_status IS DISTINCT FROM OLD.payment_status AND NEW.payment_status = 'paid' THEN
@@ -2281,6 +2353,7 @@ BEGIN
     CASE WHEN p_suspend THEN 'error' ELSE 'success' END, '/support');
 END;
 $$;
+REVOKE ALL ON FUNCTION public.admin_set_user_suspension(UUID, BOOLEAN, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_set_user_suspension(UUID, BOOLEAN, TEXT) TO authenticated;
 
 -- ==============================================================================
@@ -2417,6 +2490,7 @@ BEGIN
   );
 END;
 $$;
+REVOKE ALL ON FUNCTION public.admin_kpis(INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_kpis(INTEGER) TO authenticated;
 
 -- ==============================================================================
@@ -2433,6 +2507,128 @@ GRANT SELECT ON public.payments, public.kyc_verifications TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
+
+
+-- ==============================================================================
+-- 16. DATOS PRIVADOS DE LOS ESPACIOS (RUT del propietario y dirección exacta)
+-- ==============================================================================
+-- RLS filtra filas, no columnas. Por eso la lectura pública de spaces se limita
+-- con privilegios por columna: anon y authenticated no pueden leer owner_rut ni
+-- address. Esos datos se entregan solo al propietario, a administración y a quien
+-- tiene una reserva en el espacio, mediante get_spaces_private_details().
+REVOKE SELECT ON public.spaces FROM anon, authenticated;
+GRANT SELECT (
+  id, owner_id, owner_name, owner_verified, title, description, category,
+  space_environment, rental_modality, enabled_modalities, price_unit, commune, region,
+  price_per_day, price_per_hour, price_per_month, capacity, surface_m2, amenities,
+  rules, opening_hours, security_deposit, images, is_verified, status, rating,
+  reviews_count, min_booking_days, min_booking_hours, instant_booking, created_at, updated_at
+) ON public.spaces TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.get_spaces_private_details()
+RETURNS TABLE (space_id TEXT, owner_rut TEXT, address TEXT)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT s.id, s.owner_rut, s.address
+  FROM public.spaces s
+  WHERE public.is_admin()
+     OR s.owner_id = auth.uid()
+     OR EXISTS (
+       SELECT 1 FROM public.reservations r
+       WHERE r.space_id = s.id
+         AND r.tenant_id = auth.uid()
+         AND r.status IN ('pending', 'confirmed', 'completed')
+     )
+     OR EXISTS (
+       SELECT 1 FROM public.visit_requests v
+       WHERE v.space_id = s.id
+         AND v.tenant_id = auth.uid()
+         AND v.status IN ('pending', 'confirmed')
+     );
+$$;
+REVOKE ALL ON FUNCTION public.get_spaces_private_details() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_spaces_private_details() TO authenticated;
+
+-- ==============================================================================
+-- 17. AUDITORÍA DE EVENTOS DE NEGOCIO GENERADA EN EL SERVIDOR (RF-33)
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.audit_entity_changes()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_actor TEXT := COALESCE(auth.uid()::text, 'system');
+BEGIN
+  IF TG_TABLE_NAME = 'spaces' THEN
+    IF TG_OP = 'INSERT' THEN
+      PERFORM public.write_audit('SPACE_PUBLISHED', 'info', v_actor,
+        jsonb_build_object('spaceId', NEW.id, 'title', NEW.title, 'status', NEW.status));
+    ELSIF TG_OP = 'DELETE' THEN
+      PERFORM public.write_audit('SPACE_DELETED', 'warning', v_actor,
+        jsonb_build_object('spaceId', OLD.id, 'title', OLD.title));
+      RETURN OLD;
+    ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+      PERFORM public.write_audit('SPACE_STATUS_CHANGED', 'info', v_actor,
+        jsonb_build_object('spaceId', NEW.id, 'from', OLD.status, 'to', NEW.status));
+    ELSIF NEW.price_per_day IS DISTINCT FROM OLD.price_per_day
+       OR NEW.price_per_hour IS DISTINCT FROM OLD.price_per_hour
+       OR NEW.price_per_month IS DISTINCT FROM OLD.price_per_month THEN
+      PERFORM public.write_audit('SPACE_PRICES_CHANGED', 'info', v_actor,
+        jsonb_build_object('spaceId', NEW.id));
+    END IF;
+  ELSIF TG_TABLE_NAME = 'disputes' THEN
+    IF TG_OP = 'INSERT' THEN
+      PERFORM public.write_audit('DISPUTE_OPENED', 'warning', v_actor,
+        jsonb_build_object('disputeId', NEW.id, 'reservationId', NEW.reservation_id));
+    ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+      PERFORM public.write_audit('DISPUTE_STATUS_CHANGED', 'security', v_actor,
+        jsonb_build_object('disputeId', NEW.id, 'from', OLD.status, 'to', NEW.status));
+    END IF;
+  ELSIF TG_TABLE_NAME = 'profiles' THEN
+    IF NEW.role IS DISTINCT FROM OLD.role OR NEW.owner_terms_accepted IS DISTINCT FROM OLD.owner_terms_accepted THEN
+      PERFORM public.write_audit('ROLE_CHANGED', 'security', v_actor,
+        jsonb_build_object('targetUserId', NEW.id, 'from', OLD.role, 'to', NEW.role,
+                           'ownerTermsAccepted', NEW.owner_terms_accepted));
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS audit_spaces_changes ON public.spaces;
+CREATE TRIGGER audit_spaces_changes
+  AFTER INSERT OR UPDATE OR DELETE ON public.spaces
+  FOR EACH ROW EXECUTE PROCEDURE public.audit_entity_changes();
+
+DROP TRIGGER IF EXISTS audit_disputes_changes ON public.disputes;
+CREATE TRIGGER audit_disputes_changes
+  AFTER INSERT OR UPDATE ON public.disputes
+  FOR EACH ROW EXECUTE PROCEDURE public.audit_entity_changes();
+
+DROP TRIGGER IF EXISTS audit_profiles_changes ON public.profiles;
+CREATE TRIGGER audit_profiles_changes
+  AFTER UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE PROCEDURE public.audit_entity_changes();
+
+-- La bitácora solo se lee desde el cliente; nunca se escribe ni se modifica.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.audit_logs FROM anon, authenticated;
+-- La tabla de intentos de acceso no es accesible desde el cliente.
+REVOKE ALL ON public.login_attempts FROM anon, authenticated;
+
+-- Supabase concede por defecto todos los privilegios de las tablas nuevas a anon y
+-- authenticated; aquí se dejan solo los necesarios (mínimo privilegio, RNF-06).
+REVOKE ALL ON public.payments, public.kyc_verifications, public.notifications, public.favorites,
+  public.user_reports, public.discount_codes, public.audit_logs, public.contracts,
+  public.reservations, public.disputes, public.visit_requests, public.profiles
+  FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.spaces, public.reviews FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.payments, public.kyc_verifications FROM authenticated;
+REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 
 COMMIT;
 

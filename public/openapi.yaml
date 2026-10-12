@@ -49,6 +49,40 @@ paths:
                 type: object
                 properties:
                   ip: { type: string, nullable: true }
+  /api/auth?action=login:
+    post:
+      summary: Inicio de sesión con bloqueo por intentos fallidos y control de suspensión (RNF-04, RF-32)
+      description: |
+        Aplica un bloqueo de 15 minutos tras 5 intentos fallidos por correo e IP, y tras
+        20 intentos fallidos por IP. Registra el evento en la auditoría con la IP real.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Sesión creada; el cliente la establece con supabase.auth.setSession.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  session:
+                    type: object
+                    properties:
+                      access_token: { type: string }
+                      refresh_token: { type: string }
+        '401': { description: Credenciales inválidas (mensaje genérico), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Cuenta suspendida, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: Bloqueo temporal por intentos fallidos, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '503': { description: Backend sin configurar, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /api/webpay?action=create:
     post:
       summary: Crea una transacción Webpay Plus para una reserva pendiente de pago (RF-17)

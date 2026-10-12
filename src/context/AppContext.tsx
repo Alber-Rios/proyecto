@@ -16,7 +16,8 @@ import {
   PaymentRecord,
 } from '../types.ts';
 import { saveAuditLog, getAuditLogs, buildAuditMetadata, fetchClientIp, SERVER_RECORDED_IP } from '../utils/auditLogger.ts';
-import { callApi } from '../utils/api.ts';
+import { callApi, loginThroughServer } from '../utils/api.ts';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { generateDigitalContract } from '../utils/contractGenerator.ts';
 import { getTodayIso, capitalizeInitial, formatFullName } from '../utils/formatters.ts';
 import { isAtLeast18 } from '../utils/ageValidation.ts';
@@ -33,7 +34,6 @@ import {
   getContractsFromDb,
   insertContractToDb,
   getAuditLogsFromDb,
-  insertAuditLogToDb,
   getDisputesFromDb,
   insertDisputeToDb,
   updateDisputeInDb,
@@ -41,6 +41,7 @@ import {
   updateProfileInDb,
   getVisitRequestsFromDb,
   insertVisitRequestToDb,
+  getSpacePrivateDetails,
 } from '../lib/supabase.ts';
 import {
   getFavoriteIdsFromDb,
@@ -54,10 +55,6 @@ import {
   getPaymentsFromDb,
   insertReportToDb,
   setUserSuspensionInDb,
-  getLoginLockStatus,
-  registerFailedLogin,
-  resetLoginAttempts,
-  isRutAvailable,
 } from '../lib/dataAccess.ts';
 
 interface AppContextType {
@@ -187,6 +184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [favoritesByUser, setFavoritesByUser] = useState<Record<string, string[]>>({});
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getAuditLogs());
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [spacePrivateDetails, setSpacePrivateDetails] = useState<Record<string, { ownerRut: string; address: string }>>({});
 
   // Notificaciones: se persisten en Supabase (tabla notifications) y llegan en tiempo real.
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -194,7 +192,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Carga de datos propios del usuario autenticado y suscripción en tiempo real.
   useEffect(() => {
     if (!currentUser || !isSupabaseConfigured()) {
+      // Al cerrar sesión no deben quedar en memoria datos de la cuenta anterior.
       setNotifications([]);
+      setSpacePrivateDetails({});
+      setReservations([]);
+      setContracts([]);
+      setDisputes([]);
+      setVisitRequests([]);
+      setPayments([]);
       return;
     }
     const userId = currentUser.id;
@@ -209,6 +214,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getPaymentsFromDb().then((items) => {
       if (active) setPayments(items);
     });
+    getSpacePrivateDetails().then((details) => {
+      if (active) setSpacePrivateDetails(details);
+    });
+    Promise.all([getReservationsFromDb(), getContractsFromDb(), getDisputesFromDb(), getVisitRequestsFromDb()]).then(
+      ([dbReservations, dbContracts, dbDisputes, dbVisits]) => {
+        if (!active) return;
+        setReservations(dbReservations);
+        setContracts(dbContracts);
+        setDisputes(dbDisputes);
+        setVisitRequests(dbVisits);
+      }
+    );
 
     const channel = supabase
       .channel(`notifications-${userId}`)
@@ -252,14 +269,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
       details,
     });
+    // Solo registro local de la sesión: la bitácora persistente la escribe
+    // exclusivamente el servidor (triggers y backend), nunca el cliente.
     setAuditLogs((prev) => [log, ...prev]);
-
-    // Persistir en Supabase DB si está configurado
-    if (isSupabaseConfigured()) {
-      insertAuditLogToDb(log).catch((err) => {
-        console.warn('Error al guardar log de auditoría en Supabase:', err);
-      });
-    }
   };
 
   // Inicialización y Carga de Datos desde Supabase al montar el componente
@@ -309,11 +321,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // 2. Cargar tablas desde Supabase DB
+        // Sin sesión solo se leen datos públicos: el resto de las tablas no es
+        // accesible para el rol anónimo.
+        const hasSession = Boolean(sessionData?.session?.user);
         let profileError: string | null = null;
-        const profilesPromise = getProfilesFromDb().catch((profileLoadErr) => {
-          profileError = profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.';
-          return [];
-        });
+        const profilesPromise = hasSession
+          ? getProfilesFromDb().catch((profileLoadErr) => {
+              profileError = profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.';
+              return [];
+            })
+          : Promise.resolve([]);
         const [
           dbSpaces,
           dbReservations,
@@ -324,11 +341,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           dbProfiles,
         ] = await Promise.all([
           getSpacesFromDb(),
-          getReservationsFromDb(),
-          getContractsFromDb(),
-          getDisputesFromDb(),
-          getVisitRequestsFromDb(),
-          getAuditLogsFromDb(),
+          hasSession ? getReservationsFromDb() : Promise.resolve([]),
+          hasSession ? getContractsFromDb() : Promise.resolve([]),
+          hasSession ? getDisputesFromDb() : Promise.resolve([]),
+          hasSession ? getVisitRequestsFromDb() : Promise.resolve([]),
+          hasSession ? getAuditLogsFromDb() : Promise.resolve([]),
           profilesPromise,
         ]);
 
@@ -414,43 +431,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, message: 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.' };
       }
 
-      // RNF-04: bloqueo temporal tras intentos fallidos consecutivos.
-      const lock = await getLoginLockStatus(targetEmail);
-      if (lock.locked) {
-        const until = lock.lockedUntil ? new Date(lock.lockedUntil).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : '';
-        return {
-          success: false,
-          message: `Cuenta bloqueada temporalmente por intentos fallidos. Intenta nuevamente${until ? ` después de las ${until}` : ' en unos minutos'}.`,
-        };
+      // RNF-04: el inicio de sesión pasa por el backend, que aplica el bloqueo por
+      // intentos fallidos (por correo e IP) y la suspensión antes de entregar la sesión.
+      const serverLogin = await loginThroughServer(targetEmail, password);
+      let data: { user: SupabaseUser | null };
+
+      if (serverLogin.kind === 'error') {
+        return { success: false, message: serverLogin.message };
       }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: targetEmail,
-        password: password,
-      });
-
-      if (error) {
-        console.warn('Supabase Auth error:', error.message);
-        if (error.message.toLowerCase().includes('email not confirmed')) {
+      if (serverLogin.kind === 'session') {
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession(serverLogin.session);
+        if (sessionError || !sessionData.user) {
+          return { success: false, message: 'No se pudo iniciar la sesión. Inténtalo nuevamente.' };
+        }
+        data = { user: sessionData.user };
+      } else {
+        // Backend sin configurar (entorno de desarrollo): inicio de sesión directo,
+        // sin el bloqueo por intentos que aplica el servidor.
+        console.warn('Inicio de sesión sin backend: el bloqueo por intentos fallidos no está activo.');
+        const { data: directData, error } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
+        if (error) {
           return {
             success: false,
-            message: 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.',
+            message: error.message.toLowerCase().includes('email not confirmed')
+              ? 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.'
+              : 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.',
           };
         }
-        const attempt = await registerFailedLogin(targetEmail);
-        return {
-          success: false,
-          message: attempt.locked
-            ? 'Demasiados intentos fallidos: la cuenta quedó bloqueada por 15 minutos.'
-            : `Credenciales inválidas. Revisa tu correo electrónico o contraseña.${
-                attempt.remaining !== undefined && attempt.remaining <= 2
-                  ? ` Te quedan ${attempt.remaining} intento${attempt.remaining === 1 ? '' : 's'} antes del bloqueo temporal.`
-                  : ''
-              }`,
-        };
+        data = { user: directData.user };
       }
-
-      await resetLoginAttempts();
 
       if (data.user) {
         // Cargar datos de perfil desde la tabla profiles
@@ -515,20 +524,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (profileLoadErr) {
           setProfilesLoadError(profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.');
         }
-        // El registro se inserta con la sesión recién creada (user_id = auth.uid()).
-        insertAuditLogToDb({
-          id: '',
-          action: 'USER_LOGGED_IN',
-          severity: 'security',
-          userId: loggedUser.id,
-          userEmail: loggedUser.email,
-          userRole: loggedUser.role,
-          ip: SERVER_RECORDED_IP,
-          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-          timestamp: new Date().toISOString(),
-          details: { method: 'password' },
-        }).catch(() => undefined);
-
         return {
           success: true,
           message: `¡Bienvenido nuevamente, ${loggedUser.fullName.split(' ')[0]}!`,
@@ -622,9 +617,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!userData.password) {
         return { success: false, message: 'Debes ingresar una contraseña.' };
       }
-      if (!(await isRutAvailable(userData.rut))) {
-        return { success: false, message: 'Ya existe una cuenta registrada con este RUT.' };
-      }
       const userPassword = userData.password;
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -649,7 +641,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return {
           success: false,
           message: authError.message.toLowerCase().includes('database error')
-            ? 'No se pudo crear la cuenta: el RUT o el correo ya están registrados.'
+            ? 'No se pudo crear la cuenta con los datos ingresados. Si ya tienes una cuenta, inicia sesión o recupera tu contraseña.'
             : authError.message,
         };
       }
@@ -1029,11 +1021,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const contract = await generateDigitalContract({
       reservationId: reservation.id,
       spaceTitle: bookingData.space.title,
-      spaceAddress: `${bookingData.space.address}, ${bookingData.space.commune}, ${bookingData.space.region}`,
+      spaceAddress: `${reservation.spaceAddress}, ${bookingData.space.region}`,
       tenantName: currentUser.fullName,
       tenantRut: currentUser.rut,
-      ownerName: bookingData.space.ownerName,
-      ownerRut: bookingData.space.ownerRut,
+      ownerName: reservation.ownerName,
+      ownerRut: reservation.ownerRut || '',
       totalClp: reservation.totalClp,
       guaranteeDepositClp: reservation.securityDepositClp,
       discountClp: reservation.discountClp,
@@ -1064,6 +1056,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const finalReservation: Reservation = { ...reservation, digitalContractId: contract.id };
     setReservations((prev) => [finalReservation, ...prev.filter((r) => r.id !== finalReservation.id)]);
     setContracts((prev) => [contract, ...prev]);
+    getSpacePrivateDetails().then(setSpacePrivateDetails).catch(() => undefined);
 
     return { reservation: finalReservation, contract };
   };
@@ -1687,6 +1680,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditRecord('CARD_SET_DEFAULT', 'info', { cardId });
   };
 
+  // Espacios con los datos privados que el usuario actual está autorizado a ver.
+  const visibleSpaces = useMemo(
+    () =>
+      spaces.map((s) => {
+        const details = spacePrivateDetails[s.id];
+        return details ? { ...s, ownerRut: details.ownerRut, address: details.address } : s;
+      }),
+    [spaces, spacePrivateDetails]
+  );
+
   // Auxiliar para saber si el usuario actual tiene permisos de propietario
   const isOwnerCapable = useMemo(() => {
     if (!currentUser) return false;
@@ -1745,7 +1748,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         allUsers,
         profilesLoadError,
-        spaces,
+        spaces: visibleSpaces,
         reservations,
         contracts,
         auditLogs,

@@ -376,32 +376,3 @@ export async function getKpisFromDb(days = 30): Promise<KpiSnapshot> {
   if (error) throw new Error(error.message);
   return data as KpiSnapshot;
 }
-
-// 9. SEGURIDAD DE ACCESO (RNF-04) Y UNICIDAD DE RUT
-export async function getLoginLockStatus(email: string): Promise<{ locked: boolean; lockedUntil?: string }> {
-  if (!isSupabaseConfigured()) return { locked: false };
-  const { data, error } = await supabase.rpc('login_lock_status', { p_email: email });
-  if (error || !data) return { locked: false };
-  return { locked: Boolean(data.locked), lockedUntil: data.locked_until || undefined };
-}
-
-export async function registerFailedLogin(
-  email: string
-): Promise<{ locked: boolean; lockedUntil?: string; remaining?: number }> {
-  if (!isSupabaseConfigured()) return { locked: false };
-  const { data, error } = await supabase.rpc('register_failed_login', { p_email: email });
-  if (error || !data) return { locked: false };
-  return { locked: Boolean(data.locked), lockedUntil: data.locked_until || undefined, remaining: data.remaining };
-}
-
-export async function resetLoginAttempts(): Promise<void> {
-  if (!isSupabaseConfigured()) return;
-  await supabase.rpc('reset_login_attempts');
-}
-
-export async function isRutAvailable(rut: string): Promise<boolean> {
-  if (!isSupabaseConfigured()) return true;
-  const { data, error } = await supabase.rpc('rut_available', { p_rut: rut });
-  if (error) return true; // La unicidad la garantiza igualmente el índice único de la base.
-  return Boolean(data);
-}

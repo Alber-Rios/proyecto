@@ -195,8 +195,28 @@ de `auth.users` y los archivos de Storage). Respalda antes de ejecutarlo.
 | `WEBPAY_ENV` | `integration` (por defecto). `production` solo con credenciales reales |
 | `WEBPAY_COMMERCE_CODE` / `WEBPAY_API_KEY` | Solo para producción |
 | `PUBLIC_APP_URL` | Opcional: URL pública (por ejemplo `https://tu-app.vercel.app`) |
+| `VITE_SUPABASE_ANON_KEY` | Ya existente; el backend de login también la usa |
 
 Sin `SUPABASE_SERVICE_ROLE_KEY` el pago responde 503 y la reserva no puede pagarse.
+
+### Seguridad de la base de datos
+- **Datos privados de espacios:** `owner_rut` y `address` no son legibles por `anon` ni
+  `authenticated` (privilegios por columna). Solo los obtienen el propietario, administración
+  y quien tiene una reserva o visita en el espacio, mediante `get_spaces_private_details()`.
+- **Bloqueo de acceso:** el inicio de sesión pasa por `/api/auth`. Las funciones de bloqueo
+  solo las ejecuta el backend (`service_role`); el contador es por correo + IP, con un límite
+  adicional por IP. No existe consulta pública de existencia de RUT.
+- **Auditoría:** el cliente no puede insertar, modificar ni borrar en `audit_logs`; los
+  registros los escriben triggers y el backend.
+- **Descuentos:** la validación y el consumo del cupo ocurren en un solo `UPDATE` con bloqueo
+  de fila, y un `CHECK` impide superar `max_uses`.
+- **Límite de Supabase Auth:** como el login pasa por el backend, Supabase ve la IP del servidor.
+  Revisa en *Authentication → Rate Limits* que el límite de inicios de sesión sea suficiente.
+
+### Pruebas de permisos
+Después del script de la base, ejecuta `supabase/tests/rls_security_tests.sql` en el SQL Editor.
+Prueba 28 operaciones con los roles anon, authenticated y admin y revierte todo al final. El
+resultado aparece como un error intencional con el detalle: debe decir `28 OK, 0 FALLA`.
 
 ### 3. Pago de prueba (ambiente de integración de Transbank)
 - Tarjeta VISA `4051 8856 0044 6623`, CVV `123`, cualquier fecha futura.

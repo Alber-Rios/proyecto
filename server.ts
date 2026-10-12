@@ -7,6 +7,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import webpayHandler from './api/webpay.ts';
 import clientIpHandler from './api/client-ip.ts';
+import authHandler from './api/auth.ts';
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ async function startServer() {
   // Pagos Webpay Plus e IP del cliente: mismos handlers que las Vercel Functions.
   app.all('/api/webpay', (req, res) => webpayHandler(req as any, res as any));
   app.get('/api/client-ip', (req, res) => clientIpHandler(req as any, res as any));
+  app.all('/api/auth', (req, res) => authHandler(req as any, res as any));
 
   // Endpoint de salud del servidor
   app.get('/api/health', (req, res) => {

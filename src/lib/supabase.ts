@@ -49,11 +49,35 @@ export const supabase: SupabaseClient = createClient(
 // ==============================================================================
 
 // 1. ESPACIOS / PROPIEDADES (spaces)
+// Columnas legibles públicamente. owner_rut y address no se exponen (privilegios por
+// columna en la base); se obtienen con getSpacePrivateDetails() cuando corresponde.
+export const SPACE_PUBLIC_COLUMNS = [
+  'id', 'owner_id', 'owner_name', 'owner_verified', 'title', 'description', 'category',
+  'space_environment', 'rental_modality', 'enabled_modalities', 'price_unit', 'commune', 'region',
+  'price_per_day', 'price_per_hour', 'price_per_month', 'capacity', 'surface_m2', 'amenities',
+  'rules', 'opening_hours', 'security_deposit', 'images', 'is_verified', 'status', 'rating',
+  'reviews_count', 'min_booking_days', 'min_booking_hours', 'instant_booking', 'created_at',
+].join(',');
+
+export async function getSpacePrivateDetails(): Promise<Record<string, { ownerRut: string; address: string }>> {
+  if (!isSupabaseConfigured()) return {};
+  const { data, error } = await supabase.rpc('get_spaces_private_details');
+  if (error) {
+    console.warn('No se pudieron cargar los datos privados de los espacios:', error.message);
+    return {};
+  }
+  const result: Record<string, { ownerRut: string; address: string }> = {};
+  for (const row of data || []) {
+    result[row.space_id] = { ownerRut: row.owner_rut || '', address: row.address || '' };
+  }
+  return result;
+}
+
 export async function getSpacesFromDb(): Promise<Space[]> {
   if (!isSupabaseConfigured()) return [];
   const { data, error } = await supabase
     .from('spaces')
-    .select('*')
+    .select(SPACE_PUBLIC_COLUMNS)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -65,7 +89,7 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     id: row.id,
     ownerId: row.owner_id,
     ownerName: row.owner_name,
-    ownerRut: row.owner_rut,
+    ownerRut: row.owner_rut || '',
     ownerVerified: row.owner_verified,
     title: row.title,
     description: row.description || '',
@@ -76,7 +100,7 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     priceUnit: row.price_unit,
     commune: row.commune,
     region: row.region,
-    address: row.address,
+    address: row.address || '',
     pricePerDay: Number(row.price_per_day),
     pricePerHour: row.price_per_hour ? Number(row.price_per_hour) : undefined,
     pricePerMonth: row.price_per_month ? Number(row.price_per_month) : undefined,
@@ -142,7 +166,7 @@ export async function insertSpaceToDb(space: Space): Promise<{ success: boolean;
     dbRow.id = space.id;
   }
 
-  const { data, error } = await supabase.from('spaces').insert([dbRow]).select().single();
+  const { data, error } = await supabase.from('spaces').insert([dbRow]).select(SPACE_PUBLIC_COLUMNS).single();
   if (error) {
     console.error('Error al insertar espacio en Supabase:', error.message);
     return { success: false, error: error.message };

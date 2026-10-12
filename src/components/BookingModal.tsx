@@ -284,7 +284,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       const visit = requestVisit({
         spaceId: space.id,
         spaceTitle: space.title,
-        spaceAddress: `${space.address}, ${space.commune}`,
+        spaceAddress: space.address ? `${space.address}, ${space.commune}` : space.commune,
         spaceImage: space.images?.[0] || '',
         tenantId: currentUser.id,
         tenantName: visitorName.trim(),
@@ -594,13 +594,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       
                       <div className="space-y-2 py-1">
                         <p>
-                          <strong>Arrendador (Propietario):</strong> {space.ownerName || 'Carlos Muñoz Echeverría'} (RUT: {space.ownerRut || '14.258.963-7'})
+                          <strong>Arrendador (Propietario):</strong> {space.ownerName} (RUT: {space.ownerRut ? formatRut(space.ownerRut) : 'se consigna en el contrato al confirmar'})
                         </p>
                         <p>
                           <strong>Arrendatario:</strong> {currentUser?.fullName || 'Usuario no registrado (Inicio de sesión requerido)'} (RUT: {currentUser?.rut || 'Pendiente de autenticación'})
                         </p>
                         <p>
-                          <strong>Inmueble:</strong> {space.title}, ubicado en {space.address}, {space.commune}.
+                          <strong>Inmueble:</strong> {space.title}, ubicado en {space.address ? `${space.address}, ` : ''}{space.commune}{space.address ? '' : ' (la dirección exacta se consigna en el contrato al confirmar)'}.
                         </p>
                       </div>
 

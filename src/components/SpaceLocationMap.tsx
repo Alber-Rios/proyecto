@@ -12,8 +12,10 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
   address,
   commune,
   region,
-  landmark = 'Metro Bellas Artes a 150m',
+  landmark,
 }) => {
+  // La dirección exacta solo se entrega a quien tiene una reserva en el espacio.
+  const shownAddress = address || 'Dirección exacta visible al confirmar tu reserva';
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
       <div className="p-5 sm:p-6 pb-4 flex items-center justify-between border-b border-slate-100">
@@ -23,7 +25,7 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
             <span>Ubicación y Entorno</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            {address} • {commune}
+            {shownAddress} • {commune}
           </p>
         </div>
         <span className="text-[11px] font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200/80">
@@ -129,8 +131,8 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
           {/* Main Landmark Card Pin */}
           <div className="bg-slate-900 text-white text-xs font-bold px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700 ring-4 ring-rose-500/20 whitespace-nowrap animate-bounce-short">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-            <span>{address.split(',')[0]}</span>
-            <span className="text-slate-400 font-normal">({landmark})</span>
+            <span>{address ? address.split(',')[0] : commune}</span>
+            {landmark && <span className="text-slate-400 font-normal">({landmark})</span>}
           </div>
 
           {/* Pin Arrow */}
@@ -143,7 +145,7 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
         {/* Bottom controls */}
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-700 border border-slate-200/80 flex items-center gap-2 shadow-xs">
           <Navigation className="w-3.5 h-3.5 text-rose-600" />
-          <span>Conectividad: Metro Línea 5 a pasos</span>
+          <span>Mapa referencial de la comuna</span>
         </div>
       </div>
     </div>

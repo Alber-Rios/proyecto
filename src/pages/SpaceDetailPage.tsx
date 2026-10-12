@@ -205,7 +205,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           </span>
 
           <span className="text-xs text-slate-500 hidden md:inline">
-            • {space.address.split(',')[0]}, {space.commune}
+            • {space.address ? `${space.address.split(',')[0]}, ` : ''}{space.commune}
           </span>
         </div>
 
@@ -243,8 +243,8 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
         </h1>
         <p className="text-slate-600 text-xs sm:text-sm flex items-center gap-1.5">
           <MapPin className="w-4 h-4 text-rose-600 shrink-0" />
-          <span className="font-semibold text-slate-800">{space.address}</span>
-          <span className="text-slate-500 hidden sm:inline">• {space.commune}, {space.region}</span>
+          <span className="font-semibold text-slate-800">{space.address || `${space.commune}, ${space.region}`}</span>
+          {space.address && <span className="text-slate-500 hidden sm:inline">• {space.commune}, {space.region}</span>}
         </p>
       </div>
 
@@ -567,9 +567,9 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  RUT: {formatRut(space.ownerRut)}
-                </p>
+                {space.ownerRut && (
+                  <p className="text-xs text-slate-500 mt-0.5">RUT: {formatRut(space.ownerRut)}</p>
+                )}
               </div>
             </div>
 
@@ -587,7 +587,6 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
             address={space.address}
             commune={space.commune}
             region={space.region}
-            landmark="Metro Bellas Artes a 150m"
           />
 
           {/* K. VALORACIONES (RF-29) */}
