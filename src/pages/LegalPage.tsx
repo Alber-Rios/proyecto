@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, FileText, ShieldCheck } from 'lucide-react';
+import { LEGAL_ENTITY } from '../data/legalEntity.ts';
 
-export type LegalDocument = 'terms' | 'privacy' | 'cookies';
+export type LegalDocument = 'notice' | 'terms' | 'privacy' | 'cookies';
 
 const documentLinks: Array<{ id: LegalDocument; href: string; label: string }> = [
+  { id: 'notice', href: '/aviso-legal', label: 'Aviso legal' },
   { id: 'terms', href: '/terminos', label: 'Términos y condiciones' },
   { id: 'privacy', href: '/privacidad', label: 'Política de privacidad' },
   { id: 'cookies', href: '/cookies', label: 'Política de cookies' },
@@ -26,6 +28,10 @@ const lawLinks = [
 ];
 
 const pages: Record<LegalDocument, { title: string; intro: string }> = {
+  notice: {
+    title: 'Aviso legal',
+    intro: 'Quién es responsable de Spotly, cómo contactarlo y en qué condiciones se puede usar el contenido de este sitio.',
+  },
   terms: {
     title: 'Términos y condiciones',
     intro: 'Reglas para usar Spotly, explorar espacios, publicar anuncios y enviar solicitudes de arriendo.',
@@ -100,6 +106,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
       <DraftNotice />
 
       <article className="rounded-3xl border border-slate-200 bg-white px-5 py-2 shadow-sm sm:px-8">
+        {document === 'notice' && <NoticeContent />}
         {document === 'terms' && <TermsContent />}
         {document === 'privacy' && <PrivacyContent />}
         {document === 'cookies' && <CookiesContent />}
@@ -118,6 +125,37 @@ export function LegalPage({ document }: { document: LegalDocument }) {
         </ul>
       </footer>
     </main>
+  );
+}
+
+function NoticeContent() {
+  return (
+    <>
+      <Section title="1. Responsable del sitio">
+        <ul className="list-none space-y-1">
+          <li><strong>Titular:</strong> {LEGAL_ENTITY.name}</li>
+          <li><strong>RUT:</strong> {LEGAL_ENTITY.rut}</li>
+          <li><strong>Domicilio:</strong> {LEGAL_ENTITY.address}</li>
+          <li><strong>Correo:</strong> {LEGAL_ENTITY.email}</li>
+          <li><strong>Teléfono:</strong> {LEGAL_ENTITY.phone}</li>
+        </ul>
+      </Section>
+      <Section title="2. Objeto">
+        <p>Spotly es una plataforma que conecta a personas que buscan un espacio con propietarios que los publican para arriendo por hora, día o mes. Spotly no es dueño de los espacios publicados; cada propietario responde por la veracidad de su publicación y por el estado del espacio.</p>
+      </Section>
+      <Section title="3. Condiciones de uso">
+        <p>El uso del sitio implica aceptar los <Link to="/terminos" className="text-rose-700 underline">términos y condiciones</Link>. El tratamiento de datos personales se rige por la <Link to="/privacidad" className="text-rose-700 underline">política de privacidad</Link> y el uso de cookies por la <Link to="/cookies" className="text-rose-700 underline">política de cookies</Link>.</p>
+      </Section>
+      <Section title="4. Propiedad intelectual">
+        <p>El diseño, los textos y el código de Spotly pertenecen a su titular. Las fotos y descripciones de cada espacio pertenecen a quien las publicó, que declara tener derecho a usarlas. No se permite copiar o reutilizar este contenido sin autorización.</p>
+      </Section>
+      <Section title="5. Responsabilidad">
+        <p>Spotly procura que el sitio funcione de forma continua y segura, pero puede tener interrupciones por mantenimiento o fallas de terceros. Los enlaces a sitios externos se entregan como referencia y Spotly no controla su contenido.</p>
+      </Section>
+      <Section title="6. Ley aplicable">
+        <p>Este aviso se rige por las leyes de la República de Chile, incluida la Ley N.º 19.496 sobre protección de los derechos de los consumidores. Los reclamos pueden presentarse al correo indicado arriba o ante el Servicio Nacional del Consumidor (SERNAC).</p>
+      </Section>
+    </>
   );
 }
 
@@ -184,7 +222,7 @@ function PrivacyContent() {
           <li><strong>Uso del servicio:</strong> publicaciones de espacios, ubicación, dirección que ingresa el propietario, fotos, precios, disponibilidad, favoritos, solicitudes de visita, reservas, contratos, mensajes de soporte y disputas.</li>
           <li><strong>Pagos:</strong> orden de compra, monto, estado, código de autorización, tipo de pago, cuotas y últimos cuatro dígitos de la tarjeta informados por Transbank (Webpay Plus). Spotly no recibe ni almacena el número completo de la tarjeta ni su código de seguridad.</li>
           <li><strong>Seguridad y auditoría:</strong> dirección IP, navegador y fecha de los eventos críticos (inicio de sesión, reservas, pagos, firma de contratos y verificaciones), conservados al menos 12 meses en una bitácora que no admite modificación.</li>
-          <li><strong>Verificación:</strong> según el flujo elegido, imágenes del frente y reverso de la cédula, selfie, RUT, nombre, número de serie, certificado u otros antecedentes aportados, resultados automáticos y notas de revisión. Estos archivos pueden incluir datos sensibles o biométricos.</li>
+          <li><strong>Verificación:</strong> según el flujo elegido, imágenes del frente y reverso de la cédula, selfie, RUT, nombre, número de serie, certificado de antecedentes y notas de la revisión manual que realiza el administrador. Estos archivos pueden incluir datos sensibles o biométricos.</li>
           <li><strong>Datos técnicos:</strong> el estado de sesión se conserva en el almacenamiento local del navegador. Los proveedores de alojamiento y autenticación pueden tratar datos técnicos necesarios para prestar, proteger y diagnosticar el servicio; deben precisarse según la configuración desplegada.</li>
         </ul>
       </Section>
@@ -198,10 +236,9 @@ function PrivacyContent() {
         <ul className="list-disc space-y-2 pl-5">
           <li><strong>Supabase:</strong> autenticación, base de datos y almacenamiento de archivos. El proyecto utiliza un bucket público para imágenes de espacios y buckets privados para documentos de verificación, biometría y contratos, sujetos a la configuración vigente del proyecto.</li>
           <li><strong>Vercel:</strong> alojamiento de la aplicación y ejecución de funciones de servidor.</li>
-          <li><strong>Google gemini API:</strong> cuando la clave de ese proveedor está configurada, las funciones de verificación pueden enviar imágenes de cédula, selfie y datos de referencia como nombre o RUT para análisis automatizado. Las condiciones de uso, retención y ubicación dependen del tipo de cuenta y configuración del proyecto de Google, que el responsable debe confirmar antes de procesar datos reales.</li>
-          <li><strong>Transbank:</strong> la versión revisada no realiza una conexión real con Transbank; el flujo mostrado es simulado. No se debe interpretar la pantalla como pago procesado.</li>
+          <li><strong>Transbank (Webpay Plus):</strong> procesa los pagos con tarjeta. Spotly no recibe ni guarda los datos de tu tarjeta; solo registra el resultado y el código de la transacción.</li>
         </ul>
-        <p>Los proveedores pueden alojar o procesar datos fuera de Chile. Deben identificarse las regiones efectivas de Supabase, Vercel y Google y evaluarse las condiciones aplicables antes de operar con personas reales.</p>
+        <p>Los proveedores pueden alojar o procesar datos fuera de Chile. Deben identificarse las regiones efectivas de Supabase y Vercel y evaluarse las condiciones aplicables antes de operar con personas reales.</p>
       </Section>
 
       <Section title="5. Conservación y seguridad">

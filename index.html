@@ -4,10 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spotly · Arriendo de espacios en Chile</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#0c0a09" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" /></noscript>
     <meta name="description" content="Arrienda oficinas, estudios, salones y bodegas en Chile por hora, día o mes. Revisa disponibilidad, precios y condiciones antes de reservar." />
     <meta property="og:title" content="Spotly · Arriendo de espacios en Chile" />
     <meta property="og:description" content="Arrienda oficinas, estudios, salones y bodegas en Chile por hora, día o mes. Revisa disponibilidad, precios y condiciones antes de reservar." />
@@ -15,7 +18,17 @@
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div style="min-height:100vh;background:#fafaf9;font-family:'Instrument Sans',system-ui,sans-serif">
+      <div style="height:64px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid #e7e5e4;background:#fff">
+        <span style="font-family:'Instrument Serif',Georgia,serif;font-size:26px;color:#0f172a">Spotly</span><span style="width:6px;height:6px;border-radius:50%;background:#e11d48;margin-left:6px"></span>
+      </div>
+      <div id="shell-hero" style="max-width:1280px;margin:20px auto 0;padding:0 12px">
+        <div style="border-radius:24px;background:#1c1917;color:#fff;padding:48px 24px">
+          <p style="font-family:'Instrument Serif',Georgia,serif;font-size:40px;line-height:1.05;margin:0;max-width:720px">Un lugar para trabajar, crear o reunirte. <em style="color:#fda4af">Por hora, día o mes.</em></p>
+        </div>
+      </div>
+    </div></div>
+    <script>if (location.pathname !== '/') document.getElementById('shell-hero').remove();</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,25 +1,29 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext.tsx';
 import { Header } from './components/Header.tsx';
 import { HomePage } from './pages/HomePage.tsx';
-import { SpaceDetailPage } from './pages/SpaceDetailPage.tsx';
-import { LoginPage } from './pages/LoginPage.tsx';
-import { RegisterPage } from './pages/RegisterPage.tsx';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx';
-import { OwnerDashboardPage } from './pages/OwnerDashboardPage.tsx';
-import { AdminDashboardPage } from './pages/AdminDashboardPage.tsx';
-import { TenantReservationsPage } from './pages/TenantReservationsPage.tsx';
-import { OnboardingPage } from './pages/OnboardingPage.tsx';
-import { ProfilePage } from './pages/ProfilePage.tsx';
-import { FavoritesPage } from './pages/FavoritesPage.tsx';
-import { SupportPage } from './pages/SupportPage.tsx';
-import { NotFoundPage } from './pages/NotFoundPage.tsx';
-import { LegalPage } from './pages/LegalPage.tsx';
-import { VerifyContractPage } from './pages/VerifyContractPage.tsx';
-import { OwnerUpgradeModal } from './components/OwnerUpgradeModal.tsx';
 import { Space } from './types.ts';
 import { Building2 } from 'lucide-react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { CookieBanner } from './components/CookieBanner.tsx';
+
+// Las páginas se cargan bajo demanda para que la portada descargue solo lo que necesita.
+const SpaceDetailPage = lazy(() => import('./pages/SpaceDetailPage.tsx').then((m) => ({ default: m.SpaceDetailPage })));
+const LoginPage = lazy(() => import('./pages/LoginPage.tsx').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage.tsx').then((m) => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.tsx').then((m) => ({ default: m.ForgotPasswordPage })));
+const OwnerDashboardPage = lazy(() => import('./pages/OwnerDashboardPage.tsx').then((m) => ({ default: m.OwnerDashboardPage })));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage.tsx').then((m) => ({ default: m.AdminDashboardPage })));
+const TenantReservationsPage = lazy(() => import('./pages/TenantReservationsPage.tsx').then((m) => ({ default: m.TenantReservationsPage })));
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage.tsx').then((m) => ({ default: m.OnboardingPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage.tsx').then((m) => ({ default: m.ProfilePage })));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage.tsx').then((m) => ({ default: m.FavoritesPage })));
+const SupportPage = lazy(() => import('./pages/SupportPage.tsx').then((m) => ({ default: m.SupportPage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage.tsx').then((m) => ({ default: m.NotFoundPage })));
+const LegalPage = lazy(() => import('./pages/LegalPage.tsx').then((m) => ({ default: m.LegalPage })));
+const VerifyContractPage = lazy(() => import('./pages/VerifyContractPage.tsx').then((m) => ({ default: m.VerifyContractPage })));
+const OwnerUpgradeModal = lazy(() => import('./components/OwnerUpgradeModal.tsx').then((m) => ({ default: m.OwnerUpgradeModal })));
+const SiteMapPage = lazy(() => import('./pages/SiteMapPage.tsx').then((m) => ({ default: m.SiteMapPage })));
 
 function AppContent() {
   const { currentUser, spaces } = useApp();
@@ -72,6 +76,8 @@ function AppContent() {
       'terms': '/terminos',
       'privacy': '/privacidad',
       'cookies': '/cookies',
+      'legal-notice': '/aviso-legal',
+      'sitemap': '/mapa-del-sitio',
       'verify-contract': '/verificar-contrato'
     };
     
@@ -105,6 +111,7 @@ function AppContent() {
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-hidden">
+        <Suspense fallback={<div className="min-h-[100vh] py-24 text-center text-sm text-slate-500" role="status">Cargando…</div>}>
         <Routes>
           <Route path="/" element={
             <HomePage
@@ -188,25 +195,32 @@ function AppContent() {
           } />
 
           <Route path="/verificar-contrato" element={<VerifyContractPage onOpenAuth={handleOpenAuth} />} />
+          <Route path="/aviso-legal" element={<LegalPage document="notice" />} />
+          <Route path="/mapa-del-sitio" element={<SiteMapPage />} />
           <Route path="/terminos" element={<LegalPage document="terms" />} />
           <Route path="/privacidad" element={<LegalPage document="privacy" />} />
           <Route path="/cookies" element={<LegalPage document="cookies" />} />
 
           <Route path="*" element={<NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} />} />
         </Routes>
+        </Suspense>
       </main>
 
       {/* Modal de Conversión de Arrendatario a Propietario (Aceptación de Términos) */}
-      <OwnerUpgradeModal
-        isOpen={isOwnerUpgradeModalOpen}
-        onClose={() => setIsOwnerUpgradeModalOpen(false)}
-        onSuccessNavigate={() => {
-          navigate('/owner');
-        }}
-      />
+      <Suspense fallback={null}>
+        {isOwnerUpgradeModalOpen && (
+          <OwnerUpgradeModal
+            isOpen={isOwnerUpgradeModalOpen}
+            onClose={() => setIsOwnerUpgradeModalOpen(false)}
+            onSuccessNavigate={() => {
+              navigate('/owner');
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* Footer Institucional Chileno */}
-      <footer className="bg-slate-900 text-slate-400 text-xs mt-16 border-t border-slate-800">
+      <footer className="bg-slate-900 text-slate-400 text-sm mt-16 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="space-y-3">
@@ -218,52 +232,64 @@ function AppContent() {
                   Spotly
                 </span>
               </div>
-              <p className="text-slate-400 leading-relaxed text-[11px]">
+              <p className="text-slate-400 leading-relaxed text-sm">
                 Una plataforma para encontrar y publicar espacios con modalidades de arriendo flexibles. Revisa los detalles y condiciones de cada publicación.
               </p>
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-3">Encuentra un espacio</h4>
-              <p className="text-[11px] leading-relaxed mb-3">Explora las publicaciones disponibles y revisa sus precios, ubicación y condiciones.</p>
+              <h2 className="text-white text-sm font-semibold mb-3">Encuentra un espacio</h2>
+              <p className="text-sm leading-relaxed mb-3">Explora las publicaciones disponibles y revisa sus precios, ubicación y condiciones.</p>
               <button type="button" onClick={() => handleNavigate('home')} className="text-rose-300 hover:text-white font-semibold transition">
                 Ir al catálogo
               </button>
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-3">Publica tu espacio</h4>
-              <p className="text-[11px] leading-relaxed mb-3">Administra tus publicaciones y solicitudes desde el panel de propietario.</p>
+              <h2 className="text-white text-sm font-semibold mb-3">Publica tu espacio</h2>
+              <p className="text-sm leading-relaxed mb-3">Administra tus publicaciones y solicitudes desde el panel de propietario.</p>
               <button type="button" onClick={handleOpenOwnerUpgrade} className="text-rose-300 hover:text-white font-semibold transition">
                 Comenzar a publicar
               </button>
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-3">¿Necesitas ayuda?</h4>
-              <p className="text-[11px] leading-relaxed mb-3">Encuentra orientación para tu cuenta, publicaciones y reservas.</p>
+              <h2 className="text-white text-sm font-semibold mb-3">¿Necesitas ayuda?</h2>
+              <p className="text-sm leading-relaxed mb-3">Encuentra orientación para tu cuenta, publicaciones y reservas.</p>
               <button type="button" onClick={() => handleNavigate('support')} className="text-rose-300 hover:text-white font-semibold transition">
                 Ir a ayuda y soporte
               </button>
             </div>
 
             <div>
-              <h4 className="text-white font-semibold mb-3">Información legal</h4>
-              <ul className="space-y-2 text-[11px]">
-                <li><button type="button" onClick={() => handleNavigate('terms')} className="text-slate-400 hover:text-white transition">Términos y condiciones</button></li>
-                <li><button type="button" onClick={() => handleNavigate('privacy')} className="text-slate-400 hover:text-white transition">Política de privacidad</button></li>
-                <li><button type="button" onClick={() => handleNavigate('cookies')} className="text-slate-400 hover:text-white transition">Política de cookies</button></li>
-                <li><button type="button" onClick={() => handleNavigate('verify-contract')} className="text-slate-400 hover:text-white transition">Verificar un contrato</button></li>
+              <h2 className="text-white text-sm font-semibold mb-3">Información legal</h2>
+              <ul className="space-y-1 text-sm">
+                {[
+                  ['/aviso-legal', 'Aviso legal'],
+                  ['/terminos', 'Términos y condiciones'],
+                  ['/privacidad', 'Política de privacidad'],
+                  ['/cookies', 'Política de cookies'],
+                  ['/verificar-contrato', 'Verificar un contrato'],
+                  ['/mapa-del-sitio', 'Mapa del sitio'],
+                ].map(([href, label]) => (
+                  <li key={href}>
+                    <Link to={href} onClick={() => window.scrollTo({ top: 0 })} className="inline-block py-1.5 text-slate-400 hover:text-white transition">
+                      {label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
+          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400">
             <span>© {new Date().getFullYear()} Spotly.</span>
             <span>La disponibilidad y las condiciones dependen de cada publicación.</span>
           </div>
         </div>
       </footer>
+
+      <CookieBanner />
     </div>
   );
 }

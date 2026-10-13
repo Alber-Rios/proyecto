@@ -145,7 +145,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
           <button
             type="button"
             onClick={onReset}
-            className="px-4 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 text-xs font-medium transition flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer whitespace-nowrap"
+            className="px-4 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-800 text-xs font-medium transition flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer whitespace-nowrap"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Limpiar</span>
@@ -162,7 +162,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
               <Clock className="w-3.5 h-3.5 text-rose-500" />
               Modalidad de cobro:
             </span>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
               {selectedRateModality === 'all' ? 'Todas' : selectedRateModality === 'hour' ? 'Por hora' : selectedRateModality === 'day' ? 'Por Día' : 'Por Mes'}
             </span>
           </div>
@@ -197,7 +197,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
               <Layers className="w-3.5 h-3.5 text-indigo-500" />
               Entorno:
             </span>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
               {selectedEnvironment === 'all' ? 'Todos' : selectedEnvironment === 'abierto' ? 'Abierto' : 'Cerrado'}
             </span>
           </div>
@@ -244,10 +244,10 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
         {/* Columna C: Superficie Mínima (3 cols) */}
         <div className="md:col-span-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 flex flex-col justify-between gap-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <label htmlFor="surface-range-slider" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Maximize2 className="w-3.5 h-3.5 text-emerald-600" />
               Superficie mínima:
-            </span>
+            </label>
             <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
               {minSurfaceM2} m²
             </span>

@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { lazy, Suspense, useState, useMemo } from 'react';
 import { Space, DigitalContract } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { SpaceCard } from '../components/SpaceCard.tsx';
 import { SpaceFilters } from '../components/SpaceFilters.tsx';
-import { BookingModal } from '../components/BookingModal.tsx';
-import { ContractModal } from '../components/ContractModal.tsx';
+const BookingModal = lazy(() => import('../components/BookingModal.tsx').then((m) => ({ default: m.BookingModal })));
+const ContractModal = lazy(() => import('../components/ContractModal.tsx').then((m) => ({ default: m.ContractModal })));
+
 import {
   Building,
   ArrowRight,
@@ -275,21 +276,24 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
-      {/* Modal de Reserva */}
-      <BookingModal
-        space={selectedSpace}
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-        onSuccess={handleBookingSuccess}
-        onOpenAuth={onOpenAuth}
-      />
-
-      {/* Modal de Visualización de Contrato Digital */}
-      <ContractModal
-        contract={createdContract}
-        isOpen={isContractOpen}
-        onClose={() => setIsContractOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isBookingOpen && (
+          <BookingModal
+            space={selectedSpace}
+            isOpen={isBookingOpen}
+            onClose={() => setIsBookingOpen(false)}
+            onSuccess={handleBookingSuccess}
+            onOpenAuth={onOpenAuth}
+          />
+        )}
+        {isContractOpen && (
+          <ContractModal
+            contract={createdContract}
+            isOpen={isContractOpen}
+            onClose={() => setIsContractOpen(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
