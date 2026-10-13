@@ -16,6 +16,7 @@ import {
 import type { Space, SpaceCategory, SpaceEnvironment } from '../types.ts';
 import { formatClp, getSpaceAvailableModalities } from '../utils/formatters.ts';
 import { CATEGORY_GROUPS, SPACE_CATEGORIES, getCategoryInfo, normalizeCategory } from '../utils/spaceCategories.ts';
+import { uploadSpaceImage } from '../lib/storage.ts';
 
 export type SpaceFormData = Omit<
   Space,
@@ -192,7 +193,9 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
     try {
       const room = MAX_IMAGES - images.length;
       const compressed = await Promise.all(files.slice(0, room).map(compressImage));
-      setImages((prev) => [...prev, ...compressed]);
+      // Se suben a Storage para no guardar imágenes pesadas dentro de la base de datos.
+      const uploaded = await Promise.all(compressed.map((dataUrl) => uploadSpaceImage(dataUrl, 'fotos')));
+      setImages((prev) => [...prev, ...uploaded]);
       if (files.length > room) setError(`Puedes subir hasta ${MAX_IMAGES} fotos.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar la imagen.');

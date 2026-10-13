@@ -213,21 +213,35 @@ async function handleFinish(req: VercelRequest, res: VercelResponse) {
     return redirect(back, 'rechazada');
   }
 
-  const { count } = await admin
+  const cardType = result.card_type || null;
+  const cardLast4 = (result.card_number || '').replace(/\D/g, '').slice(-4) || null;
+
+  // Si la misma tarjeta ya estaba guardada, se actualiza la existente en vez de duplicarla.
+  const { data: activeCards } = await admin
     .from('wallet_cards')
-    .select('id', { count: 'exact', head: true })
+    .select('id, card_type, card_last4, is_default')
     .eq('user_id', card.user_id)
-    .eq('status', 'active')
-    .eq('is_default', true);
+    .eq('status', 'active');
+  const duplicate = (activeCards || []).find(
+    (c: { card_type: string | null; card_last4: string | null }) =>
+      cardLast4 !== null && c.card_last4 === cardLast4 && (c.card_type || null) === cardType
+  );
+  if (duplicate) {
+    await admin.from('wallet_cards').update({ tbk_user: result.tbk_user }).eq('id', duplicate.id);
+    await admin.from('wallet_cards').delete().eq('id', card.id);
+    return redirect(back, 'ok');
+  }
+
+  const hasDefault = (activeCards || []).some((c: { is_default: boolean }) => c.is_default);
 
   await admin
     .from('wallet_cards')
     .update({
       status: 'active',
       tbk_user: result.tbk_user,
-      card_type: result.card_type || null,
-      card_last4: (result.card_number || '').replace(/\D/g, '').slice(-4) || null,
-      is_default: (count || 0) === 0,
+      card_type: cardType,
+      card_last4: cardLast4,
+      is_default: !hasDefault,
       inscription_token: null,
     })
     .eq('id', card.id);

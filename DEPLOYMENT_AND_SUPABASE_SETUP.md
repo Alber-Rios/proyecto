@@ -237,14 +237,16 @@ Especificación OpenAPI en `public/openapi.yaml` (publicada en `/openapi.yaml`).
 
 ## Actualización: categorías en español, garantía mensual opcional y billetera
 
-**Base de datos ya creada (sin perder datos):** en Supabase → SQL Editor ejecuta completo
-`supabase/migrations/2026-10-12_categorias_garantia_billetera.sql`. Este script:
+**Base de datos:** todo el esquema está en un único script, `supabase/reset-and-setup.sql`. En Supabase → SQL Editor pégalo completo y presiona Run. Es destructivo (borra los datos de Spotly, conserva las cuentas de `auth.users` y los archivos de Storage) y corre en una sola transacción: si algo falla no se aplica nada. Después vuelve a asignar tu administrador con `UPDATE public.profiles SET role = 'admin' WHERE email = 'TU_CORREO';`.
 
-- Cambia las categorías de espacio a español (departamento, casa, cabaña, quincho, sala de reuniones, etc.) y convierte las publicaciones existentes (`office` → `oficina`, `event` → `salon_eventos`, …).
-- Cobra garantía **solo en arriendos mensuales** y solo si el propietario la pidió al publicar.
-- Crea la tabla `wallet_cards` (billetera) y las columnas de Oneclick en `payments`.
+El script incluye:
 
-Si prefieres reiniciar todo, `supabase/reset-and-setup.sql` ya incluye estos cambios.
+- Categorías de espacio en español (departamento, casa, cabaña, quincho, sala de reuniones, etc.).
+- Garantía **solo en arriendos mensuales** y solo si el propietario la pide.
+- Billetera (`wallet_cards`) y columnas de Oneclick en `payments`.
+- Seguridad: RLS en todas las tablas, permisos mínimos por tabla, columna y función, `search_path` fijo en todas las funciones, sin SQL dinámico con datos del usuario (protección contra inyección SQL), validaciones de largo y rango en los campos y unicidad para evitar duplicados (RUT, espacios repetidos, visitas repetidas, tarjetas repetidas).
+
+**Disponibilidad 24/7:** `vercel.json` programa una llamada diaria a `/api/health` (Vercel Cron), que consulta la base y evita que un proyecto gratuito de Supabase se pause por inactividad. Para producción real se recomienda el plan Pro de Supabase (sin pausas y con respaldos diarios).
 
 **Billetera (Transbank Oneclick Mall):** la función `api/wallet.ts` inscribe tarjetas, las elimina y cobra reservas con una tarjeta guardada. En el ambiente de integración usa las credenciales públicas de prueba de Transbank, sin configurar nada. Para producción agrega en Vercel:
 

@@ -61,12 +61,20 @@ export async function uploadSpaceImage(
       }
     }
 
-    const fileName = `${spaceId}/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${extension}`;
+    // Las políticas de Storage exigen que la primera carpeta sea el id del usuario.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+    if (!userId) {
+      return typeof fileOrBase64 === 'string' ? fileOrBase64 : URL.createObjectURL(fileOrBase64);
+    }
+    const folder = (spaceId || 'fotos').replace(/[^a-zA-Z0-9_-]/g, '') || 'fotos';
+    const fileName = `${userId}/${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${extension}`;
     const { data, error } = await supabase.storage
       .from('spaces')
       .upload(fileName, blob, {
-        cacheControl: '3600',
-        upsert: true,
+        cacheControl: '31536000',
+        upsert: false,
+        contentType: blob.type || 'image/jpeg',
       });
 
     if (error) {
