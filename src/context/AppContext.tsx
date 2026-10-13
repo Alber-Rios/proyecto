@@ -9,14 +9,14 @@ import {
   UserRole,
   UserGender,
   PaymentSimulationData,
-  SavedCard,
+  WalletCard,
   ReservationStatus,
   DigitalContract,
   VisitRequest,
   PaymentRecord,
 } from '../types.ts';
 import { saveAuditLog, getAuditLogs, buildAuditMetadata, fetchClientIp, SERVER_RECORDED_IP } from '../utils/auditLogger.ts';
-import { callApi, loginThroughServer } from '../utils/api.ts';
+import { callApi, loginThroughServer, postToTransbank } from '../utils/api.ts';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { generateDigitalContract } from '../utils/contractGenerator.ts';
 import { getTodayIso, capitalizeInitial, formatFullName } from '../utils/formatters.ts';
@@ -42,6 +42,7 @@ import {
   getVisitRequestsFromDb,
   insertVisitRequestToDb,
   getSpacePrivateDetails,
+  fetchWalletCards,
 } from '../lib/supabase.ts';
 import {
   getFavoriteIdsFromDb,
@@ -67,21 +68,16 @@ interface AppContextType {
   auditLogs: AuditLog[];
   disputes: Dispute[];
   notifications: NotificationItem[];
-  savedCards: SavedCard[];
+  walletCards: WalletCard[];
   visitRequests: VisitRequest[];
   payments: PaymentRecord[];
   requestVisit: (data: Omit<VisitRequest, 'id' | 'createdAt' | 'status'>) => VisitRequest;
-  addSavedCard: (cardData: {
-    cardBrand: 'visa' | 'mastercard' | 'redcompra';
-    cardHolder: string;
-    last4: string;
-    expiryMonth: string;
-    expiryYear: string;
-    bankName: string;
-    isDefault?: boolean;
-  }) => void;
-  deleteSavedCard: (cardId: string) => void;
-  setDefaultCard: (cardId: string) => void;
+  // Billetera (tarjetas inscritas en Transbank Oneclick)
+  refreshWalletCards: () => Promise<void>;
+  addWalletCard: (returnTo?: string) => Promise<void>;
+  removeWalletCard: (cardId: string) => Promise<void>;
+  setDefaultWalletCard: (cardId: string) => Promise<void>;
+  payWithWalletCard: (reservationId: string, cardId: string) => Promise<void>;
   // Role & Session actions
   switchUser: (userId: string | null) => void;
   login: (emailOrRut: string, password?: string) => Promise<{ success: boolean; message?: string }>;
@@ -167,7 +163,6 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const INITIAL_SAVED_CARDS: SavedCard[] = [];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
@@ -179,7 +174,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [contracts, setContracts] = useState<DigitalContract[]>([]);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
-  const [savedCards, setSavedCards] = useState<SavedCard[]>(INITIAL_SAVED_CARDS);
+  const [walletCards, setWalletCards] = useState<WalletCard[]>([]);
   const [visitRequests, setVisitRequests] = useState<VisitRequest[]>([]);
   const [favoritesByUser, setFavoritesByUser] = useState<Record<string, string[]>>({});
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getAuditLogs());
@@ -1067,16 +1062,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { url, token } = await callApi<{ url: string; token: string }>('/api/webpay?action=create', {
       reservationId,
     });
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = url;
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'token_ws';
-    input.value = token;
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
+    postToTransbank(url, 'token_ws', token);
   };
 
   // Solicita a Transbank la reversa cuando la base dejó un reembolso pendiente.
@@ -1148,9 +1134,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persistir en Supabase DB
     if (isSupabaseConfigured()) {
-      insertSpaceToDb(newSpace).catch((err) =>
-        console.warn('Error al guardar espacio en Supabase DB:', err)
-      );
+      insertSpaceToDb(newSpace)
+        .then((result) => {
+          if (result.success && result.data?.id) {
+            // Reemplaza el id temporal por el definitivo de la base (y su estado de moderación).
+            setSpaces((prev) =>
+              prev.map((s) =>
+                s.id === newSpace.id ? { ...s, id: result.data.id, status: result.data.status ?? s.status } : s
+              )
+            );
+          } else if (!result.success) {
+            setSpaces((prev) => prev.filter((s) => s.id !== newSpace.id));
+            alert(`No se pudo publicar el espacio: ${result.error || 'error desconocido'}`);
+          }
+        })
+        .catch((err) => console.warn('Error al guardar espacio en Supabase DB:', err));
     }
 
     addAuditRecord('SPACE_PUBLISHED', 'info', {
@@ -1622,62 +1620,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Gestión de Tarjetas y Billetera Bancaria
-  const addSavedCard = (cardData: {
-    cardBrand: 'visa' | 'mastercard' | 'redcompra';
-    cardHolder: string;
-    last4: string;
-    expiryMonth: string;
-    expiryYear: string;
-    bankName: string;
-    isDefault?: boolean;
-  }) => {
-    if (!currentUser) return;
-    const newCard: SavedCard = {
-      id: `card-${Date.now()}`,
-      userId: currentUser.id,
-      cardBrand: cardData.cardBrand,
-      cardHolder: cardData.cardHolder.trim().toUpperCase(),
-      last4: cardData.last4,
-      expiryMonth: cardData.expiryMonth,
-      expiryYear: cardData.expiryYear,
-      bankName: cardData.bankName,
-      isDefault: cardData.isDefault ?? false,
-      createdAt: new Date().toISOString(),
-    };
-
-    setSavedCards((prev) => {
-      let updated = prev;
-      if (newCard.isDefault) {
-        updated = updated.map((c) =>
-          c.userId === currentUser.id ? { ...c, isDefault: false } : c
-        );
-      }
-      return [newCard, ...updated];
-    });
-
-    addAuditRecord('CARD_REGISTERED', 'info', {
-      cardBrand: newCard.cardBrand,
-      last4: newCard.last4,
-      bank: newCard.bankName,
-    });
+  // Billetera: tarjetas inscritas en Transbank Oneclick (Spotly solo ve tipo y últimos 4 dígitos).
+  const refreshWalletCards = async () => {
+    if (!currentUser || !isSupabaseConfigured()) {
+      setWalletCards([]);
+      return;
+    }
+    try {
+      setWalletCards(await fetchWalletCards());
+    } catch (err) {
+      console.warn('No se pudieron cargar las tarjetas de la billetera:', err);
+    }
   };
 
-  const deleteSavedCard = (cardId: string) => {
-    if (!currentUser) return;
-    setSavedCards((prev) => prev.filter((c) => c.id !== cardId));
-    addAuditRecord('CARD_DELETED', 'info', { cardId });
+  useEffect(() => {
+    refreshWalletCards();
+  }, [currentUser?.id]);
+
+  // Redirige al formulario de Transbank para inscribir una tarjeta.
+  const addWalletCard = async (returnTo?: string) => {
+    const { url, token } = await callApi<{ url: string; token: string }>('/api/wallet?action=inscribe', { returnTo });
+    postToTransbank(url, 'TBK_TOKEN', token);
   };
 
-  const setDefaultCard = (cardId: string) => {
-    if (!currentUser) return;
-    setSavedCards((prev) =>
-      prev.map((c) => {
-        if (c.userId !== currentUser.id) return c;
-        return { ...c, isDefault: c.id === cardId };
-      })
-    );
-    addAuditRecord('CARD_SET_DEFAULT', 'info', { cardId });
+  const removeWalletCard = async (cardId: string) => {
+    await callApi('/api/wallet?action=remove', { cardId });
+    await refreshWalletCards();
+  };
+
+  const setDefaultWalletCard = async (cardId: string) => {
+    await callApi('/api/wallet?action=default', { cardId });
+    await refreshWalletCards();
+  };
+
+  // Cobro inmediato con una tarjeta guardada; si es rechazado, el servidor libera el horario.
+  const payWithWalletCard = async (reservationId: string, cardId: string) => {
+    try {
+      await callApi('/api/wallet?action=pay', { reservationId, cardId });
+    } finally {
+      await refreshReservations();
+    }
   };
 
   // Espacios con los datos privados que el usuario actual está autorizado a ver.
@@ -1754,13 +1736,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         auditLogs,
         disputes,
         notifications: currentUser ? notifications.filter((n) => n.userId === currentUser.id) : [],
-        savedCards,
+        walletCards,
         visitRequests,
         payments,
         requestVisit,
-        addSavedCard,
-        deleteSavedCard,
-        setDefaultCard,
+        refreshWalletCards,
+        addWalletCard,
+        removeWalletCard,
+        setDefaultWalletCard,
+        payWithWalletCard,
         switchUser,
         login,
         logout,

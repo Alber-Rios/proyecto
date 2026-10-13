@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.tsx';
 import {
+  Wallet,
   Building2,
   ShieldCheck,
   UserCheck,
@@ -691,6 +692,34 @@ export const Header: React.FC<HeaderProps> = ({
                                   </span>
                                   <span className="block text-[11px] text-slate-400 truncate">
                                     Arriendos activos y contratos digitales
+                                  </span>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition" />
+                              </button>
+
+                              <button
+                                onClick={() => handleMenuNavigate('wallet')}
+                                className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition group cursor-pointer ${
+                                  currentView === 'billetera'
+                                    ? 'bg-rose-50/70 text-rose-900'
+                                    : 'hover:bg-slate-50 text-slate-700'
+                                }`}
+                              >
+                                <div
+                                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition ${
+                                    currentView === 'billetera'
+                                      ? 'bg-rose-100 text-rose-600'
+                                      : 'bg-slate-100/80 text-slate-500 group-hover:bg-rose-50 group-hover:text-rose-600'
+                                  }`}
+                                >
+                                  <Wallet className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0 text-left">
+                                  <span className="block text-sm font-semibold text-slate-800 group-hover:text-slate-900 truncate">
+                                    Billetera
+                                  </span>
+                                  <span className="block text-[11px] text-slate-400 truncate">
+                                    Tarjetas guardadas y pagos
                                   </span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition" />

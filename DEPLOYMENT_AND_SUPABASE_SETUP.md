@@ -234,3 +234,24 @@ npm run test:coverage # cobertura de la lógica crítica (umbral 60 %)
 
 ### 5. Documentación de la API
 Especificación OpenAPI en `public/openapi.yaml` (publicada en `/openapi.yaml`).
+
+## Actualización: categorías en español, garantía mensual opcional y billetera
+
+**Base de datos ya creada (sin perder datos):** en Supabase → SQL Editor ejecuta completo
+`supabase/migrations/2026-10-12_categorias_garantia_billetera.sql`. Este script:
+
+- Cambia las categorías de espacio a español (departamento, casa, cabaña, quincho, sala de reuniones, etc.) y convierte las publicaciones existentes (`office` → `oficina`, `event` → `salon_eventos`, …).
+- Cobra garantía **solo en arriendos mensuales** y solo si el propietario la pidió al publicar.
+- Crea la tabla `wallet_cards` (billetera) y las columnas de Oneclick en `payments`.
+
+Si prefieres reiniciar todo, `supabase/reset-and-setup.sql` ya incluye estos cambios.
+
+**Billetera (Transbank Oneclick Mall):** la función `api/wallet.ts` inscribe tarjetas, las elimina y cobra reservas con una tarjeta guardada. En el ambiente de integración usa las credenciales públicas de prueba de Transbank, sin configurar nada. Para producción agrega en Vercel:
+
+| Variable | Valor |
+|---|---|
+| `ONECLICK_COMMERCE_CODE` | Código del comercio mall Oneclick |
+| `ONECLICK_CHILD_COMMERCE_CODE` | Código de la tienda hija que recibe los pagos |
+| `ONECLICK_API_KEY` | Llave secreta entregada por Transbank |
+
+Spotly nunca recibe el número de la tarjeta: Transbank entrega un identificador (`tbk_user`) que solo lee el backend.

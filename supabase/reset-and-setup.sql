@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS public.user_reports CASCADE;
 DROP TABLE IF EXISTS public.reviews CASCADE;
 DROP TABLE IF EXISTS public.favorites CASCADE;
 DROP TABLE IF EXISTS public.payments CASCADE;
+DROP TABLE IF EXISTS public.wallet_cards CASCADE;
 DROP TABLE IF EXISTS public.discount_codes CASCADE;
 DROP TABLE IF EXISTS public.login_attempts CASCADE;
 DROP TABLE IF EXISTS public.kyc_verifications CASCADE;
@@ -102,7 +103,8 @@ CREATE TABLE IF NOT EXISTS public.spaces (
     owner_verified BOOLEAN NOT NULL DEFAULT false,
     title TEXT NOT NULL,
     description TEXT,
-    category TEXT NOT NULL CHECK (category IN ('office', 'cowork', 'event', 'studio', 'warehouse', 'retail')),
+    category TEXT NOT NULL CONSTRAINT spaces_category_check CHECK (category IN (
+      'departamento', 'casa', 'cabana', 'oficina', 'cowork', 'sala_reuniones', 'consulta', 'estudio', 'salon_eventos', 'quincho', 'terreno', 'local_comercial', 'bodega', 'estacionamiento', 'otro')),
     space_environment TEXT NOT NULL DEFAULT 'cerrado' CHECK (space_environment IN ('abierto', 'cerrado')),
     rental_modality TEXT NOT NULL DEFAULT 'por_dia' CHECK (rental_modality IN ('por_hora', 'por_dia', 'mensual', 'abierto')),
     enabled_modalities TEXT[] DEFAULT ARRAY['por_dia']::TEXT[],
@@ -1588,6 +1590,7 @@ REVOKE ALL ON FUNCTION public.release_expired_payment_holds(TEXT) FROM PUBLIC, a
 GRANT EXECUTE ON FUNCTION public.release_expired_payment_holds(TEXT) TO authenticated;
 
 -- Montos esperados según la tarifa publicada (misma regla que src/utils/pricing.ts).
+-- La garantía solo se cobra en arriendos mensuales y solo si el propietario la exige.
 CREATE OR REPLACE FUNCTION public.expected_reservation_amounts(
   p_space public.spaces,
   p_price_unit TEXT,
@@ -1622,9 +1625,8 @@ BEGIN
   v_subtotal := v_units * v_price;
   v_fee := round(v_subtotal * 0.05);
   v_deposit := CASE
-    WHEN COALESCE(p_space.security_deposit, 0) > 0 THEN p_space.security_deposit
-    WHEN p_price_unit = 'hour' THEN 50000
-    ELSE 150000
+    WHEN p_price_unit = 'month' AND COALESCE(p_space.security_deposit, 0) > 0 THEN round(p_space.security_deposit)
+    ELSE 0
   END;
 
   RETURN jsonb_build_object(
@@ -2682,10 +2684,98 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.spaces, public.reviews FROM an
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.payments, public.kyc_verifications FROM authenticated;
 REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 
+-- ==============================================================================
+-- 18. BILLETERA: TARJETAS INSCRITAS CON TRANSBANK ONECLICK MALL
+-- ==============================================================================
+-- Spotly no guarda números de tarjeta. Transbank entrega un identificador
+-- (tbk_user) que solo lee el backend (service role) para cobrar; el cliente ve
+-- únicamente el tipo de tarjeta y los últimos 4 dígitos.
+CREATE TABLE IF NOT EXISTS public.wallet_cards (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('crd'),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'failed')),
+  environment TEXT NOT NULL DEFAULT 'integration' CHECK (environment IN ('integration', 'production')),
+  inscription_token TEXT UNIQUE,
+  tbk_user TEXT,
+  card_type TEXT,
+  card_last4 TEXT,
+  is_default BOOLEAN NOT NULL DEFAULT false,
+  return_path TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_cards_user ON public.wallet_cards(user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS wallet_cards_one_default
+  ON public.wallet_cards(user_id) WHERE is_default AND status = 'active';
+ALTER TABLE public.wallet_cards ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Tarjetas propias" ON public.wallet_cards;
+CREATE POLICY "Tarjetas propias"
+  ON public.wallet_cards FOR SELECT
+  USING (user_id = (SELECT auth.uid()));
+
+DROP TRIGGER IF EXISTS set_wallet_cards_updated_at ON public.wallet_cards;
+CREATE TRIGGER set_wallet_cards_updated_at
+  BEFORE UPDATE ON public.wallet_cards
+  FOR EACH ROW EXECUTE PROCEDURE public.set_current_timestamp_updated_at();
+
+-- Solo lectura de columnas no sensibles; las escrituras las hace /api/wallet.
+REVOKE ALL ON public.wallet_cards FROM anon, authenticated;
+GRANT SELECT (id, user_id, status, card_type, card_last4, is_default, created_at)
+  ON public.wallet_cards TO authenticated;
+GRANT ALL ON public.wallet_cards TO service_role;
+
+-- Pagos con tarjeta guardada (Oneclick Mall): datos para reembolsar.
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS wallet_card_id TEXT
+  REFERENCES public.wallet_cards(id) ON DELETE SET NULL;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS child_commerce_code TEXT;
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS child_buy_order TEXT;
+
+CREATE OR REPLACE FUNCTION public.payment_events()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_channel TEXT := CASE WHEN NEW.provider = 'oneclick_mall' THEN 'tu tarjeta guardada (Oneclick)' ELSE 'Webpay Plus' END;
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.status IS NOT DISTINCT FROM OLD.status THEN
+    RETURN NEW;
+  END IF;
+
+  PERFORM public.write_audit(
+    'PAYMENT_' || upper(NEW.status),
+    CASE WHEN NEW.status IN ('failed', 'aborted') THEN 'warning' ELSE 'security' END,
+    NEW.tenant_id::text,
+    jsonb_build_object('paymentId', NEW.id, 'reservationId', NEW.reservation_id, 'buyOrder', NEW.buy_order,
+                       'provider', NEW.provider, 'amountClp', NEW.amount_clp, 'responseCode', NEW.response_code,
+                       'authorizationCode', NEW.authorization_code, 'refundedClp', NEW.refunded_amount_clp)
+  );
+
+  IF NEW.status = 'authorized' THEN
+    PERFORM public.notify_user(NEW.tenant_id, 'Pago aprobado',
+      format('Transbank aprobó tu pago de $%s CLP con %s (autorización %s).',
+             to_char(NEW.amount_clp, 'FM999G999G999'), v_channel, NEW.authorization_code),
+      'success', '/my-bookings');
+  ELSIF NEW.status IN ('failed', 'aborted') THEN
+    PERFORM public.notify_user(NEW.tenant_id, 'Pago no completado',
+      'El pago fue rechazado o anulado. El horario quedó liberado y no se realizó ningún cargo.',
+      'warning', '/my-bookings');
+  ELSIF NEW.status IN ('refunded', 'partially_refunded') THEN
+    PERFORM public.notify_user(NEW.tenant_id, 'Reembolso procesado',
+      format('Se reversaron $%s CLP a tu medio de pago.', to_char(NEW.refunded_amount_clp, 'FM999G999G999')),
+      'success', '/my-bookings');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 -- Estadísticas iniciales para el planificador de consultas.
 ANALYZE public.spaces;
 ANALYZE public.reservations;
 ANALYZE public.profiles;
+ANALYZE public.wallet_cards;
 
 COMMIT;
 

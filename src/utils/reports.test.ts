@@ -10,7 +10,7 @@ const reservation = (over: Partial<Reservation>): Reservation => ({
   spaceTitle: 'Sala; Centro',
   spaceAddress: '',
   spaceImage: '',
-  spaceCategory: 'office',
+  spaceCategory: 'oficina',
   tenantId: 't',
   tenantName: 'Ana',
   tenantEmail: 'a@a.cl',

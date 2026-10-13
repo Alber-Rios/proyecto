@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { normalizeCategory } from '../utils/spaceCategories.ts';
 import {
   UserProfile,
   Space,
@@ -7,7 +8,7 @@ import {
   AuditLog,
   Dispute,
   VisitRequest,
-  SavedCard,
+  WalletCard,
 } from '../types.ts';
 
 const envUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
@@ -93,7 +94,7 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     ownerVerified: row.owner_verified,
     title: row.title,
     description: row.description || '',
-    category: row.category,
+    category: normalizeCategory(row.category),
     spaceEnvironment: row.space_environment,
     rentalModality: row.rental_modality,
     enabledModalities: row.enabled_modalities || ['por_dia'],
@@ -242,7 +243,7 @@ export function mapReservationRow(row: any): Reservation {
     spaceTitle: row.space_title,
     spaceAddress: row.space_address || '',
     spaceImage: row.space_image || '',
-    spaceCategory: row.space_category,
+    spaceCategory: normalizeCategory(row.space_category),
     spaceEnvironment: row.space_environment,
     tenantId: row.tenant_id,
     tenantName: row.tenant_name,
@@ -730,4 +731,21 @@ export async function insertVisitRequestToDb(
     return { success: false, error: error.message };
   }
   return { success: true, data };
+}
+
+// BILLETERA: tarjetas activas del usuario (columnas permitidas por privilegios).
+export async function fetchWalletCards(): Promise<WalletCard[]> {
+  const { data, error } = await supabase
+    .from('wallet_cards')
+    .select('id, card_type, card_last4, is_default, created_at')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    cardType: row.card_type || 'Tarjeta',
+    last4: row.card_last4 || '····',
+    isDefault: Boolean(row.is_default),
+    createdAt: row.created_at,
+  }));
 }

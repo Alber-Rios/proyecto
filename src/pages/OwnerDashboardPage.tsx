@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { OwnerRevenueReport } from '../components/OwnerRevenueReport.tsx';
-import { Space, Reservation, SpaceCategory, SpaceEnvironment, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
+import { Space, Reservation, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
-import { formatClp, formatRut, getSpaceAvailableModalities, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
+import { formatClp, formatRut, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
 import { ContractModal } from '../components/ContractModal.tsx';
-import { RentalModalitySelector } from '../components/RentalModalitySelector.tsx';
+import { PublishSpaceForm, SpaceFormData } from '../components/PublishSpaceForm.tsx';
 import { SpaceAvailabilityViewer } from '../components/SpaceAvailabilityViewer.tsx';
 import {
   downloadContractDocument,
@@ -58,61 +58,6 @@ interface OwnerDashboardPageProps {
   onOpenAuth?: (mode: 'login' | 'register', notice?: string) => void;
 }
 
-const CHILEAN_COMMUNES = [
-  'Las Condes',
-  'Providencia',
-  'Santiago Centro',
-  'Ñuñoa',
-  'Vitacura',
-  'Lo Barnechea',
-  'Macul',
-];
-
-const POPULAR_AMENITIES = [
-  'Wifi Fibra Óptica 1Gbps',
-  'Aire Acondicionado / Climatización',
-  'Calefacción Central',
-  'Seguridad y Cámaras 24/7',
-  'Proyector 4K & Telón',
-  'Pizarra Acrílica',
-  'Estacionamiento Clientes',
-  'Recepción y Conserjería',
-  'Cocina / Cafetería Equipada',
-  'Acceso Universal / Rampas',
-  'Ascensor de Alta Velocidad',
-  'Grupo Electrógeno',
-];
-
-const POPULAR_RULES = [
-  'Prohibido fumar en recintos cerrados (Ley 20.660)',
-  'Música moderada / Sin ruidos molestos post 22:00',
-  'Entregar el espacio aseado y ordenado',
-  'Mascotas permitidas (Pet Friendly)',
-  'Catering y banquetería externa permitida',
-  'Capacidad máxima estrictamente respetada',
-];
-
-const AVAILABILITY_DAY_OPTIONS = [
-  { value: 'Lun-Vie', label: 'Lunes a Viernes (Lun-Vie)' },
-  { value: 'Lun-Sáb', label: 'Lunes a Sábado (Lun-Sáb)' },
-  { value: 'Lun-Dom', label: 'Todos los días (Lun-Dom)' },
-  { value: 'Sáb-Dom', label: 'Fines de Semana (Sáb-Dom)' },
-  { value: '24/7', label: '24 Horas / 7 Días (Continuo)' },
-];
-
-const OPERATION_HOUR_OPTIONS = [
-  '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
-  '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30',
-  '22:00', '22:30', '23:00', '23:30', '24:00',
-];
-
-const parsePositiveIntInput = (raw: string): number | '' => {
-  const digits = raw.replace(/\D/g, '').replace(/^0+/, '');
-  if (digits === '') return '';
-  return parseInt(digits, 10);
-};
 
 // Presets removidos por solicitud del usuario
 
@@ -147,49 +92,6 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   const [contactModalTenant, setContactModalTenant] = useState<{ name: string; phone: string; email: string; spaceTitle: string } | null>(null);
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ date: string; dayNumber: number } | null>(null);
   const [ownerSelectedDate, setOwnerSelectedDate] = useState<string>(() => getTodayIso());
-
-  // Formulario para nuevo espacio
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newCategory, setNewCategory] = useState<SpaceCategory>('office');
-  const [newEnvironment, setNewEnvironment] = useState<SpaceEnvironment>('cerrado');
-  const [newRentalModality, setNewRentalModality] = useState<'por_hora' | 'por_dia' | 'mensual' | 'abierto'>('abierto');
-  
-  // Estados de modalidades y tarifas tipo interruptor
-  const [enableHourly, setEnableHourly] = useState(true);
-  const [hourlyPrice, setHourlyPrice] = useState<number | ''>('');
-  const [hourlyMinHours, setHourlyMinHours] = useState<number | ''>('');
-  const [hourlyInstantBooking, setHourlyInstantBooking] = useState(true);
-
-  const [enableDaily, setEnableDaily] = useState(true);
-  const [dailyPrice, setDailyPrice] = useState<number | ''>('');
-  const [dailyOpeningHours, setDailyOpeningHours] = useState('08:30 - 20:30');
-
-  const [enableMonthly, setEnableMonthly] = useState(true);
-  const [monthlyPrice, setMonthlyPrice] = useState<number | ''>('');
-
-  const computedRentalModality = useMemo<'abierto' | 'por_hora' | 'por_dia' | 'mensual'>(() => {
-    const activeCount = (enableHourly ? 1 : 0) + (enableDaily ? 1 : 0) + (enableMonthly ? 1 : 0);
-    if (activeCount > 1) return 'abierto';
-    if (enableHourly) return 'por_hora';
-    if (enableMonthly) return 'mensual';
-    return 'por_dia';
-  }, [enableHourly, enableDaily, enableMonthly]);
-
-  const [newCommune, setNewCommune] = useState('Las Condes');
-  const [newAddress, setNewAddress] = useState('');
-  const [newPrice, setNewPrice] = useState<number | ''>('');
-  const [newCapacity, setNewCapacity] = useState<number | ''>('');
-  const [newSurfaceM2, setNewSurfaceM2] = useState<number | ''>('');
-  const [newSecurityDeposit, setNewSecurityDeposit] = useState<number | ''>('');
-  const [newMinBookingDays, setNewMinBookingDays] = useState<number | ''>(1);
-  const [operationDays, setOperationDays] = useState('Lun-Vie');
-  const [operationStartHour, setOperationStartHour] = useState('08:30');
-  const [operationEndHour, setOperationEndHour] = useState('20:30');
-  const [newOpeningHours, setNewOpeningHours] = useState('Lun-Vie 08:30-20:30');
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-  const [selectedRules, setSelectedRules] = useState<string[]>([]);
-  const [newImages, setNewImages] = useState<string[]>([]);
 
   // CASO 1: Usuario No Registrado / No Autenticado
   if (!currentUser) {
@@ -415,121 +317,17 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     };
   }, [myReceivedBookings, mySpaces, todayIso]);
 
-  const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    (Array.from(files) as File[]).forEach((file: File) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          setNewImages((prev) => [...prev, ev.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setNewImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Funciones de carga rápida y URL personalizadas eliminadas por solicitud del usuario
-
-  const handleToggleAmenity = (amenity: string) => {
-    setSelectedAmenities((prev) =>
-      prev.includes(amenity) ? prev.filter((a) => a !== amenity) : [...prev, amenity]
-    );
-  };
-
-  const handleToggleRule = (rule: string) => {
-    setSelectedRules((prev) =>
-      prev.includes(rule) ? prev.filter((r) => r !== rule) : [...prev, rule]
-    );
-  };
-
   const handleStartEdit = (space: Space) => {
     if (currentUser.verificationStatus !== 'verified') {
       onNavigate('onboarding');
       return;
     }
-
     setEditingSpace(space);
-    setNewTitle(space.title);
-    setNewDescription(space.description);
-    setNewCategory(space.category);
-    setNewEnvironment(space.spaceEnvironment || 'cerrado');
-    const mod = space.rentalModality || (space.priceUnit === 'hour' ? 'por_hora' : space.priceUnit === 'month' ? 'mensual' : 'por_dia');
-    setNewRentalModality(mod);
-    setNewCommune(space.commune);
-    setNewAddress(space.address);
-
-    const enabledModalities = getSpaceAvailableModalities(space);
-    setEnableHourly(enabledModalities.includes('por_hora'));
-    setEnableDaily(enabledModalities.includes('por_dia'));
-    setEnableMonthly(enabledModalities.includes('mensual'));
-
-    setHourlyPrice(space.pricePerHour || (space.pricePerDay ? Math.round(space.pricePerDay / 8) : 45000));
-    setHourlyMinHours(space.minBookingHours || 2);
-    setHourlyInstantBooking(space.instantBooking ?? true);
-
-    setDailyPrice(space.pricePerDay || 280000);
-    setDailyOpeningHours(space.openingHours || '08:30 - 20:30');
-
-    setMonthlyPrice(space.pricePerMonth || (space.pricePerDay ? space.pricePerDay * 22 : 3800000));
-    setNewSecurityDeposit(space.securityDeposit && space.securityDeposit > 0 ? space.securityDeposit : '');
-
-    const effectivePrice = mod === 'por_hora' 
-      ? (space.pricePerHour || Math.round(space.pricePerDay / 8))
-      : mod === 'mensual'
-      ? (space.pricePerMonth || space.pricePerDay)
-      : space.pricePerDay;
-    setNewPrice(effectivePrice && effectivePrice > 0 ? effectivePrice : '');
-    setNewCapacity(space.capacity && space.capacity > 0 ? space.capacity : '');
-    setNewSurfaceM2(space.surfaceM2 && space.surfaceM2 > 0 ? space.surfaceM2 : '');
-    setNewMinBookingDays(space.minBookingDays || 1);
-
-    const rawHours = space.openingHours || 'Lun-Vie 08:30-20:30';
-    const timeMatch = rawHours.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
-    const startH = timeMatch ? timeMatch[1] : '08:30';
-    const endH = timeMatch ? timeMatch[2] : '20:30';
-    const detectedDay = AVAILABILITY_DAY_OPTIONS.find((d) => rawHours.includes(d.value))?.value || 'Lun-Vie';
-    setOperationDays(detectedDay);
-    setOperationStartHour(startH);
-    setOperationEndHour(endH);
-    setNewOpeningHours(detectedDay === '24/7' ? 'Lun-Dom 00:00-24:00 (24/7)' : `${detectedDay} ${startH}-${endH}`);
-
-    setSelectedAmenities(space.amenities || []);
-    setSelectedRules(space.rules || []);
-    setNewImages(space.images || []);
     setIsPublishModalOpen(true);
   };
 
   const resetForm = () => {
     setEditingSpace(null);
-    setNewTitle('');
-    setNewDescription('');
-    setNewAddress('');
-    setEnableHourly(true);
-    setEnableDaily(true);
-    setEnableMonthly(true);
-    setHourlyPrice('');
-    setHourlyMinHours('');
-    setHourlyInstantBooking(true);
-    setDailyPrice('');
-    setDailyOpeningHours('08:30 - 20:30');
-    setMonthlyPrice('');
-    setNewSecurityDeposit('');
-    setNewPrice('');
-    setNewCapacity('');
-    setNewSurfaceM2('');
-    setNewMinBookingDays(1);
-    setOperationDays('Lun-Vie');
-    setOperationStartHour('08:30');
-    setOperationEndHour('20:30');
-    setNewOpeningHours('Lun-Vie 08:30-20:30');
-    setSelectedAmenities([]);
-    setSelectedRules([]);
-    setNewImages([]);
   };
 
   // La base valida la transición (p. ej., no se acepta sin pago aprobado) y calcula reembolsos.
@@ -559,135 +357,19 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     }, 80);
   };
 
-  const handlePublishSpace = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmitSpace = (data: SpaceFormData) => {
     if (currentUser.verificationStatus !== 'verified') {
       onNavigate('onboarding');
       return;
     }
 
-    if (!newTitle.trim() || !newAddress.trim()) {
-      alert('Por favor completa el título y la dirección del espacio.');
-      return;
-    }
-
-    if (!newCapacity || Number(newCapacity) <= 0 || !Number.isInteger(Number(newCapacity))) {
-      alert('La Capacidad Máxima debe ser un número entero mayor a 0.');
-      return;
-    }
-
-    if (!newSurfaceM2 || Number(newSurfaceM2) <= 0 || !Number.isInteger(Number(newSurfaceM2))) {
-      alert('La Superficie Total (m²) debe ser un número entero mayor a 0.');
-      return;
-    }
-
-    if (!newSecurityDeposit || Number(newSecurityDeposit) <= 0 || !Number.isInteger(Number(newSecurityDeposit))) {
-      alert('El monto de Garantía debe ser un número entero mayor a 0.');
-      return;
-    }
-
-    if (enableHourly) {
-      if (!hourlyPrice || Number(hourlyPrice) <= 0 || !Number.isInteger(Number(hourlyPrice))) {
-        alert('El precio por hora ($) debe ser un número entero mayor a 0.');
-        return;
-      }
-      if (!hourlyMinHours || Number(hourlyMinHours) <= 0 || !Number.isInteger(Number(hourlyMinHours))) {
-        alert('El mínimo de horas (hr) debe ser un número entero mayor a 0.');
-        return;
-      }
-    }
-
-    if (enableDaily && (!dailyPrice || Number(dailyPrice) <= 0 || !Number.isInteger(Number(dailyPrice)))) {
-      alert('El precio por día ($) debe ser un número entero mayor a 0.');
-      return;
-    }
-
-    if (enableMonthly && (!monthlyPrice || Number(monthlyPrice) <= 0 || !Number.isInteger(Number(monthlyPrice)))) {
-      alert('La tarifa mensual ($) debe ser un número entero mayor a 0.');
-      return;
-    }
-
-    if (newImages.length === 0) {
-      alert('Por favor añade al menos una fotografía del espacio.');
-      return;
-    }
-
-    const hourPrice = enableHourly ? Number(hourlyPrice) : undefined;
-    const dayPrice = enableDaily 
-      ? Number(dailyPrice) 
-      : enableHourly 
-      ? Math.round(Number(hourlyPrice) * 8) 
-      : Math.round(Number(monthlyPrice) / 30);
-    const monthPrice = enableMonthly ? Number(monthlyPrice) : undefined;
-    const enabledModalities = [
-      ...(enableHourly ? ['por_hora' as const] : []),
-      ...(enableDaily ? ['por_dia' as const] : []),
-      ...(enableMonthly ? ['mensual' as const] : []),
-    ];
-    const unit = computedRentalModality === 'por_hora' ? 'hour' : computedRentalModality === 'mensual' ? 'month' : 'day';
-    const computedOpeningSchedule =
-      operationDays === '24/7'
-        ? 'Lun-Dom 00:00-24:00 (24/7)'
-        : `${operationDays} ${operationStartHour}-${operationEndHour}`;
-
     if (editingSpace) {
-      updateSpace(editingSpace.id, {
-        title: newTitle,
-        description: newDescription,
-        category: newCategory,
-        spaceEnvironment: newEnvironment,
-        rentalModality: computedRentalModality,
-        enabledModalities,
-        priceUnit: unit,
-        commune: newCommune,
-        address: newAddress,
-        pricePerDay: dayPrice,
-        pricePerHour: hourPrice,
-        pricePerMonth: monthPrice,
-        capacity: Number(newCapacity),
-        surfaceM2: Number(newSurfaceM2),
-        amenities: selectedAmenities,
-        rules: selectedRules,
-        openingHours: computedOpeningSchedule,
-        securityDeposit: Number(newSecurityDeposit),
-        images: newImages,
-        minBookingDays: Number(newMinBookingDays) || 1,
-        minBookingHours: Number(hourlyMinHours) || 1,
-        instantBooking: hourlyInstantBooking,
-      });
-
-      alert('¡Espacio modificado y actualizado exitosamente!');
+      const { status: _status, isVerified: _verified, ...changes } = data;
+      updateSpace(editingSpace.id, changes);
+      alert('Cambios guardados.');
     } else {
-      createSpace({
-        title: newTitle,
-        description: newDescription,
-        category: newCategory,
-        spaceEnvironment: newEnvironment,
-        rentalModality: computedRentalModality,
-        enabledModalities,
-        priceUnit: unit,
-        commune: newCommune,
-        region: 'Región Metropolitana',
-        address: newAddress,
-        pricePerDay: dayPrice,
-        pricePerHour: hourPrice,
-        pricePerMonth: monthPrice,
-        capacity: Number(newCapacity),
-        surfaceM2: Number(newSurfaceM2),
-        amenities: selectedAmenities,
-        rules: selectedRules,
-        openingHours: computedOpeningSchedule,
-        securityDeposit: Number(newSecurityDeposit),
-        images: newImages,
-        isVerified: true,
-        status: 'pending_approval',
-        minBookingDays: Number(newMinBookingDays) || 1,
-        minBookingHours: Number(hourlyMinHours) || 1,
-        instantBooking: hourlyInstantBooking,
-      });
-
-      alert('¡Publicación enviada exitosamente! Tu espacio ha ingresado a moderación y será visible en el catálogo una vez aprobado por el administrador.');
+      createSpace({ ...data, status: 'pending_approval', isVerified: false });
+      alert('¡Publicación enviada! Tu espacio quedó en revisión y aparecerá en el catálogo cuando administración lo apruebe.');
     }
 
     resetForm();
@@ -1152,7 +834,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                           );
                         })()}
                         <span className="text-[11px] text-slate-500 whitespace-nowrap">
-                          Garantía: <strong className="text-slate-700">{formatClp(space.securityDeposit || 100000)}</strong>
+                          Garantía mensual: <strong className="text-slate-700">{space.securityDeposit && space.securityDeposit > 0 ? formatClp(space.securityDeposit) : 'No pide'}</strong>
                         </span>
                       </div>
 
@@ -1707,7 +1389,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       </span>
                     ) : null}
                     <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
-                      Garantía: <strong>{formatClp(selectedSpace.securityDeposit || 100000)}</strong>
+                      Garantía mensual: <strong>{selectedSpace.securityDeposit && selectedSpace.securityDeposit > 0 ? formatClp(selectedSpace.securityDeposit) : 'No pide'}</strong>
                     </span>
                   </div>
                 </div>
@@ -1800,7 +1482,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                     <div className="flex items-center gap-3 mt-1 text-xs text-slate-700 flex-wrap">
                       <span>Tarifa base: <strong className="text-slate-900">{formatClp(selectedSpace.pricePerHour || selectedSpace.pricePerDay || 45000)}</strong></span>
                       <span className="text-slate-300">•</span>
-                      <span>Garantía: <strong className="text-slate-900">{formatClp(selectedSpace.securityDeposit || 100000)}</strong></span>
+                      <span>Garantía mensual: <strong className="text-slate-900">{selectedSpace.securityDeposit && selectedSpace.securityDeposit > 0 ? formatClp(selectedSpace.securityDeposit) : 'No pide'}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -2248,445 +1930,15 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
               </p>
             </div>
 
-            <form onSubmit={handlePublishSpace} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-              {/* TÍTULO Y AMBIENTE */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Título del Espacio <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="ej. Planta Libre Corporativa con Terraza en El Golf"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-medium"
-                  required
-                />
-              </div>
-
-              {/* TIPO DE ENTORNO: ABIERTO VS CERRADO */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Tipo de Entorno del Espacio <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setNewEnvironment('cerrado')}
-                    className={`p-3.5 rounded-2xl border text-left transition flex items-start gap-3 ${
-                      newEnvironment === 'cerrado'
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-rose-500/30'
-                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    <Building className={`w-5 h-5 flex-shrink-0 mt-0.5 ${newEnvironment === 'cerrado' ? 'text-rose-400' : 'text-slate-500'}`} />
-                    <div>
-                      <div className="text-xs font-bold flex items-center gap-1.5">
-                        <span>Techado / Cerrado</span>
-                        {newEnvironment === 'cerrado' && <Check className="w-3.5 h-3.5 text-rose-400" />}
-                      </div>
-                      <p className={`text-[11px] mt-0.5 leading-relaxed ${newEnvironment === 'cerrado' ? 'text-slate-300' : 'text-slate-500'}`}>
-                        Oficinas privadas, salas de directorio, auditorios, coworking y locales comerciales techados.
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setNewEnvironment('abierto')}
-                    className={`p-3.5 rounded-2xl border text-left transition flex items-start gap-3 ${
-                      newEnvironment === 'abierto'
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-emerald-500/30'
-                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    <Sun className={`w-5 h-5 flex-shrink-0 mt-0.5 ${newEnvironment === 'abierto' ? 'text-emerald-400' : 'text-slate-500'}`} />
-                    <div>
-                      <div className="text-xs font-bold flex items-center gap-1.5">
-                        <span>Al Aire Libre / Abierto</span>
-                        {newEnvironment === 'abierto' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
-                      </div>
-                      <p className={`text-[11px] mt-0.5 leading-relaxed ${newEnvironment === 'abierto' ? 'text-slate-300' : 'text-slate-500'}`}>
-                        Terrazas corporativas, azoteas panorámicas (rooftops), patios exteriores y jardines para eventos.
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* CATEGORÍA Y COMUNA */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Categoría</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as SpaceCategory)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-medium"
-                  >
-                    <option value="office">Oficina Privada</option>
-                    <option value="cowork">Coworking</option>
-                    <option value="event">Eventos & Workshops</option>
-                    <option value="studio">Estudio Creativo</option>
-                    <option value="warehouse">Bodega Urbana</option>
-                    <option value="retail">Comercial / Retail</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Comuna</label>
-                  <select
-                    value={newCommune}
-                    onChange={(e) => setNewCommune(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-medium"
-                  >
-                    {CHILEAN_COMMUNES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Dirección Exacta</label>
-                <input
-                  type="text"
-                  placeholder="ej. Av. Apoquindo 4500, Oficina 802, Las Condes"
-                  value={newAddress}
-                  onChange={(e) => setNewAddress(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-medium"
-                  required
-                />
-              </div>
-
-              {/* SELECTOR VISUAL DE MODALIDAD (POR HORA, POR DÍA, POR MES, ABIERTO A TODO) */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800">
-                  Modalidad de Arriendo y Tarifas
-                </label>
-                <RentalModalitySelector
-                  enableHourly={enableHourly}
-                  onEnableHourlyChange={setEnableHourly}
-                  hourlyPrice={hourlyPrice}
-                  onHourlyPriceChange={setHourlyPrice}
-                  hourlyMinHours={hourlyMinHours}
-                  onHourlyMinHoursChange={setHourlyMinHours}
-                  hourlyInstantBooking={hourlyInstantBooking}
-                  onHourlyInstantBookingChange={setHourlyInstantBooking}
-
-                  enableDaily={enableDaily}
-                  onEnableDailyChange={setEnableDaily}
-                  dailyPrice={dailyPrice}
-                  onDailyPriceChange={setDailyPrice}
-                  dailyOpeningHours={dailyOpeningHours}
-                  onDailyOpeningHoursChange={setDailyOpeningHours}
-
-                  enableMonthly={enableMonthly}
-                  onEnableMonthlyChange={setEnableMonthly}
-                  monthlyPrice={monthlyPrice}
-                  onMonthlyPriceChange={setMonthlyPrice}
-                  securityDeposit={newSecurityDeposit}
-                  onSecurityDepositChange={setNewSecurityDeposit}
-
-                  computedModality={computedRentalModality}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Capacidad Máxima (personas) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newCapacity === 0 ? '' : newCapacity}
-                    placeholder="Ej: 25"
-                    onChange={(e) => {
-                      setNewCapacity(parsePositiveIntInput(e.target.value));
-                    }}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-semibold"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Superficie Total (m²) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newSurfaceM2 === 0 ? '' : newSurfaceM2}
-                    placeholder="Ej: 120"
-                    onChange={(e) => {
-                      setNewSurfaceM2(parsePositiveIntInput(e.target.value));
-                    }}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-semibold"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Garantía en Custodia ($ CLP) <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-3 text-xs font-bold text-slate-500">$</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={newSecurityDeposit === 0 ? '' : newSecurityDeposit}
-                      placeholder="Ej: 150000"
-                      onChange={(e) => {
-                        setNewSecurityDeposit(parsePositiveIntInput(e.target.value));
-                      }}
-                      className="w-full pl-7 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-semibold"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* HORARIO DE OPERACIÓN CON MENÚS DESPLEGABLES */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-800">
-                    Horario de Operación y Disponibilidad
-                  </label>
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white border border-slate-200 text-slate-700">
-                    {operationDays === '24/7'
-                      ? 'Lun-Dom 00:00-24:00 (24/7)'
-                      : `${operationDays} ${operationStartHour}-${operationEndHour}`}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      Días de Disponibilidad
-                    </label>
-                    <select
-                      value={operationDays}
-                      onChange={(e) => {
-                        const nextDays = e.target.value;
-                        setOperationDays(nextDays);
-                        const formatted =
-                          nextDays === '24/7'
-                            ? 'Lun-Dom 00:00-24:00 (24/7)'
-                            : `${nextDays} ${operationStartHour}-${operationEndHour}`;
-                        setNewOpeningHours(formatted);
-                      }}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-semibold text-slate-800 cursor-pointer"
-                    >
-                      {AVAILABILITY_DAY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      Hora de Apertura
-                    </label>
-                    <select
-                      value={operationStartHour}
-                      disabled={operationDays === '24/7'}
-                      onChange={(e) => {
-                        const nextStart = e.target.value;
-                        setOperationStartHour(nextStart);
-                        setDailyOpeningHours(`${nextStart} - ${operationEndHour}`);
-                        setNewOpeningHours(`${operationDays} ${nextStart}-${operationEndHour}`);
-                      }}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-semibold text-slate-800 cursor-pointer disabled:opacity-50"
-                    >
-                      {OPERATION_HOUR_OPTIONS.map((h) => (
-                        <option key={`op-start-${h}`} value={h}>
-                          {h} hrs
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      Hora de Cierre
-                    </label>
-                    <select
-                      value={operationEndHour}
-                      disabled={operationDays === '24/7'}
-                      onChange={(e) => {
-                        const nextEnd = e.target.value;
-                        setOperationEndHour(nextEnd);
-                        setDailyOpeningHours(`${operationStartHour} - ${nextEnd}`);
-                        setNewOpeningHours(`${operationDays} ${operationStartHour}-${nextEnd}`);
-                      }}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-semibold text-slate-800 cursor-pointer disabled:opacity-50"
-                    >
-                      {OPERATION_HOUR_OPTIONS.map((h) => (
-                        <option key={`op-end-${h}`} value={h}>
-                          {h} hrs
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Descripción Detallada</label>
-                <textarea
-                  rows={3}
-                  placeholder="Describe la conectividad, vistas panorámicas, luz natural, climatización, seguridad..."
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
-                />
-              </div>
-
-              {/* SECCIÓN DE CARGA Y GESTIÓN DE IMÁGENES */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Camera className="w-4 h-4 text-rose-600" />
-                      Fotografías del Espacio ({newImages.length})
-                    </label>
-                    <p className="text-[11px] text-slate-500">
-                      Sube fotos reales del espacio desde tu dispositivo.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Subir archivo desde disco */}
-                <div className="grid grid-cols-1 gap-2">
-                  <label className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-dashed border-slate-300 hover:border-rose-500 rounded-xl cursor-pointer text-xs font-semibold text-slate-700 hover:text-rose-600 transition">
-                    <Upload className="w-4 h-4 text-slate-400" />
-                    <span>Cargar imágenes desde mi equipo</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleAddFiles}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Previsualización de imágenes añadidas */}
-                {newImages.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-                    {newImages.map((imgUrl, idx) => (
-                      <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-100">
-                        <img
-                          src={imgUrl}
-                          alt={`Foto ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        {idx === 0 && (
-                          <span className="absolute top-1 left-1 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs">
-                            Principal
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(idx)}
-                          className="absolute top-1 right-1 bg-black/70 hover:bg-rose-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition"
-                          title="Eliminar foto"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* AMENIDADES SELECCIONABLES CON UN CLICK */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Amenidades e Instalaciones (Haz clic para activar)
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {POPULAR_AMENITIES.map((amenity) => {
-                    const isSelected = selectedAmenities.includes(amenity);
-                    return (
-                      <button
-                        type="button"
-                        key={amenity}
-                        onClick={() => handleToggleAmenity(amenity)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {isSelected ? <Check className="w-3.5 h-3.5" /> : <PlusCircle className="w-3.5 h-3.5 text-slate-400" />}
-                        {amenity}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* REGLAS DEL INMUEBLE SELECCIONABLES */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Reglas y Condiciones del Recinto
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {POPULAR_RULES.map((rule) => {
-                    const isSelected = selectedRules.includes(rule);
-                    return (
-                      <button
-                        type="button"
-                        key={rule}
-                        onClick={() => handleToggleRule(rule)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-slate-900 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {isSelected ? <Check className="w-3.5 h-3.5 text-rose-400" /> : <PlusCircle className="w-3.5 h-3.5 text-slate-400" />}
-                        {rule}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* BOTONES DE ACCIÓN */}
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsPublishModalOpen(false);
-                  }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition flex items-center gap-2"
-                >
-                  {editingSpace ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Guardar Cambios del Espacio
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="w-4 h-4" />
-                      Publicar Espacio en el Catálogo
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+            <PublishSpaceForm
+              key={editingSpace?.id || 'nuevo'}
+              editingSpace={editingSpace}
+              onCancel={() => {
+                resetForm();
+                setIsPublishModalOpen(false);
+              }}
+              onSubmit={handleSubmitSpace}
+            />
           </div>
         </div>
       )}

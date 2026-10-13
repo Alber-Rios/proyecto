@@ -2,6 +2,7 @@ import React from 'react';
 import { Space } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, getSpaceRateInfo } from '../utils/formatters.ts';
+import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import {
   MapPin,
   Star,
@@ -18,14 +19,6 @@ interface SpaceCardProps {
   onSelect: (space: Space) => void;
 }
 
-const CATEGORY_NAMES: Record<string, string> = {
-  office: 'Oficina Privada',
-  cowork: 'Coworking Flexible',
-  event: 'Salón de Eventos',
-  studio: 'Estudio Creativo',
-  warehouse: 'Bodega Urbana',
-  retail: 'Espacio Comercial',
-};
 
 export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
   const { currentUser, isSpaceFavorite, toggleFavoriteSpace } = useApp();
@@ -73,7 +66,7 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
         {/* Categoría & Entorno Badges */}
         <div className="absolute top-3 left-3 flex flex-col items-start gap-1">
           <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/95 backdrop-blur-xs text-slate-800 shadow-xs">
-            {CATEGORY_NAMES[space.category] || space.category}
+            {getCategoryLabel(space.category)}
           </span>
           {space.spaceEnvironment === 'abierto' ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/95 text-white shadow-xs">

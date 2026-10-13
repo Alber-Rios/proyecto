@@ -2,10 +2,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Space, DigitalContract, VisitRequest } from '../types.ts';
 import { calculateBookingAmounts } from '../utils/pricing.ts';
+import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getTodayIso, getOffsetDateIso } from '../utils/formatters.ts';
 import { SignatureCanvas } from './SignatureCanvas.tsx';
-import { WebpayPaymentBox, AppliedDiscount } from './WebpayPaymentBox.tsx';
+import { CheckoutPaymentBox, AppliedDiscount, PaymentChoice } from './CheckoutPaymentBox.tsx';
+import { saveBookingDraft } from '../utils/bookingDraft.ts';
 import {
   Calendar as CalendarIcon,
   ShieldCheck,
@@ -46,15 +48,11 @@ interface BookingModalProps {
   initialHourStart?: number;
   initialHourEnd?: number;
   initialSelectedMonth?: string;
+  // Al volver de inscribir una tarjeta en Transbank se retoma la reserva ya firmada.
+  initialSignature?: string | null;
+  paymentNotice?: { ok: boolean; text: string } | null;
 }
 
-const CATEGORY_NAMES: Record<string, string> = {
-  office: 'Oficina Privada',
-  cowork: 'Coworking',
-  event: 'Eventos & Workshops',
-  studio: 'Estudio Creativo',
-  warehouse: 'Bodega Urbana',
-};
 
 const POPULAR_USES = [
   'Reunión de equipo y coworking',
@@ -89,8 +87,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   initialHourStart = 10,
   initialHourEnd = 14,
   initialSelectedMonth = '2026-10',
+  initialSignature = null,
+  paymentNotice = null,
 }) => {
-  const { currentUser, createBooking, startWebpayPayment, requestVisit } = useApp();
+  const { currentUser, createBooking, startWebpayPayment, payWithWalletCard, addWalletCard, requestVisit } = useApp();
   const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
   const navigate = useNavigate();
 
@@ -158,6 +158,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (initialHourStart !== undefined) setHourStart(initialHourStart);
       if (initialHourEnd !== undefined) setHourEnd(initialHourEnd);
       if (initialSelectedMonth) setSelectedMonth(initialSelectedMonth);
+      if (initialSignature) {
+        setSignatureDataUrl(initialSignature);
+        setAcceptContract(true);
+      }
       if (initialModality) {
         setSelectedModality(initialModality);
       } else if (space) {
@@ -171,7 +175,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         setVisitorPhone(currentUser.phone || '+56 9 8765 4321');
       }
     }
-  }, [isOpen, initialMode, initialStep, currentUser, initialStartDate, initialEndDate, initialTimeSlots, initialIntendedUse, initialModality, initialHourStart, initialHourEnd, initialSelectedMonth, space]);
+  }, [isOpen, initialMode, initialStep, currentUser, initialStartDate, initialEndDate, initialTimeSlots, initialIntendedUse, initialModality, initialHourStart, initialHourEnd, initialSelectedMonth, initialSignature, space]);
 
   // Cálculo de unidades y montos en CLP según modalidad (misma regla que valida la base).
   const activeModality: 'por_hora' | 'por_dia' | 'mensual' = space
@@ -208,8 +212,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setDiscount(null);
   }, [space?.id, activeModality, startDate, endDate, hourStart, hourEnd]);
 
-  // Registrar la reserva y el contrato firmado, y redirigir a Webpay Plus.
-  const handlePay = async () => {
+  // Registrar la reserva y el contrato firmado, y cobrar con el medio elegido.
+  const handlePay = async (choice: PaymentChoice) => {
     if (!currentUser) {
       throw new Error('Debes iniciar sesión con tu cuenta para formalizar la reserva.');
     }
@@ -251,7 +255,30 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       priceUnit: activeModality === 'por_hora' ? 'hour' : activeModality === 'mensual' ? 'month' : 'day',
     });
 
+    if (choice.kind === 'card') {
+      await payWithWalletCard(res.reservation.id, choice.cardId);
+      onClose();
+      navigate(`/my-bookings?pago=exito&reserva=${encodeURIComponent(res.reservation.id)}`);
+      return;
+    }
     await startWebpayPayment(res.reservation.id);
+  };
+
+  // Guarda la reserva en curso y lleva al usuario a Transbank para inscribir una tarjeta.
+  const handleAddCard = async () => {
+    if (!space) return;
+    saveBookingDraft({
+      spaceId: space.id,
+      modality: activeModality,
+      startDate,
+      endDate,
+      hourStart,
+      hourEnd,
+      selectedMonth,
+      intendedUse,
+      signature: acceptContract ? signatureDataUrl : null,
+    });
+    await addWalletCard(`/space/${encodeURIComponent(space.id)}?retomar=1`);
   };
 
   // Enviar Solicitud de Visita
@@ -325,7 +352,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">
-                  {CATEGORY_NAMES[space.category] || space.category}
+                  {getCategoryLabel(space.category)}
                 </span>
                 <span className="text-slate-500">•</span>
                 <span className="text-xs text-slate-300 flex items-center gap-1">
@@ -540,7 +567,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         <div>
                           <h4 className="text-xs font-bold text-amber-950">Inicia sesión o regístrate para formalizar</h4>
                           <p className="text-[11px] text-amber-850">
-                            Para individualizar legalmente al arrendatario con su RUT y resguardar la garantía en custodia (escrow), debes contar con una cuenta activa.
+                            Para individualizar legalmente al arrendatario con su RUT y procesar el pago de forma segura, debes contar con una cuenta activa.
                           </p>
                         </div>
                       </div>
@@ -632,7 +659,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       </div>
                       
                       <p>
-                        <strong>Tercero:</strong> El valor acordado para este período es de <strong>{formatClp(calculations.subtotal)}</strong>, más una garantía retornable de <strong>{formatClp(calculations.deposit)}</strong>, totalizando a pagar <strong>{formatClp(calculations.total)}</strong> (incluyendo tarifas de servicio).
+                        <strong>Tercero:</strong> El valor acordado para este período es de <strong>{formatClp(calculations.subtotal)}</strong>{calculations.deposit > 0 ? (<>, más una garantía retornable de <strong>{formatClp(calculations.deposit)}</strong></>) : null}, totalizando a pagar <strong>{formatClp(calculations.total)}</strong> (incluye la comisión de servicio de 5 %).
                       </p>
                     </div>
                   </div>
@@ -770,7 +797,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   )}
 
                   {/* Componente Modular de Pago Webpay */}
-                  <WebpayPaymentBox
+                  <CheckoutPaymentBox
                     units={calculations.units}
                     unitLabel={calculations.label}
                     basePrice={calculations.basePrice}
@@ -780,7 +807,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     discount={discount}
                     onDiscountChange={setDiscount}
                     onPay={handlePay}
+                    onAddCard={handleAddCard}
                     onCancel={() => setBookingStep(1)}
+                    notice={paymentNotice}
                     disabled={!currentUser || currentUser.verificationStatus !== 'verified'}
                   />
                 </div>

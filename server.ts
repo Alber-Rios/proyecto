@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import webpayHandler from './api/webpay.ts';
 import clientIpHandler from './api/client-ip.ts';
 import authHandler from './api/auth.ts';
+import walletHandler from './api/wallet.ts';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ async function startServer() {
   app.all('/api/webpay', (req, res) => webpayHandler(req as any, res as any));
   app.get('/api/client-ip', (req, res) => clientIpHandler(req as any, res as any));
   app.all('/api/auth', (req, res) => authHandler(req as any, res as any));
+  app.all('/api/wallet', (req, res) => walletHandler(req as any, res as any));
 
   // Endpoint de salud del servidor
   app.get('/api/health', (req, res) => {

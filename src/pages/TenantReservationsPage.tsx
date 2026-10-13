@@ -411,9 +411,11 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                         Total Pagado:{' '}
                         <strong className="text-slate-900 font-extrabold">{formatClp(booking.totalClp)}</strong>
                       </span>
-                      <span className="text-slate-500">
-                        Garantía: <strong>{formatClp(booking.securityDepositClp)}</strong>
-                      </span>
+                      {booking.securityDepositClp > 0 && (
+                        <span className="text-slate-500">
+                          Garantía: <strong>{formatClp(booking.securityDepositClp)}</strong>
+                        </span>
+                      )}
                       {booking.discountClp ? (
                         <span className="text-emerald-700">
                           Descuento {booking.discountCode}: <strong>−{formatClp(booking.discountClp)}</strong>
@@ -655,12 +657,14 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     {formatClp(selectedBookingDetail.platformFeeClp)}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 text-slate-600">
-                  <span>Depósito de Garantía en Custodia</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatClp(selectedBookingDetail.securityDepositClp)}
-                  </span>
-                </div>
+                {selectedBookingDetail.securityDepositClp > 0 && (
+                  <div className="flex justify-between py-1 text-slate-600">
+                    <span>Garantía (reembolsable)</span>
+                    <span className="font-semibold text-slate-900">
+                      {formatClp(selectedBookingDetail.securityDepositClp)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between p-3 bg-slate-100 rounded-xl font-extrabold text-sm text-slate-900">
                   <span>Total Reserva</span>
                   <span className="text-rose-600">{formatClp(selectedBookingDetail.totalClp)}</span>

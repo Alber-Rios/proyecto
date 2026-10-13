@@ -15,6 +15,7 @@ import { FavoritesPage } from './pages/FavoritesPage.tsx';
 import { SupportPage } from './pages/SupportPage.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
 import { LegalPage } from './pages/LegalPage.tsx';
+import { WalletPage } from './pages/WalletPage.tsx';
 import { VerifyContractPage } from './pages/VerifyContractPage.tsx';
 import { OwnerUpgradeModal } from './components/OwnerUpgradeModal.tsx';
 import { Space } from './types.ts';
@@ -72,7 +73,8 @@ function AppContent() {
       'terms': '/terminos',
       'privacy': '/privacidad',
       'cookies': '/cookies',
-      'verify-contract': '/verificar-contrato'
+      'verify-contract': '/verificar-contrato',
+      'wallet': '/billetera'
     };
     
     navigate(routes[view] || '/');
@@ -188,6 +190,7 @@ function AppContent() {
           } />
 
           <Route path="/verificar-contrato" element={<VerifyContractPage onOpenAuth={handleOpenAuth} />} />
+          <Route path="/billetera" element={<WalletPage onOpenAuth={handleOpenAuth} />} />
           <Route path="/terminos" element={<LegalPage document="terms" />} />
           <Route path="/privacidad" element={<LegalPage document="privacy" />} />
           <Route path="/cookies" element={<LegalPage document="cookies" />} />
