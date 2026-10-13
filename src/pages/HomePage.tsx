@@ -131,44 +131,37 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="space-y-10 pb-16">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white px-6 py-10 sm:px-12 sm:py-14 shadow-xl border border-slate-800">
+      <section className="relative overflow-hidden rounded-3xl bg-stone-900 text-white px-6 py-12 sm:px-12 sm:py-16">
         <div className="relative z-10 max-w-3xl space-y-5">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-rose-100">
-            Arriendos flexibles para trabajar, crear y reunirse
-          </span>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
-            Encuentra un espacio que se ajuste a lo que necesitas
+          <h1 className="font-display text-4xl sm:text-6xl leading-[1.05] tracking-tight">
+            Un lugar para trabajar, crear o reunirte. <em className="text-rose-300">Por hora, día o mes.</em>
           </h1>
-          <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
+          <p className="text-stone-300 text-sm sm:text-base leading-relaxed max-w-2xl">
             Explora espacios disponibles y revisa sus precios, ubicación, equipamiento y modalidades antes de solicitar una reserva.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 pt-1">
             <button
               type="button"
               onClick={scrollToListings}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-rose-700"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700"
             >
               <Search className="h-4 w-4" /> Buscar espacios
             </button>
             <button
               type="button"
               onClick={handlePublishSpace}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/15"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               <Building className="h-4 w-4" /> Publicar un espacio
             </button>
           </div>
         </div>
-        <div className="absolute -right-20 -bottom-24 h-80 w-80 rounded-full bg-rose-600/20 blur-3xl pointer-events-none" />
       </section>
 
       {/* Barra de Filtros */}
       <section id="espacios" className="scroll-mt-24 space-y-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-600">Catálogo</p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Busca tu próximo espacio</h2>
-          </div>
+          <h2 className="font-display text-3xl tracking-tight text-slate-900">Espacios disponibles</h2>
           <p className="text-sm text-slate-500">Filtra por ubicación, tipo y modalidad de arriendo.</p>
         </div>
         <SpaceFilters
@@ -191,7 +184,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* Conteo de Resultados */}
       <div className="flex items-center justify-between px-1">
         <p className="text-xs font-semibold text-slate-500">
-          Mostrando <span className="text-slate-900 font-bold">{filteredSpaces.length}</span> espacios disponibles
+          <span className="text-slate-900 font-bold">{filteredSpaces.length}</span> {filteredSpaces.length === 1 ? 'resultado' : 'resultados'}
         </p>
       </div>
 
@@ -212,7 +205,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               onClick={handlePublishSpace}
               className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition cursor-pointer inline-flex items-center gap-2 shadow-xs"
             >
-              <span>Publicar un Espacio</span>
+              <span>Publicar un espacio</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -224,13 +217,13 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
           <h3 className="text-base font-bold text-slate-800">No encontramos espacios con esos filtros</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Prueba ajustando el rango de precio en CLP, seleccionando otra comuna o limpiando el término de búsqueda.
+            Prueba con otra comuna, otra modalidad o una superficie menor, o limpia la búsqueda.
           </p>
           <button
             onClick={handleResetFilters}
             className="mt-2 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition"
           >
-            Limpiar Filtros
+            Limpiar filtros
           </button>
         </div>
       ) : (
@@ -243,8 +236,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       <section id="como-funciona" className="scroll-mt-24 space-y-5 pt-4">
         <div className="max-w-2xl space-y-2">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-600">Simple y claro</p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">¿Cómo funciona Spotly?</h2>
+          <h2 className="font-display text-3xl sm:text-4xl tracking-tight text-slate-900">¿Cómo funciona Spotly?</h2>
           <p className="text-sm leading-relaxed text-slate-600">Elige si vienes a encontrar un espacio o a publicar uno. Cada paso queda visible desde tu cuenta.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">

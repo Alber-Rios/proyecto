@@ -85,14 +85,14 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               onClick={() => onNavigate('login')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              Iniciar Sesión
+              Iniciar sesión
             </button>
             <button
               type="button"
               onClick={() => onNavigate('register')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              Registrarte Gratis
+              Registrarte gratis
             </button>
           </div>
         </div>
@@ -108,12 +108,12 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 text-xs font-semibold text-rose-600">
               <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
-              <span>Colección Personal</span>
+              <span>Colección personal</span>
               <span aria-hidden="true">·</span>
               <span>{favoriteSpaceIds.length} {favoriteSpaceIds.length === 1 ? 'espacio guardado' : 'espacios guardados'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Mis Lugares Favoritos
+              Mis lugares favoritos
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
               Guarda y compara tus oficinas, estudios y salones preferidos en Chile para reservarlos cuando estés listo.

@@ -222,10 +222,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
           <div className="space-y-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full">
-              Acceso Restringido
+              Acceso restringido
             </span>
             <h2 className="text-2xl font-bold text-slate-900">
-              Panel de Administración
+              Panel de administración
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
               Esta sección está reservada para el equipo de administración de Spotly Chile.
@@ -238,7 +238,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 onClick={() => onOpenAuth?.('login', 'Inicia sesión con credenciales de Administrador.')}
                 className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs transition cursor-pointer"
               >
-                Iniciar Sesión
+                Iniciar sesión
               </button>
             ) : null}
           </div>
@@ -262,7 +262,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
               <ShieldCheck className="w-3.5 h-3.5" />
-              Administración Central
+              Administración central
             </span>
             <span className="text-xs text-slate-400">·</span>
             <span className="text-xs text-slate-500 font-medium">
@@ -270,7 +270,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1 tracking-tight">
-            Panel de Control y Verificación KYC
+            Panel de control y verificación KYC
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Haz clic en cualquiera de las tarjetas inferiores para cambiar de vista: Verificación KYC, Espacios Activos, Disputas en Arbitraje o Volumen Transaccionado.
@@ -292,7 +292,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         >
           <div className="w-full">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Revisiones KYC Pendientes</span>
+              <span>Revisiones KYC pendientes</span>
               <Clock className={`w-4 h-4 shrink-0 ${activeTab === 'kyc' ? 'text-indigo-600' : 'text-amber-500'}`} />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">
@@ -304,7 +304,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
             <span className={activeTab === 'kyc' ? 'text-indigo-600' : 'text-slate-500'}>
-              {activeTab === 'kyc' ? '● Pantalla activa' : 'Ver Verificación KYC'}
+              {activeTab === 'kyc' ? '● Pantalla activa' : 'Ver verificación KYC'}
             </span>
             <span className={activeTab === 'kyc' ? 'text-indigo-600' : 'text-slate-400'}>→</span>
           </div>
@@ -322,7 +322,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         >
           <div className="w-full">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Espacios Activos</span>
+              <span>Espacios activos</span>
               <Building className="w-4 h-4 text-emerald-600 shrink-0" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">
@@ -335,7 +335,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
             <span className={activeTab === 'spaces' ? 'text-emerald-700' : 'text-slate-500'}>
-              {activeTab === 'spaces' ? '● Pantalla activa' : 'Gestionar Espacios'}
+              {activeTab === 'spaces' ? '● Pantalla activa' : 'Gestionar espacios'}
             </span>
             <span className={activeTab === 'spaces' ? 'text-emerald-700' : 'text-slate-400'}>→</span>
           </div>
@@ -353,7 +353,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         >
           <div className="w-full">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Disputas en Arbitraje</span>
+              <span>Disputas en arbitraje</span>
               <Scale className="w-4 h-4 text-rose-600 shrink-0" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">
@@ -365,7 +365,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
             <span className={activeTab === 'disputes' ? 'text-rose-600' : 'text-slate-500'}>
-              {activeTab === 'disputes' ? '● Pantalla activa' : 'Revisar Disputas'}
+              {activeTab === 'disputes' ? '● Pantalla activa' : 'Revisar disputas'}
             </span>
             <span className={activeTab === 'disputes' ? 'text-rose-600' : 'text-slate-400'}>→</span>
           </div>
@@ -383,7 +383,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         >
           <div className="w-full">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Volumen Transaccionado</span>
+              <span>Volumen transaccionado</span>
               <Banknote className="w-4 h-4 text-indigo-600 shrink-0" />
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums truncate">
@@ -395,7 +395,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
             <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-500'}>
-              {activeTab === 'transactions' ? '● Pantalla activa' : 'Ver Transacciones'}
+              {activeTab === 'transactions' ? '● Pantalla activa' : 'Ver transacciones'}
             </span>
             <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-400'}>→</span>
           </div>
@@ -445,7 +445,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-slate-900">Expedientes de Usuarios</h2>
+                <h2 className="text-sm font-bold text-slate-900">Expedientes de usuarios</h2>
                 <span className="text-xs font-semibold text-slate-400 tabular-nums">
                   {filteredUsers.length} registros
                 </span>
@@ -469,7 +469,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                 {[
                   { id: 'all', label: 'Todos' },
-                  { id: 'pending_review', label: 'En Revisión' },
+                  { id: 'pending_review', label: 'En revisión' },
                   { id: 'verified', label: 'Verificados' },
                   { id: 'owner', label: 'Propietarios' },
                   { id: 'tenant', label: 'Arrendatarios' },
@@ -543,7 +543,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         ) : u.verificationStatus === 'pending_review' ||
                           u.verificationStatus === 'in_progress' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                            <Clock className="w-3 h-3" /> Por Revisar
+                            <Clock className="w-3 h-3" /> Por revisar
                           </span>
                         ) : u.verificationStatus === 'rejected' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700">
@@ -591,12 +591,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           }`}
                         >
                           {selectedUser.verificationStatus === 'verified'
-                            ? 'Identidad Aprobada'
+                            ? 'Identidad aprobada'
                             : selectedUser.verificationStatus === 'pending_review'
-                            ? 'Pendiente de Aprobación'
+                            ? 'Pendiente de aprobación'
                             : selectedUser.verificationStatus === 'rejected'
                             ? 'Rechazado'
-                            : 'Sin Documentos'}
+                            : 'Sin documentos'}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
@@ -616,7 +616,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
-                        <span>Aprobar Verificación</span>
+                        <span>Aprobar verificación</span>
                       </button>
                     )}
 
@@ -658,7 +658,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         onClick={() => handleConfirmRejectUser(selectedUser.id)}
                         className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition cursor-pointer shrink-0"
                       >
-                        Confirmar Rechazo
+                        Confirmar rechazo
                       </button>
                     </div>
                   </div>
@@ -702,15 +702,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           <table className="w-full text-left border-collapse text-xs">
                             <thead>
                               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                                <th className="py-2.5 px-4">Campo Evaluado</th>
-                                <th className="py-2.5 px-4">Datos Declarados en Cuenta</th>
+                                <th className="py-2.5 px-4">Campo evaluado</th>
+                                <th className="py-2.5 px-4">Datos declarados en cuenta</th>
                                 <th className="py-2.5 px-4">Revisión del administrador</th>
                                 <th className="py-2.5 px-4 text-right">Resultado</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               <tr className="hover:bg-slate-50/60">
-                                <td className="py-2.5 px-4 font-semibold text-slate-700">Nombre Titular</td>
+                                <td className="py-2.5 px-4 font-semibold text-slate-700">Nombre titular</td>
                                 <td className="py-2.5 px-4 font-bold text-slate-900">{selectedUser.fullName}</td>
                                 <td className="py-2.5 px-4 text-amber-700">Pendiente de cotejo visual</td>
                                 <td className="py-2.5 px-4 text-right">
@@ -721,7 +721,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               </tr>
 
                               <tr className="hover:bg-slate-50/60">
-                                <td className="py-2.5 px-4 font-semibold text-slate-700">RUN / RUT Chileno</td>
+                                <td className="py-2.5 px-4 font-semibold text-slate-700">RUN / RUT chileno</td>
                                 <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{registeredRut}</td>
                                 <td className="py-2.5 px-4 text-amber-700">Pendiente de lectura del documento</td>
                                 <td className="py-2.5 px-4 text-right">
@@ -730,7 +730,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               </tr>
 
                               <tr className="hover:bg-slate-50/60">
-                                <td className="py-2.5 px-4 font-semibold text-slate-700">N° Serie Documento</td>
+                                <td className="py-2.5 px-4 font-semibold text-slate-700">N° serie documento</td>
                                 <td className="py-2.5 px-4 text-slate-500">Cédula adjunta</td>
                                 <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{selectedUser.kycData?.documentSerialNumber || 'Pendiente de revisión'}</td>
                                 <td className="py-2.5 px-4 text-right">
@@ -739,8 +739,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               </tr>
 
                               <tr className="hover:bg-slate-50/60">
-                                <td className="py-2.5 px-4 font-semibold text-slate-700">Reconocimiento Facial</td>
-                                <td className="py-2.5 px-4 text-slate-600">Foto del Carnet / Perfil</td>
+                                <td className="py-2.5 px-4 font-semibold text-slate-700">Reconocimiento facial</td>
+                                <td className="py-2.5 px-4 text-slate-600">Foto del carnet / perfil</td>
                                 <td className="py-2.5 px-4 font-bold text-slate-900">
                                   {selectedUser.kycData?.photoCaptured ? 'Selfie adjunta' : 'Sin selfie'}
                                 </td>
@@ -750,8 +750,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               </tr>
 
                               <tr className="hover:bg-slate-50/60">
-                                <td className="py-2.5 px-4 font-semibold text-slate-700">Certificado Antecedentes</td>
-                                <td className="py-2.5 px-4 text-slate-600">Fines Especiales (Ley 19.628)</td>
+                                <td className="py-2.5 px-4 font-semibold text-slate-700">Certificado antecedentes</td>
+                                <td className="py-2.5 px-4 text-slate-600">Fines especiales (Ley 19.628)</td>
                                 <td className="py-2.5 px-4 font-mono text-slate-800 truncate max-w-[200px]">
                                   {certFilename}
                                 </td>
@@ -769,10 +769,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               </tr>
 
                               <tr className="hover:bg-slate-50/60">
-                                <td className="py-2.5 px-4 font-semibold text-slate-700">Rol / Residencia</td>
+                                <td className="py-2.5 px-4 font-semibold text-slate-700">Rol / residencia</td>
                                 <td className="py-2.5 px-4 text-slate-700">
                                   {selectedUser.role === 'owner' || selectedUser.ownerTermsAccepted
-                                    ? 'Propietario / Anfitrión'
+                                    ? 'Propietario / anfitrión'
                                     : 'Arrendatario'}
                                 </td>
                                 <td className="py-2.5 px-4 text-slate-700">
@@ -818,7 +818,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                               <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-                              Cédula Anverso
+                              Cédula anverso
                             </span>
                             <button
                               disabled={!frontImg}
@@ -855,7 +855,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                               <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                              Cédula Reverso
+                              Cédula reverso
                             </span>
                             <button
                               disabled={!backImg}
@@ -892,7 +892,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                               <ScanFace className="w-3.5 h-3.5 text-emerald-600" />
-                              Selfie Biométrica
+                              Selfie biométrica
                             </span>
                             <button
                               disabled={!faceImg}
@@ -973,13 +973,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               `Certificado_Antecedentes_${selectedUser.rut.replace(/\D/g, '')}.pdf`}
                           </div>
                           <div className="text-[11px] text-slate-500">
-                            Servicio de Registro Civil e Identificación · República de Chile
+                            Servicio de registro civil e identificación · república de Chile
                           </div>
                         </div>
                       </div>
 
                       <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
-                        ✓ Documento PDF Verificado
+                        Documento PDF verificado
                       </span>
                     </div>
 
@@ -991,9 +991,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       <div className="flex items-start justify-between border-b-2 border-indigo-900 pb-3">
                         <div>
                           <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider">
-                            República de Chile · Servicio de Registro Civil e Identificación
+                            República de Chile · servicio de registro civil e identificación
                           </div>
-                          <div className="text-xs sm:text-sm font-black text-slate-900 mt-0.5">
+                          <div className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">
                             CERTIFICADO DE ANTECEDENTES PARA FINES ESPECIALES
                           </div>
                         </div>
@@ -1006,7 +1006,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <div>
                           <span className="text-[10px] text-slate-400 font-bold block uppercase">
-                            Nombre Titular
+                            Nombre titular
                           </span>
                           <span className="font-bold text-slate-900">
                             {selectedUser.fullName.toUpperCase()}
@@ -1022,7 +1022,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 font-bold block uppercase">
-                            Registro General de Condenas
+                            Registro general de condenas
                           </span>
                           <span className="font-extrabold text-emerald-700">
                             SIN ANOTACIONES VIGENTES
@@ -1031,7 +1031,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                        <span>Timbre Electrónico Avanzado (Ley 19.799)</span>
+                        <span>Timbre electrónico avanzado (Ley 19.799)</span>
                         <span className="text-indigo-600 font-bold flex items-center gap-1">
                           <Eye className="w-3.5 h-3.5" /> Clic para abrir documento completo
                         </span>
@@ -1053,7 +1053,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Catálogo y Moderación de Espacios
+                Catálogo y moderación de espacios
               </h2>
               <p className="text-xs text-slate-500">
                 Activa o pausa inmuebles publicados por propietarios en Chile.
@@ -1157,7 +1157,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             : 'bg-emerald-600 text-white hover:bg-emerald-700'
                         }`}
                       >
-                        {sp.status === 'active' ? 'Pausar Espacio' : 'Activar Espacio'}
+                        {sp.status === 'active' ? 'Pausar espacio' : 'Activar espacio'}
                       </button>
                     </div>
                   </div>
@@ -1176,7 +1176,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Centro de Arbitraje y Garantías
+                Centro de arbitraje y garantías
               </h2>
               <p className="text-xs text-slate-500">
                 Resuelve reclamos entre arrendatarios y propietarios sobre el pago retenido en custodia (Arriendo + Garantía + 5% Comisión).
@@ -1186,7 +1186,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
               {[
                 { id: 'all', label: 'Todas' },
-                { id: 'open', label: 'En Arbitraje' },
+                { id: 'open', label: 'En arbitraje' },
                 { id: 'resolved', label: 'Resueltas' },
               ].map((f) => (
                 <button
@@ -1212,7 +1212,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span>1. ¿Qué incluye el Monto en Custodia?</span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Cuando el arrendatario paga, Spotly retiene en custodia: <strong>Valor Hora/Día</strong> + <strong>Garantía de Daños</strong> + <strong>5% Comisión Spotly</strong>.
+                Cuando el arrendatario paga, Spotly retiene en custodia: <strong>Valor hora/Día</strong> + <strong>Garantía de daños</strong> + <strong>5% Comisión Spotly</strong>.
               </p>
             </div>
 
@@ -1273,10 +1273,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           }`}
                         >
                           {d.status === 'resolved_refund'
-                            ? 'Resuelta · Reembolso 100% al Arrendatario'
+                            ? 'Resuelta · reembolso 100% al arrendatario'
                             : d.status === 'resolved_owner'
-                            ? 'Resuelta · Liberado al Propietario'
-                            : 'En Arbitraje'}
+                            ? 'Resuelta · liberado al propietario'
+                            : 'En arbitraje'}
                         </span>
                         <h3 className="text-sm font-bold text-slate-900">
                           {d.spaceTitle}
@@ -1328,7 +1328,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                       <div className="bg-white p-2.5 rounded-lg border border-rose-200">
                         <span className="text-[10px] font-bold uppercase text-rose-600 block">
-                          Total Pagado (1 + 2 + 3)
+                          Total pagado (1 + 2 + 3)
                         </span>
                         <strong className="text-sm font-extrabold text-rose-700 tabular-nums">
                           {formatClp(totalCustody)}
@@ -1359,7 +1359,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block">Motivo del Reclamo</span>
+                        <span className="text-slate-400 block">Motivo del reclamo</span>
                         <p className="text-slate-700 mt-0.5 leading-snug">{d.reason}</p>
                       </div>
                     </div>
@@ -1367,16 +1367,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                     {isResolved ? (
                       <div className="text-xs text-emerald-800 bg-emerald-50/70 border border-emerald-200/80 px-3.5 py-2.5 rounded-xl space-y-1">
                         <div>
-                          <strong>Dictamen Final:</strong> {d.resolutionNotes}
+                          <strong>Dictamen final:</strong> {d.resolutionNotes}
                         </div>
                         <div className="text-[11px] text-emerald-900 font-medium">
                           {d.status === 'resolved_refund' ? (
                             <>
-                              ✓ <strong>Liquidación ejecutada:</strong> Se reembolsó el 100% al arrendatario ({formatClp(totalCustody)}: {formatClp(rentalSubtotal)} de arriendo + {formatClp(securityDeposit)} de garantía + {formatClp(platformFee5Pct)} del 5% de comisión Spotly).
+                              <strong>Liquidación ejecutada:</strong> Se reembolsó el 100% al arrendatario ({formatClp(totalCustody)}: {formatClp(rentalSubtotal)} de arriendo + {formatClp(securityDeposit)} de garantía + {formatClp(platformFee5Pct)} del 5% de comisión Spotly).
                             </>
                           ) : (
                             <>
-                              ✓ <strong>Liquidación ejecutada:</strong> Se liberó al propietario {formatClp(ownerNetIfReleased)} (95% del arriendo + garantía de {formatClp(securityDeposit)}) y Spotly retuvo su comisión del 5% ({formatClp(platformFee5Pct)}).
+                              <strong>Liquidación ejecutada:</strong> Se liberó al propietario {formatClp(ownerNetIfReleased)} (95% del arriendo + garantía de {formatClp(securityDeposit)}) y Spotly retuvo su comisión del 5% ({formatClp(platformFee5Pct)}).
                             </>
                           )}
                         </div>
@@ -1441,7 +1441,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Detalle de Volumen Transaccionado y Comisiones Spotly
+                Detalle de volumen transaccionado y comisiones Spotly
               </h2>
               <p className="text-xs text-slate-500">
                 Registro consolidado de arriendos confirmados, garantías en custodia y comisión operativa del 5%.
@@ -1449,7 +1449,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200/70 text-xs">
-                <span className="text-indigo-600 font-semibold">Total Transaccionado: </span>
+                <span className="text-indigo-600 font-semibold">Total transaccionado: </span>
                 <strong className="text-indigo-950 font-extrabold tabular-nums">
                   {formatClp(metrics.totalGmvClp)}
                 </strong>
@@ -1467,11 +1467,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
-                  <th className="py-3 px-4">Reserva / Fecha</th>
-                  <th className="py-3 px-4">Espacio y Anfitrión</th>
+                  <th className="py-3 px-4">Reserva / fecha</th>
+                  <th className="py-3 px-4">Espacio y anfitrión</th>
                   <th className="py-3 px-4">Arrendatario</th>
                   <th className="py-3 px-4">Estado</th>
-                  <th className="py-3 px-4 text-right">Total Pagado</th>
+                  <th className="py-3 px-4 text-right">Total pagado</th>
                   <th className="py-3 px-4 text-right">Comisión Spotly (5%)</th>
                 </tr>
               </thead>
@@ -1566,7 +1566,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             {/* Barra superior del visor PDF */}
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-black text-xs">
+                <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-xs">
                   {criminalRecordIsPdf ? 'PDF' : 'IMG'}
                 </span>
                 <div className="min-w-0">

@@ -683,7 +683,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: `notif-${Date.now()}`,
           userId: newUser.id,
-          title: '🌟 ¡Bienvenido a Spotly Chile!',
+          title: '¡Bienvenido a Spotly Chile!',
           message: `¡Hola ${newUser.fullName}! Tu cuenta ha sido activada en Supabase Auth. Ya puedes explorar y reservar espacios o verificar tu identidad.`,
           type: 'success',
           timestamp: new Date().toISOString(),
@@ -746,7 +746,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         userId: newUser.id,
-        title: '🌟 ¡Bienvenido a Spotly Chile!',
+        title: '¡Bienvenido a Spotly Chile!',
         message: `¡Hola ${newUser.fullName}! Tu cuenta ha sido activada con éxito. Ya puedes explorar y reservar espacios o verificar tu identidad con tu carnet de identidad.`,
         type: 'success',
         timestamp: new Date().toISOString(),
@@ -790,7 +790,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-update-${Date.now()}`,
         userId: updatedUser.id,
-        title: '✅ Datos actualizados',
+        title: 'Datos actualizados',
         message: 'Tus datos personales de perfil han sido actualizados y sincronizados con éxito.',
         type: 'success',
         timestamp: new Date().toISOString(),
@@ -895,7 +895,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         userId: updatedUser.id,
-        title: '¡Felicitaciones! Ahora eres Propietario en Spotly',
+        title: '¡Felicitaciones! Ahora eres propietario en Spotly',
         message: 'Términos y condiciones de anfitrión aceptados legalmente. Ya puedes publicar y gestionar tus espacios en Chile.',
         type: 'success',
         timestamp: new Date().toISOString(),
@@ -1164,7 +1164,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         userId: currentUser.id,
-        title: 'Espacio Publicado Exitosamente',
+        title: 'Espacio publicado exitosamente',
         message: `Tu espacio "${newSpace.title}" ha sido enviado y está en estado ${newSpace.status === 'active' ? 'activo' : 'en revisión por moderación'}.`,
         type: 'success',
         timestamp: new Date().toISOString(),
@@ -1200,7 +1200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-${Date.now()}`,
         userId: currentUser ? currentUser.id : 'guest',
-        title: '📍 Solicitud de Visita Agendada',
+        title: 'Solicitud de visita agendada',
         message: `Se ha coordinado tu visita para "${data.spaceTitle}" para el ${data.visitDate} (${data.visitTimeSlot}). El anfitrión ${data.ownerName} ha sido notificado.`,
         type: 'success',
         timestamp: new Date().toISOString(),
@@ -1330,7 +1330,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-kyc-ok-${Date.now()}`,
         userId,
-        title: '✅ Solicitud de Verificación Aprobada',
+        title: 'Solicitud de verificación aprobada',
         message:
           'El Administrador ha aprobado tu verificación de identidad (cédula, biometría y certificado de antecedentes). Tu cuenta ya se encuentra habilitada para reservar.',
         type: 'success',
@@ -1414,7 +1414,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       {
         id: `notif-kyc-rej-${Date.now()}`,
         userId,
-        title: '⚠️ Solicitud de Verificación Rechazada',
+        title: 'Solicitud de verificación rechazada',
         message: `Estado de tu solicitud: Rechazada por el Administrador. Motivo informado: "${cleanReason}". Puedes revisar el detalle y volver a enviar tus documentos en Verificación de Identidad.`,
         type: 'warning',
         timestamp: rejectedAtIso,
@@ -1495,10 +1495,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: `notif-disp-res-${Date.now()}`,
           userId: targetDispute.tenantId!,
-          title: '⚖️ Disputa Resuelta por Administración',
+          title: 'Disputa resuelta por administración',
           message: `Tu reclamo sobre "${targetDispute.spaceTitle}" fue resuelto (${
             resolution === 'resolved_refund'
-              ? 'Reembolso del 100% autorizado: Arriendo + Garantía + 5% Comisión'
+              ? 'Reembolso del 100% autorizado: Arriendo + garantía + 5% comisión'
               : 'Caso cerrado con liberación de fondos al propietario'
           }). Dictamen: ${notes}`,
           type: resolution === 'resolved_refund' ? 'success' : 'info',
@@ -1587,7 +1587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           id: `notif-disp-${Date.now()}`,
           userId: currentUser.id,
-          title: '🛡️ Reporte de Problema / Disputa Registrada',
+          title: 'Reporte de problema / disputa registrada',
           message: `Se ha registrado tu reclamo sobre "${newDispute.spaceTitle}" (Código #${newDispute.id}). El equipo de Soporte y Administración revisará el caso.`,
           type: 'info',
           timestamp: new Date().toISOString(),

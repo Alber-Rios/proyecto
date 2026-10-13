@@ -19,12 +19,12 @@ interface SpaceCardProps {
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
-  office: 'Oficina Privada',
-  cowork: 'Coworking Flexible',
-  event: 'Salón de Eventos',
-  studio: 'Estudio Creativo',
-  warehouse: 'Bodega Urbana',
-  retail: 'Espacio Comercial',
+  office: 'Oficina privada',
+  cowork: 'Coworking',
+  event: 'Salón de eventos',
+  studio: 'Estudio',
+  warehouse: 'Bodega',
+  retail: 'Local comercial',
 };
 
 export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
@@ -34,15 +34,25 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
   return (
     <div
       id={`space-card-${space.id}`}
+      role="link"
+      tabIndex={0}
+      aria-label={`Ver ${space.title}`}
       onClick={() => onSelect(space)}
-      className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-slate-300 transition-all duration-300 flex flex-col cursor-pointer"
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(space);
+        }
+      }}
+      className="group bg-white rounded-2xl border border-stone-200 overflow-hidden hover:shadow-lg hover:border-stone-300 transition-shadow duration-300 flex flex-col cursor-pointer"
     >
       {/* Imagen Principal con Badges */}
       <div className="relative aspect-4/3 overflow-hidden bg-slate-100">
         {space.images?.[0] ? <img
           src={space.images[0]}
           alt={space.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           loading="lazy"
         /> : <div className="w-full h-full" aria-label="Este espacio no tiene imágenes" />}
 
@@ -77,11 +87,11 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
           </span>
           {space.spaceEnvironment === 'abierto' ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/95 text-white shadow-xs">
-              <Sun className="w-3 h-3" /> Al Aire Libre
+              <Sun className="w-3 h-3" /> Al aire libre
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/90 text-white shadow-xs">
-              <Building2 className="w-3 h-3" /> Techado / Interior
+              <Building2 className="w-3 h-3" /> Interior
             </span>
           )}
           {space.isVerified && (
@@ -95,7 +105,7 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
         {space.rating > 0 && (
           <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg text-xs font-bold bg-slate-900/80 backdrop-blur-xs text-white flex items-center gap-1 shadow-sm">
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>{space.rating.toFixed(2)}</span>
+            <span>{space.rating.toFixed(1)}</span>
             <span className="text-[10px] text-slate-300">({space.reviewsCount})</span>
           </div>
         )}

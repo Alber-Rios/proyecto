@@ -49,12 +49,12 @@ interface SpaceDetailPageProps {
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
-  office: 'Oficina Privada & Residencia',
-  cowork: 'Coworking Ejecutivo',
-  event: 'Eventos & Workshops',
-  studio: 'Estudio Creativo',
-  warehouse: 'Bodega Urbana',
-  retail: 'Local Comercial',
+  office: 'Oficina privada & residencia',
+  cowork: 'Coworking ejecutivo',
+  event: 'Eventos & workshops',
+  studio: 'Estudio creativo',
+  warehouse: 'Bodega urbana',
+  retail: 'Local comercial',
 };
 
 export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
@@ -133,7 +133,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           onClick={() => onNavigate('home')}
           className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2 cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" /> Volver al Catálogo
+          <ArrowLeft className="w-4 h-4" /> Volver al catálogo
         </button>
       </div>
     );
@@ -201,7 +201,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
 
           <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Espacio Verificado</span>
+            <span>Espacio verificado</span>
           </span>
 
           <span className="text-xs text-slate-500 hidden md:inline">
@@ -230,7 +230,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               }`}
             >
               <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-500'}`} />
-              <span className="text-xs">{isLiked ? 'Guardado en Favoritos' : 'Guardar'}</span>
+              <span className="text-xs">{isLiked ? 'Guardado en favoritos' : 'Guardar'}</span>
             </button>
           )}
         </div>
@@ -238,7 +238,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
 
       {/* 2. TÍTULO PRINCIPAL Y UBICACIÓN */}
       <div className="space-y-1.5">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">
           {displayTitle}
         </h1>
         <p className="text-slate-600 text-xs sm:text-sm flex items-center gap-1.5">
@@ -268,7 +268,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 </span>
                 <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10 flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Acceso 24/7 Smart Lock</span>
+                  <span>Acceso 24/7 smart lock</span>
                 </span>
               </div>
 
@@ -305,7 +305,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                 {rateLabel}
               </span>
-              <div className="text-lg sm:text-xl font-black text-rose-600 leading-tight">
+              <div className="text-lg sm:text-xl font-bold text-rose-600 leading-tight">
                 {formatClp(displayPrice)}
                 <span className="text-xs font-normal text-slate-500">{unitSuffix}</span>
               </div>
@@ -321,7 +321,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 {activeModality === 'mensual' ? '35 puestos' : `${space.capacity} pers.`}
               </div>
               <span className="text-[10px] text-slate-400 block">
-                {activeModality === 'mensual' ? 'Puestos / Equipos' : 'Formato Co-living / Eventos'}
+                {activeModality === 'mensual' ? 'Puestos / equipos' : 'Formato co-living / eventos'}
               </span>
             </div>
 
@@ -345,7 +345,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 {activeModality === 'mensual' ? '24/7 Smart' : '09 - 23h'}
               </div>
               <span className="text-[10px] text-slate-400 block">
-                {activeModality === 'mensual' ? 'Cerradura Inteligente RFID' : 'Lunes a Sábado'}
+                {activeModality === 'mensual' ? 'Cerradura inteligente RFID' : 'Lunes a sábado'}
               </span>
             </div>
           </div>
@@ -355,7 +355,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-rose-600" />
               <span>
-                {activeModality === 'mensual' ? 'Descripción de la Residencia Mensual' : 'Descripción del Inmueble'}
+                {activeModality === 'mensual' ? 'Descripción de la residencia mensual' : 'Descripción del inmueble'}
               </span>
             </h2>
             <div className="text-xs sm:text-sm text-slate-700 leading-relaxed space-y-2.5">
@@ -384,12 +384,12 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { name: 'Terraza Abierta con Toldos', icon: Sun },
-                { name: 'Sistema de Audio Doble con 2 Zonas', icon: Volume2 },
-                { name: 'Iluminación de Jardín Cálida', icon: Lightbulb },
-                { name: 'Mobiliario Lounge para Reuniones', icon: Users },
-                { name: 'Barra de Cóctel y Coffee Station', icon: Coffee },
-                { name: 'Baños Equipados de Alto Tráfico', icon: Bath },
+                { name: 'Terraza abierta con toldos', icon: Sun },
+                { name: 'Sistema de audio doble con 2 zonas', icon: Volume2 },
+                { name: 'Iluminación de jardín cálida', icon: Lightbulb },
+                { name: 'Mobiliario lounge para reuniones', icon: Users },
+                { name: 'Barra de cóctel y coffee station', icon: Coffee },
+                { name: 'Baños equipados de alto tráfico', icon: Bath },
               ].map((item, idx) => {
                 const IconComponent = item.icon;
                 return (
@@ -411,7 +411,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-indigo-600" />
-                  <span>Servicios Fijos e Infraestructura Incluida</span>
+                  <span>Servicios fijos e infraestructura incluida</span>
                 </h2>
                 <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                   6 servicios fijos
@@ -422,7 +422,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <div className="p-3.5 rounded-2xl bg-indigo-50/30 border border-indigo-100 space-y-1">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Limpieza General Incluida
+                    Limpieza general incluida
                   </div>
                   <p className="text-[11px] text-slate-500">Aseo profundo 2 veces por semana</p>
                 </div>
@@ -430,7 +430,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <div className="p-3.5 rounded-2xl bg-indigo-50/30 border border-indigo-100 space-y-1">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Fibra Óptica Dedicada Redundante
+                    Fibra óptica dedicada redundante
                   </div>
                   <p className="text-[11px] text-slate-500">1 Gbps simétrico con backup 5G</p>
                 </div>
@@ -438,7 +438,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <div className="p-3.5 rounded-2xl bg-indigo-50/30 border border-indigo-100 space-y-1">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Recepción y Casilleros de Seguridad
+                    Recepción y casilleros de seguridad
                   </div>
                   <p className="text-[11px] text-slate-500">Servicio de correspondencia en horario comercial</p>
                 </div>
@@ -446,7 +446,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <div className="p-3.5 rounded-2xl bg-indigo-50/30 border border-indigo-100 space-y-1">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Acceso 24/7 Smart Lock
+                    Acceso 24/7 smart lock
                   </div>
                   <p className="text-[11px] text-slate-500">Cerradura inteligente con tarjeta y clave móvil</p>
                 </div>
@@ -454,7 +454,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <div className="p-3.5 rounded-2xl bg-indigo-50/30 border border-indigo-100 space-y-1">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Kitchenette & Coffee Station
+                    Kitchenette & coffee station
                   </div>
                   <p className="text-[11px] text-slate-500">Espacio equipado para colación y café de grano</p>
                 </div>
@@ -462,7 +462,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <div className="p-3.5 rounded-2xl bg-indigo-50/30 border border-indigo-100 space-y-1">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Gastos Comunes y Luz/Agua
+                    Gastos comunes y luz/Agua
                   </div>
                   <p className="text-[11px] text-slate-500">Tarifas estándar sin cobro mensual adicional</p>
                 </div>
@@ -474,7 +474,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-rose-600" />
-              <span>Reglas y Condiciones del Recinto (Ley 18.101 de Arrendamiento)</span>
+              <span>Reglas y condiciones del recinto (Ley 18.101 de arrendamiento)</span>
             </h2>
 
             <div className="bg-rose-50/40 border border-rose-200/80 rounded-2xl p-4 text-xs text-slate-700 space-y-2.5">
@@ -504,7 +504,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-600" />
-                <span>Condiciones de Contratación Mensual (Ley 18.101)</span>
+                <span>Condiciones de contratación mensual (Ley 18.101)</span>
               </h2>
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-700 space-y-2">
                 <div className="flex items-start gap-2">
@@ -554,7 +554,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           {/* H. FICHA DEL ANFITRIÓN VERIFICADO */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#1e293b] text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-[#1e293b] text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
                 {space.ownerName.charAt(0)}
               </div>
               <div>
@@ -563,7 +563,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                   {space.ownerVerified && (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Anfitrión Verificado</span>
+                      <span>Anfitrión verificado</span>
                     </span>
                   )}
                 </div>

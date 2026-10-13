@@ -71,7 +71,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
 
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
-              Centro de Ayuda y Soporte
+              Centro de ayuda y soporte
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               Inicia sesión para reportar un problema o abrir una disputa
@@ -88,7 +88,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
               }
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-md transition cursor-pointer"
             >
-              Iniciar Sesión
+              Iniciar sesión
             </button>
             <button
               onClick={() =>
@@ -96,7 +96,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
               }
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
             >
-              Crear Cuenta Gratis
+              Crear cuenta gratis
             </button>
           </div>
         </div>
@@ -143,13 +143,13 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
         <div className="space-y-1.5">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold">
             <Scale className="w-3.5 h-3.5 text-rose-600" />
-            Ayuda, Soporte y Centro de Disputas
+            Ayuda, soporte y centro de disputas
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             ¿Tuviste un problema con el lugar?
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-            Comenta aquí cualquier inconveniente ocurrido en el espacio arrendado. Tu reporte quedará registrado automáticamente como una <strong>Disputa Oficial</strong> para que el Administrador revise el caso y gestione la garantía o reembolso.
+            Comenta aquí cualquier inconveniente ocurrido en el espacio arrendado. Tu reporte quedará registrado automáticamente como una <strong>Disputa oficial</strong> para que el Administrador revise el caso y gestione la garantía o reembolso.
           </p>
         </div>
 
@@ -159,7 +159,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
             className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
           >
             <FileText className="w-3.5 h-3.5 text-slate-500" />
-            Ver Mis Reservas
+            Ver mis reservas
           </button>
         </div>
       </div>
@@ -172,8 +172,8 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
               <AlertCircle className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <span className="text-xs font-black uppercase tracking-wider text-rose-900">
-                Aviso Importante · Solicitud de Verificación Rechazada
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-900">
+                Aviso importante · solicitud de verificación rechazada
               </span>
               <p className="text-xs text-rose-800">
                 <strong>Motivo informado por el Administrador:</strong> "
@@ -188,7 +188,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
             onClick={() => onNavigate('onboarding')}
             className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer transition flex items-center gap-1.5"
           >
-            <span>Corregir Verificación</span>
+            <span>Corregir verificación</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -203,7 +203,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Reportar Problema del Lugar (Abrir Disputa)
+                Reportar problema del lugar (Abrir disputa)
               </h2>
               <p className="text-xs text-slate-500">
                 Completa los datos para registrar tu reclamo en el sistema de arbitraje.
@@ -266,7 +266,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                   onClick={() => onNavigate('home')}
                   className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  <span>Explorar Lugares</span>
+                  <span>Explorar lugares</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -320,7 +320,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
               }`}
             >
               <Send className="w-4 h-4" />
-              <span>Enviar Comentario y Registrar como Disputa</span>
+              <span>Enviar comentario y registrar como disputa</span>
             </button>
           </form>
         </div>
@@ -380,10 +380,10 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                           }`}
                         >
                           {d.status === 'resolved_refund'
-                            ? '✓ Resuelta · Reembolso al Usuario'
+                            ? 'Resuelta · reembolso al usuario'
                             : d.status === 'resolved_owner'
-                            ? 'Resuelta · Garantía Liberada al Propietario'
-                            : '⏳ En Revisión / Arbitraje'}
+                            ? 'Resuelta · garantía liberada al propietario'
+                            : 'En revisión / arbitraje'}
                         </span>
                       </div>
                       <span className="text-xs font-extrabold text-rose-600">
@@ -415,7 +415,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
 
                     {isResolved && d.resolutionNotes && (
                       <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950">
-                        <strong>Dictamen del Administrador:</strong> {d.resolutionNotes}
+                        <strong>Dictamen del administrador:</strong> {d.resolutionNotes}
                       </div>
                     )}
                   </div>

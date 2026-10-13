@@ -43,7 +43,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNaviga
           <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
             <KeyRound className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Recuperar Contraseña</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Recuperar contraseña</h1>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             Ingresa tu correo electrónico o RUT asociado a tu cuenta de Spotly Chile y te enviaremos un enlace seguro para restablecer tu clave.
           </p>
@@ -71,14 +71,14 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNaviga
               onClick={() => onNavigate('login')}
               className="px-6 py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-2xl transition inline-flex items-center gap-2 cursor-pointer shadow-md"
             >
-              <ArrowLeft className="w-4 h-4" /> Volver a Iniciar Sesión
+              <ArrowLeft className="w-4 h-4" /> Volver a iniciar sesión
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Correo Electrónico o RUT
+                Correo electrónico o RUT
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -103,7 +103,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNaviga
               disabled={loading}
               className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>{loading ? 'Enviando enlace...' : 'Enviar Instrucciones de Recuperación'}</span>
+              <span>{loading ? 'Enviando enlace...' : 'Enviar instrucciones de recuperación'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -113,7 +113,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNaviga
                 onClick={() => onNavigate('login')}
                 className="text-xs font-bold text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 cursor-pointer"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Volver al Inicio de Sesión
+                <ArrowLeft className="w-3.5 h-3.5" /> Volver al inicio de sesión
               </button>
             </div>
           </form>

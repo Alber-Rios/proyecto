@@ -1,17 +1,17 @@
-# 🚀 Guía Completa de Configuración de Supabase y Despliegue (Deploy) - Spotly Chile
+# Guía completa de Configuración de Supabase y Despliegue (Deploy) - Spotly Chile
 
-Esta guía detalla paso a paso la configuración de la base de datos PostgreSQL en Supabase, autenticación, almacenamiento seguro (Storage) y el despliegue tanto del Frontend (React + Vite + TypeScript) como del Backend (Node.js/Express + Gemini Vision AI).
+Esta guía detalla paso a paso la configuración de la base de datos PostgreSQL en Supabase, autenticación, almacenamiento seguro (Storage) y el despliegue tanto del Frontend (React + Vite + TypeScript) como del Backend (Node.js/Express).
 
 ---
 
-## 📑 Tabla de Contenidos
+## Tabla de contenidos
 1. [Paso 1: Configuración de Supabase](#paso-1-configuración-de-supabase)
    - [1.1 Crear Proyecto en Supabase](#11-crear-proyecto-en-supabase)
    - [1.2 Ejecutar el Script de Esquema SQL (Tablas, RLS y Triggers)](#12-ejecutar-el-script-de-esquema-sql)
    - [1.3 Configuración de Supabase Storage (Buckets y Políticas)](#13-configuración-de-supabase-storage)
    - [1.4 Configuración de Supabase Auth](#14-configuración-de-supabase-auth)
 2. [Paso 2: Variables de Entorno](#paso-2-variables-de-entorno)
-3. [Paso 3: Seguridad y Rate Limiting en Gemini API](#paso-3-seguridad-y-rate-limiting-en-gemini-api)
+3. [Paso 3: Verificación de identidad](#paso-3-verificación-de-identidad)
 4. [Paso 4: Opciones de Despliegue (Deploy)](#paso-4-opciones-de-despliegue-deploy)
    - [Opción A: Despliegue Unificado en Vercel (Frontend + Serverless Functions)](#opción-a-despliegue-unificado-en-vercel)
    - [Opción B: Frontend en Vercel / Netlify + Backend en Render / Railway](#opción-b-frontend-en-vercel-y-backend-en-renderrailway)
@@ -28,11 +28,11 @@ Esta guía detalla paso a paso la configuración de la base de datos PostgreSQL 
 4. Espera aproximadamente 1-2 minutos a que el clúster PostgreSQL termine de aprovisionarse.
 
 ### 1.2 Ejecutar el Script de Esquema SQL
-En el repositorio se ha creado el archivo [`supabase/schema.sql`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/supabase/schema.sql).
+En el repositorio se ha creado el archivo [`supabase/schema.sql`](supabase/schema.sql).
 
 1. En tu panel de Supabase, ve a la pestaña **SQL Editor** (ícono de consola `>_` en la barra lateral izquierda).
 2. Haz clic en **New query**.
-3. Abre el archivo [`supabase/schema.sql`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/supabase/schema.sql), copia todo su contenido y pégalo en el editor de Supabase.
+3. Abre el archivo [`supabase/schema.sql`](supabase/schema.sql), copia todo su contenido y pégalo en el editor de Supabase.
 4. Presiona el botón verde **Run** (o `Ctrl + Enter`).
 
 #### ¿Qué crea este script automáticamente?
@@ -68,16 +68,12 @@ El script `schema.sql` crea e inicializa los 4 buckets requeridos:
 
 ## Paso 2: Variables de Entorno
 
-Crea tu archivo `.env` en la raíz del proyecto (basado en [`.env.example`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/.env.example)):
+Crea tu archivo `.env` en la raíz del proyecto (basado en [`.env.example`](.env.example)):
 
 ```env
 # Claves de Supabase (Cliente Frontend)
 VITE_SUPABASE_URL=https://tu-proyecto-id.supabase.co
 VITE_SUPABASE_ANON_KEY=tu-anon-key-de-supabase
-
-# Google Gemini API (Backend Exclusivo para OCR y Biometría)
-# Obtener en https://aistudio.google.com/app/apikey
-GEMINI_API_KEY=AIzaSy...tu_clave_gemini_aqui
 
 # Configuración del Servidor
 PORT=3000
@@ -86,12 +82,14 @@ NODE_ENV=production
 
 ---
 
-## Paso 3: Seguridad y Rate Limiting en Gemini API
+## Paso 3: Verificación de identidad
 
-Para proteger tu cuota de Google Gemini API y evitar ataques de denegación de servicio o sobrecostos, el backend [`server.ts`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/server.ts) incluye:
-- **`express-rate-limit`**: Límite de **30 solicitudes por cada 10 minutos por dirección IP** en todas las rutas biométricas y de visión (`/api/verify-kyc`, `/api/verify-id-frame`, `/api/verify-face-frame`).
-- Si un cliente supera este umbral, el servidor responde con código `HTTP 429` y un mensaje descriptivo en español solicitando esperar unos minutos.
-- **Aislamiento de API Key**: `GEMINI_API_KEY` se procesa exclusivamente en el entorno de servidor (Node.js o Serverless Functions), impidiendo que la clave quede expuesta en el código del navegador.
+La verificación no usa servicios de IA externos. En `/onboarding` el usuario:
+1. Fotografía el frente y el reverso de su cédula.
+2. Se toma una selfie.
+3. Sube su certificado de antecedentes.
+
+Los archivos se guardan en Supabase Storage y la solicitud queda pendiente. Un administrador revisa los documentos en el panel de administración y aprueba o rechaza la solicitud indicando el motivo.
 
 ---
 
@@ -110,16 +108,15 @@ Vercel compila el frontend con Vite y ejecuta automáticamente las Serverless Fu
 5. En la sección **Environment Variables**, agrega:
    - `VITE_SUPABASE_URL`: `https://tu-proyecto.supabase.co`
    - `VITE_SUPABASE_ANON_KEY`: `tu-clave-anon`
-   - `GEMINI_API_KEY`: `tu-clave-gemini`
 6. Haz clic en **Deploy**.
    - El frontend SPA se servirá en la raíz `/` con rutas fluidas.
-   - Las rutas `/api/verify-kyc`, `/api/verify-id-frame`, `/api/verify-face-frame` y `/api/health` funcionarán directamente como funciones Serverless de Vercel.
+   - Las rutas de `api/` (`/api/webpay`, `/api/auth`, `/api/client-ip` y `/api/health`) funcionarán como funciones Serverless de Vercel.
 
 ---
 
 ### Opción B: Frontend en Vercel / Netlify y Backend en Render o Railway
 
-Si prefieres tener el servidor Express [`server.ts`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/server.ts) corriendo continuamente en Render o Railway:
+Si prefieres tener el servidor Express [`server.ts`](server.ts) corriendo continuamente en Render o Railway:
 
 #### Despliegue del Backend en Render:
 1. Ingresa a [render.com](https://render.com/) -> **New** -> **Web Service**.
@@ -129,7 +126,6 @@ Si prefieres tener el servidor Express [`server.ts`](file:///c:/Users/maris/Down
    - **Build Command**: `npm install && npm run build`
    - **Start Command**: `npx tsx server.ts`
 4. En **Environment Variables** en Render agrega:
-   - `GEMINI_API_KEY`: tu clave de Gemini
    - `NODE_ENV`: `production`
    - `CORS_ORIGIN`: la URL de tu frontend en Vercel (ej: `https://spotly-chile.vercel.app`)
 5. Render te dará una URL (ej: `https://spotly-backend.onrender.com`).
@@ -147,27 +143,26 @@ Toda la base de datos se crea con un único script: `supabase/reset-and-setup.sq
 ---
 
 ### Opción C: Despliegue Completo en Render o Railway (Servicio Único)
-El archivo [`render.yaml`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/render.yaml) permite desplegar la aplicación completa en un único servicio:
+El archivo [`render.yaml`](render.yaml) permite desplegar la aplicación completa en un único servicio:
 
 1. El comando `npm run build` compila los archivos estáticos en `dist/`.
-2. El servidor [`server.ts`](file:///c:/Users/maris/Downloads/proyecto-titulo-main/server.ts) en modo producción sirve tanto los endpoints de la API (`/api/*`) como los archivos estáticos de la aplicación React desde `dist/`.
+2. El servidor [`server.ts`](server.ts) en modo producción sirve tanto los endpoints de la API (`/api/*`) como los archivos estáticos de la aplicación React desde `dist/`.
 3. Todo corre en un solo dominio y puerto.
 
 ---
 
-## 🔍 Verificación del Despliegue
+## Verificación del despliegue
 Para confirmar que todo funciona correctamente:
 1. Visita `/api/health` en tu dominio. Debe responder:
    ```json
    {
      "status": "ok",
-     "service": "Spotly Chile Biometrics & KYC Backend",
-     "geminiConfigured": true
+     "service": "Spotly API"
    }
    ```
 2. Registra un nuevo usuario en la página `/register`. Debe crearse en la tabla `auth.users` y en `public.profiles` de Supabase.
 3. Inicia sesión en `/login` con el usuario creado.
-4. Ingresa a la verificación de identidad en `/onboarding`, toma una foto de la cédula y rostro para validar el flujo completo de escaneo con Gemini AI y almacenamiento en Supabase Storage.
+4. Ingresa a la verificación de identidad en `/onboarding`, fotografía la cédula, tómate la selfie y sube el certificado de antecedentes. Revisa que los archivos queden en Supabase Storage y que la solicitud aparezca en el panel de administración.
 
 ---
 

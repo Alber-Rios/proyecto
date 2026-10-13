@@ -58,7 +58,7 @@ export const SpaceReviews: React.FC<{ space: Space }> = ({ space }) => {
           <Star className="w-4 h-4 text-amber-500" /> Valoraciones
         </h2>
         {reviews.length > 0 ? (
-          <span className="text-sm font-black text-slate-900">
+          <span className="text-sm font-bold text-slate-900">
             {average.toFixed(1)} / 5 · {reviews.length} {reviews.length === 1 ? 'opinión' : 'opiniones'}
           </span>
         ) : (

@@ -151,31 +151,30 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
   // Card background styling based on bank
   const getCardBgGradient = (bank: string, brand: string) => {
     if (bank.includes('Santander')) {
-      return 'bg-gradient-to-tr from-red-900 via-rose-950 to-slate-900 border-red-800/40';
+      return 'bg-slate-950 border-red-800/40';
     }
     if (bank.includes('Chile')) {
-      return 'bg-gradient-to-tr from-slate-950 via-blue-950 to-cyan-950 border-blue-900/40';
+      return 'bg-slate-950 border-blue-900/40';
     }
     if (bank.includes('BancoEstado') || brand === 'redcompra') {
-      return 'bg-gradient-to-tr from-amber-950 via-orange-950 to-slate-950 border-orange-800/40';
+      return 'bg-slate-950 border-orange-800/40';
     }
     if (bank.includes('BCI')) {
-      return 'bg-gradient-to-tr from-blue-950 via-slate-900 to-indigo-950 border-indigo-800/40';
+      return 'bg-slate-950 border-indigo-800/40';
     }
-    return 'bg-gradient-to-tr from-slate-950 via-slate-900 to-zinc-900 border-slate-800';
+    return 'bg-slate-950 border-slate-800';
   };
 
   return (
     <div className="space-y-8 pb-16 animate-fadeIn">
       {/* HEADER DE LA SECCIÓN */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-slate-200 relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-rose-50 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
-                Billetera & Medios de Pago Spotly
+                Billetera & medios de pago Spotly
               </span>
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -183,7 +182,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Gestión de Tarjetas y Pagos
+              Gestión de tarjetas y pagos
             </h1>
             <p className="text-sm text-slate-600 max-w-2xl">
               Administra tus métodos de pago bancarios en pesos chilenos (CLP), consulta el historial de arriendos formalizados y visualiza los comprobantes oficiales con custodia legal de garantía (Ley N° 18.101).
@@ -201,7 +200,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                 className="px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition flex items-center gap-2 transform active:scale-95"
               >
                 <Plus className="w-4 h-4" />
-                Añadir Tarjeta Bancaria
+                Añadir tarjeta bancaria
               </button>
             </div>
           )}
@@ -266,7 +265,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
           </div>
           <div className="space-y-2">
             <span className="text-xs font-bold text-amber-700 bg-amber-100/70 px-3 py-1 rounded-full uppercase tracking-wider">
-              Acceso Protegido • Modo Visitante
+              Acceso protegido • modo visitante
             </span>
             <h2 className="text-2xl font-bold text-slate-900">
               Inicia sesión para gestionar tus medios de pago
@@ -283,7 +282,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               className="px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-sm"
             >
               <LogIn className="w-4 h-4" />
-              Iniciar Sesión
+              Iniciar sesión
             </button>
             <button
               type="button"
@@ -291,7 +290,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               className="px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-sm"
             >
               <UserPlus className="w-4 h-4" />
-              Crear Cuenta Gratis
+              Crear cuenta gratis
             </button>
           </div>
 
@@ -313,9 +312,9 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
             <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
               <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
-                Banca Chilena
+                Banca chilena
               </div>
-              <p className="text-[11px] text-slate-500">Soporte CuentaRUT, Visa, Mastercard y Redcompra.</p>
+              <p className="text-[11px] text-slate-500">Soporte cuentaRUT, Visa, Mastercard y Redcompra.</p>
             </div>
           </div>
         </div>
@@ -377,7 +376,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                                 <Check className="w-2.5 h-2.5" /> Predeterminada
                               </span>
                             )}
-                            <span className="text-xs font-black tracking-widest uppercase text-white/90">
+                            <span className="text-xs font-bold tracking-widest uppercase text-white/90">
                               {card.cardBrand === 'redcompra' ? 'REDCOMPRA' : card.cardBrand.toUpperCase()}
                             </span>
                           </div>
@@ -386,7 +385,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                         {/* Center: Número de Tarjeta */}
                         <div className="space-y-1 my-3 relative z-10">
                           <div className="text-[9px] uppercase tracking-widest text-slate-400">
-                            Número Enmascarado
+                            Número enmascarado
                           </div>
                           <div className="font-mono text-base sm:text-lg font-bold tracking-widest text-white drop-shadow-xs">
                             •••• •••• •••• {card.last4}
@@ -397,7 +396,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                         <div className="flex items-end justify-between text-xs relative z-10 pt-2 border-t border-white/10">
                           <div className="space-y-0.5">
                             <span className="text-[8px] uppercase tracking-wider text-slate-400 block">
-                              Titular de la Cuenta
+                              Titular de la cuenta
                             </span>
                             <span className="font-bold tracking-wider truncate max-w-[170px] block text-[11px]">
                               {card.cardHolder}
@@ -423,7 +422,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                               className="text-slate-300 hover:text-white font-medium hover:underline flex items-center gap-1 transition"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                              Hacer Predeterminada
+                              Hacer predeterminada
                             </button>
                           ) : (
                             <span className="text-emerald-400 text-[10px] font-semibold flex items-center gap-1">
@@ -459,7 +458,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-white">
-                      Tokenización Bancaria y Cumplimiento Normativo Chileno
+                      Tokenización bancaria y cumplimiento normativo chileno
                     </h4>
                     <p className="text-xs text-slate-400">
                       Tus números completos de tarjeta y CVV nunca se almacenan en servidores abiertos.
@@ -490,7 +489,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                     onClick={() => onNavigate('home')}
                     className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2"
                   >
-                    Explorar Espacios Disponibles
+                    Explorar espacios disponibles
                   </button>
                 </div>
               ) : (
@@ -498,7 +497,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                   <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <h3 className="text-base font-bold text-slate-900">
-                        Historial de Transacciones y Vouchers Webpay
+                        Historial de transacciones y vouchers Webpay
                       </h3>
                       <p className="text-xs text-slate-500">
                         Visualiza el desglose financiero, comisiones y vouchers autorizados.
@@ -529,7 +528,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                                   {res.spaceTitle}
                                 </span>
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  Pagado • Aprobado
+                                  Pagado • aprobado
                                 </span>
                               </div>
                               <p className="text-xs text-slate-500 flex items-center gap-1">
@@ -551,7 +550,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
 
                           <div className="flex items-center justify-between md:justify-end gap-6 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                             <div className="text-right">
-                              <div className="text-xs text-slate-400">Monto Total CLP</div>
+                              <div className="text-xs text-slate-400">Monto total CLP</div>
                               <div className="text-base sm:text-lg font-bold text-slate-900">
                                 {formatClp(res.totalClp)}
                               </div>
@@ -566,7 +565,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                               className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
                             >
                               <FileText className="w-3.5 h-3.5" />
-                              Ver Voucher
+                              Ver voucher
                             </button>
                           </div>
                         </div>
@@ -586,7 +585,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Marco Legal de Garantías (Ley N° 18.101)
+                  Marco legal de garantías (Ley N° 18.101)
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   En el ordenamiento jurídico chileno, la garantía de arriendo tiene como único fin indemnizar eventuales deterioros culpables o consumos pendientes ocasionados durante el período de tenencia material del inmueble.
@@ -594,15 +593,15 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                 <div className="space-y-2 pt-2 text-xs text-slate-700">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span><strong>Custodia Neutral:</strong> Spotly retiene el depósito de garantía en una cuenta de depósito neutral hasta la recepción conforme del recinto.</span>
+                    <span><strong>Custodia neutral:</strong> Spotly retiene el depósito de garantía en una cuenta de depósito neutral hasta la recepción conforme del recinto.</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span><strong>Plazo de Restitución:</strong> Si el anfitrión no ingresa un acta de daños fundada dentro de las 48 horas post check-out, la garantía se libera automáticamente a la tarjeta de origen.</span>
+                    <span><strong>Plazo de restitución:</strong> Si el anfitrión no ingresa un acta de daños fundada dentro de las 48 horas post check-out, la garantía se libera automáticamente a la tarjeta de origen.</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span><strong>Resolución Arbitral:</strong> En caso de discrepancias, un panel arbitral calificado de Spotly revisa fotografías comparativas previas y posteriores.</span>
+                    <span><strong>Resolución arbitral:</strong> En caso de discrepancias, un panel arbitral calificado de Spotly revisa fotografías comparativas previas y posteriores.</span>
                   </div>
                 </div>
               </div>
@@ -612,22 +611,22 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Métodos de Pago Aceptados en Chile
+                  Métodos de pago aceptados en Chile
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Spotly opera integrado directamente con la infraestructura nacional de medios de pago para garantizar disponibilidad y protección al consumidor financiero.
                 </p>
                 <div className="space-y-3 pt-2 text-xs text-slate-600">
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                    <div className="font-bold text-slate-900">Tarjetas de Crédito Bancarias</div>
+                    <div className="font-bold text-slate-900">Tarjetas de crédito bancarias</div>
                     <div className="text-[11px] mt-0.5">Visa, Mastercard y American Express emitidas por bancos chilenos. Permite diferir el arriendo en hasta 6 cuotas.</div>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                    <div className="font-bold text-slate-900">Tarjetas de Débito y Redcompra</div>
-                    <div className="text-[11px] mt-0.5">Cargo directo contra saldos de Cuenta Corriente, Cuenta Vista o CuentaRUT de BancoEstado.</div>
+                    <div className="font-bold text-slate-900">Tarjetas de débito y Redcompra</div>
+                    <div className="text-[11px] mt-0.5">Cargo directo contra saldos de cuenta corriente, cuenta vista o cuentaRUT de bancoEstado.</div>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                    <div className="font-bold text-slate-900">Tarjetas de Prepago Digital</div>
+                    <div className="font-bold text-slate-900">Tarjetas de prepago digital</div>
                     <div className="text-[11px] mt-0.5">Soporte total para cuentas de pago con provisión de fondos reguladas (Tenpo, MACH, etc.).</div>
                   </div>
                 </div>
@@ -651,11 +650,11 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               </button>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                  Tokenización Bancaria
+                  Tokenización bancaria
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Webpay Plus</span>
               </div>
-              <h2 className="text-xl font-bold">Registrar Tarjeta de Pago</h2>
+              <h2 className="text-xl font-bold">Registrar tarjeta de pago</h2>
               <p className="text-xs text-slate-400 mt-1">
                 Ingresa una tarjeta chilena para tus arriendos y depósitos de garantía.
               </p>
@@ -672,7 +671,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               {/* BANCO EMISOR */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Banco o Institución Emisora <span className="text-rose-500">*</span>
+                  Banco o institución emisora <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={bankName}
@@ -690,7 +689,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               {/* TIPO DE FRANQUICIA */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Franquicia de la Tarjeta <span className="text-rose-500">*</span>
+                  Franquicia de la tarjeta <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['visa', 'mastercard', 'redcompra'] as const).map((brand) => (
@@ -818,7 +817,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                   className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition flex items-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Guardar Tarjeta
+                  Guardar tarjeta
                 </button>
               </div>
             </form>
@@ -842,9 +841,9 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold">Comprobante de Pago Webpay</h3>
+              <h3 className="text-lg font-bold">Comprobante de pago Webpay</h3>
               <p className="text-[11px] text-slate-400">
-                Transbank S.A. • Comercio: Spotly SpA (76.892.411-K)
+                Transbank S.A. • comercio: Spotly spA (76.892.411-K)
               </p>
             </div>
 
@@ -852,23 +851,23 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
             <div className="p-6 space-y-4 font-mono text-xs text-slate-700 max-h-[70vh] overflow-y-auto">
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">ID Reserva:</span>
+                  <span className="text-slate-500">ID reserva:</span>
                   <span className="font-bold text-slate-900">{selectedVoucher.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Código Autorización:</span>
+                  <span className="text-slate-500">Código autorización:</span>
                   <span className="font-bold text-emerald-700">
                     {selectedVoucher.paymentSimulation?.authorizationCode}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Folio Transacción:</span>
+                  <span className="text-slate-500">Folio transacción:</span>
                   <span className="font-bold text-slate-900">
                     {selectedVoucher.paymentSimulation?.transactionCode}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Fecha y Hora:</span>
+                  <span className="text-slate-500">Fecha y hora:</span>
                   <span>{new Date(selectedVoucher.paymentSimulation?.paidAt).toLocaleString('es-CL')}</span>
                 </div>
               </div>
@@ -885,7 +884,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                   <span className="text-right">{selectedVoucher.spaceAddress}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
-                  <span>Días de Arriendo:</span>
+                  <span>Días de arriendo:</span>
                   <span>{selectedVoucher.totalDays} {selectedVoucher.totalDays === 1 ? 'día' : 'días'}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
@@ -901,7 +900,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
               {/* Desglose de Montos */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-slate-600">
-                  <span>Subtotal Arriendo:</span>
+                  <span>Subtotal arriendo:</span>
                   <span className="font-bold">{formatClp(selectedVoucher.subtotalClp)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600">
@@ -909,7 +908,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                   <span>{formatClp(selectedVoucher.platformFeeClp)}</span>
                 </div>
                 <div className="flex justify-between text-emerald-700 font-medium">
-                  <span>Garantía en Custodia (Ley 18.101):</span>
+                  <span>Garantía en custodia (Ley 18.101):</span>
                   <span>{formatClp(selectedVoucher.securityDepositClp)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-slate-900 pt-2 border-t border-slate-200">
@@ -949,7 +948,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                 className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-white transition flex items-center gap-1.5"
               >
                 {copiedFolio ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedFolio ? '¡Copiado!' : 'Copiar Folio'}
+                {copiedFolio ? '¡Copiado!' : 'Copiar folio'}
               </button>
 
               <button
@@ -958,7 +957,7 @@ export const PaymentMethodsPage: React.FC<PaymentMethodsPageProps> = ({
                 className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
               >
                 <Printer className="w-3.5 h-3.5" />
-                Imprimir Comprobante
+                Imprimir comprobante
               </button>
             </div>
           </div>

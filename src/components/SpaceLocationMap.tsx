@@ -22,7 +22,7 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <MapPin className="w-5 h-5 text-rose-600" />
-            <span>Ubicación y Entorno</span>
+            <span>Ubicación y entorno</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             {shownAddress} • {commune}
@@ -98,27 +98,27 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
         {/* Floating Landmarks Chips (styled exactly like the reference) */}
         <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-          <span>Museo de la Memoria</span>
+          <span>Museo de la memoria</span>
         </div>
 
         <div className="absolute top-24 right-8 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Los Descubridores</span>
+          <span>Los descubridores</span>
         </div>
 
         <div className="absolute top-44 right-14 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Parque Inés de Suárez</span>
+          <span>Parque inés de suárez</span>
         </div>
 
         <div className="absolute bottom-16 right-16 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-          <span>Mallplaza Egaña</span>
+          <span>Mallplaza egaña</span>
         </div>
 
         <div className="absolute bottom-5 right-24 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-          <span>Estadio Nacional Julio Martínez</span>
+          <span>Estadio nacional julio martínez</span>
         </div>
 
         {/* Hospital Badge */}

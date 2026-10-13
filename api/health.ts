@@ -12,8 +12,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(200).json({
     status: 'ok',
-    service: 'Spotly Chile Biometrics & KYC (Vercel Serverless Function)',
-    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    service: 'Spotly API',
     timestamp: new Date().toISOString(),
   });
 }

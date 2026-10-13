@@ -73,7 +73,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
 
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
-              Acceso a Mis Arriendos
+              Acceso a mis arriendos
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               Inicia sesión para ver tus reservas
@@ -88,13 +88,13 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
               onClick={() => onOpenAuth?.('login', 'Inicia sesión para acceder a tu historial de arriendos.')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              Iniciar Sesión
+              Iniciar sesión
             </button>
             <button
               onClick={() => onOpenAuth?.('register', 'Crea tu cuenta de Arrendatario para reservar espacios en Chile.')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              Registrarte Gratis
+              Registrarte gratis
             </button>
           </div>
         </div>
@@ -111,7 +111,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             <ShieldCheck className="w-7 h-7" />
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-xl font-bold text-slate-900">Sesión de Administrador Activa</h2>
+            <h2 className="text-xl font-bold text-slate-900">Sesión de administrador activa</h2>
             <p className="text-xs text-slate-500 leading-relaxed">
               La cuenta de Administrador no realiza reservas personales. Dirígete al Panel de Administración para auditar usuarios, moderar espacios y revisar disputas.
             </p>
@@ -120,7 +120,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             onClick={() => onNavigate('admin')}
             className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer"
           >
-            Ir al Panel Administrador
+            Ir al panel administrador
           </button>
         </div>
       </div>
@@ -171,17 +171,17 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
 
   const summaryCards = [
     {
-      label: 'Reservas Confirmadas',
+      label: 'Reservas confirmadas',
       value: myBookings.filter((booking) => booking.status === 'confirmed').length,
       tone: 'emerald',
     },
     {
-      label: 'Solicitudes Pendientes',
+      label: 'Solicitudes pendientes',
       value: myBookings.filter((booking) => booking.status === 'pending').length,
       tone: 'amber',
     },
     {
-      label: 'Visitas Agendadas',
+      label: 'Visitas agendadas',
       value: myVisits.length,
       tone: 'indigo',
     },
@@ -194,12 +194,12 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
-              Mis Reservas y Contratos
+              Mis reservas y contratos
             </span>
             <span className="text-xs text-slate-400 font-mono">RUT: {formatRut(currentUser.rut)}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            Mis Arriendos y Comprobantes
+            Mis arriendos y comprobantes
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Revisa el detalle de tus reservas, descarga tu comprobante de reserva o descarga el contrato digital Ley 18.101.
@@ -212,14 +212,14 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             className="w-full sm:w-auto px-4 py-2.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Scale className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>Ayuda y Soporte (Reportar Problema)</span>
+            <span>Ayuda y soporte (Reportar problema)</span>
           </button>
           <button
             onClick={() => onNavigate('home')}
             className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Building className="w-4 h-4 shrink-0" />
-            <span>Explorar Más Espacios</span>
+            <span>Explorar más espacios</span>
           </button>
         </div>
       </div>
@@ -265,7 +265,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             onClick={onOpenOwnerUpgrade}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition whitespace-nowrap cursor-pointer"
           >
-            Quiero ser Propietario
+            Quiero ser propietario
           </button>
         </div>
       )}
@@ -278,7 +278,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           role="status"
         >
           <div className="text-xs space-y-0.5">
-            <p className="font-black text-sm">
+            <p className="font-bold text-sm">
               {paymentResult === 'exito'
                 ? 'Pago aprobado por Webpay Plus'
                 : paymentResult === 'anulado'
@@ -346,7 +346,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
               onClick={() => onNavigate('home')}
               className="mt-2 px-5 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition inline-flex items-center gap-2 cursor-pointer"
             >
-              Ver Espacios Disponibles
+              Ver espacios disponibles
             </button>
           </div>
         ) : (
@@ -382,7 +382,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                       <PaymentStatusBadge reservation={booking} />
                       {booking.disputeStatus === 'opened' && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
-                          Disputa en Arbitraje
+                          Disputa en arbitraje
                         </span>
                       )}
                     </div>
@@ -435,7 +435,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    Ver Reserva
+                    Ver reserva
                   </button>
 
                   <button
@@ -444,7 +444,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     title="Descargar comprobante oficial de la reserva"
                   >
                     <Download className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    Descargar Reserva
+                    Descargar reserva
                   </button>
 
                   <button
@@ -452,7 +452,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
                   >
                     <FileText className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    Ver Contrato
+                    Ver contrato
                   </button>
 
                   <button
@@ -461,7 +461,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     title="Descargar contrato de arrendamiento digital"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
-                    Descargar Contrato
+                    Descargar contrato
                   </button>
 
                   <ReservationActions
@@ -476,7 +476,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                       className="w-full sm:w-auto px-3 py-2.5 sm:py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
                     >
                       <Scale className="w-3.5 h-3.5 shrink-0" />
-                      Reportar Problema del Lugar
+                      Reportar problema del lugar
                     </button>
                   )}
                 </div>
@@ -497,7 +497,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                 onClick={() => onNavigate('home')}
                 className="mt-2 px-5 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition inline-flex items-center gap-2 cursor-pointer"
               >
-                Explorar Catálogo
+                Explorar catálogo
               </button>
             </div>
           ) : (
@@ -521,7 +521,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Visita Confirmada
+                          Visita confirmada
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 capitalize flex items-center gap-1">
                           {visit.modality === 'presencial' ? (
@@ -568,7 +568,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                       onClick={() => onNavigate('home')}
                       className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
                     >
-                      Ver Catálogo
+                      Ver catálogo
                     </button>
                   </div>
                 </div>
@@ -591,7 +591,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             <div className="bg-slate-900 text-white p-6 flex items-start justify-between">
               <div>
                 <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-400/30 mb-2">
-                  Comprobante Oficial de Reserva
+                  Comprobante oficial de reserva
                 </span>
                 <h3 className="text-lg sm:text-xl font-bold">{selectedBookingDetail.spaceTitle}</h3>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -610,59 +610,59 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             <div className="p-6 space-y-5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
-                  <span className="text-slate-400 block font-semibold">Arrendatario Titular</span>
+                  <span className="text-slate-400 block font-semibold">Arrendatario titular</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedBookingDetail.tenantName}</span>
                   <span className="block font-mono text-slate-600">
                     RUT: {formatRut(selectedBookingDetail.tenantRut)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Propietario / Anfitrión</span>
+                  <span className="text-slate-400 block font-semibold">Propietario / anfitrión</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedBookingDetail.ownerName}</span>
                   <span className="block text-slate-600">{selectedBookingDetail.spaceAddress}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Periodo Reservado</span>
+                  <span className="text-slate-400 block font-semibold">Periodo reservado</span>
                   <span className="font-bold text-slate-900">
                     {selectedBookingDetail.startDate} al {selectedBookingDetail.endDate}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Estado de Reserva</span>
+                  <span className="text-slate-400 block font-semibold">Estado de reserva</span>
                   <span className="font-bold text-emerald-700">
                     {selectedBookingDetail.status === 'confirmed'
-                      ? '✓ Confirmada por el Anfitrión'
+                      ? 'Confirmada por el anfitrión'
                       : selectedBookingDetail.status === 'pending'
-                      ? '⏳ Pendiente de Confirmación'
-                      : 'Cancelada / Rechazada'}
+                      ? 'Pendiente de confirmación'
+                      : 'Cancelada / rechazada'}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-2 border-t border-slate-200 pt-4">
                 <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                  Desglose de Pago (CLP)
+                  Desglose de pago (CLP)
                 </div>
                 <div className="flex justify-between py-1 text-slate-600">
-                  <span>Subtotal Arriendo Recinto</span>
+                  <span>Subtotal arriendo recinto</span>
                   <span className="font-semibold text-slate-900">
                     {formatClp(selectedBookingDetail.subtotalClp)}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 text-slate-600">
-                  <span>Comisión Servicio Spotly (5%)</span>
+                  <span>Comisión servicio Spotly (5%)</span>
                   <span className="font-semibold text-slate-900">
                     {formatClp(selectedBookingDetail.platformFeeClp)}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 text-slate-600">
-                  <span>Depósito de Garantía en Custodia</span>
+                  <span>Depósito de garantía en custodia</span>
                   <span className="font-semibold text-slate-900">
                     {formatClp(selectedBookingDetail.securityDepositClp)}
                   </span>
                 </div>
                 <div className="flex justify-between p-3 bg-slate-100 rounded-xl font-extrabold text-sm text-slate-900">
-                  <span>Total Reserva</span>
+                  <span>Total reserva</span>
                   <span className="text-rose-600">{formatClp(selectedBookingDetail.totalClp)}</span>
                 </div>
               </div>
@@ -688,14 +688,14 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                   className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Descargar Reserva
+                  Descargar reserva
                 </button>
                 <button
                   onClick={() => handleDownloadContract(selectedBookingDetail)}
                   className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Descargar Contrato
+                  Descargar contrato
                 </button>
               </div>
               <button
@@ -713,7 +713,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       {disputeReservationId && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-            <h3 className="text-base font-bold text-slate-900">Abrir Disputa con el Anfitrión</h3>
+            <h3 className="text-base font-bold text-slate-900">Abrir disputa con el anfitrión</h3>
             <p className="text-xs text-slate-500">
               Explica el motivo del problema. El equipo de administración revisará el contrato y determinará la devolución de la garantía.
             </p>
@@ -740,7 +740,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                   type="submit"
                   className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl cursor-pointer"
                 >
-                  Ingresar Reclamo
+                  Ingresar reclamo
                 </button>
               </div>
             </form>

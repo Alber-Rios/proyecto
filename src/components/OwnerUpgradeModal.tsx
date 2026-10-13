@@ -71,10 +71,10 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
 
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-300 text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            Transición de Rol Arrendatario → Propietario
+            Transición de rol arrendatario → propietario
           </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Conviértete en Propietario en Spotly
+            Conviértete en propietario en Spotly
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm mt-1.5 leading-relaxed max-w-xl">
             Publica tus oficinas, coworkings, estudios creativos o bodegas en Chile. Monetiza tus metros cuadrados con contratos digitales protegidos por la Ley N° 18.101.
@@ -98,7 +98,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
             </div>
             <div className="text-right">
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 bg-emerald-100 text-emerald-800 rounded-lg">
-                <CheckCircle2 className="w-3 h-3" /> Identidad Vinculada
+                <CheckCircle2 className="w-3 h-3" /> Identidad vinculada
               </span>
             </div>
           </div>
@@ -107,17 +107,17 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1">
               <Building className="w-5 h-5 text-rose-600" />
-              <div className="text-xs font-bold text-slate-900">Publicaciones Ilimitadas</div>
+              <div className="text-xs font-bold text-slate-900">Publicaciones ilimitadas</div>
               <p className="text-[11px] text-slate-500">Sube fotos, define tarifas en CLP por día u hora y gestiona disponibilidad.</p>
             </div>
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1">
               <FileText className="w-5 h-5 text-indigo-600" />
-              <div className="text-xs font-bold text-slate-900">Contratos Digitales</div>
+              <div className="text-xs font-bold text-slate-900">Contratos digitales</div>
               <p className="text-[11px] text-slate-500">Firma electrónica con validez legal según Ley 19.799 para cada arriendo.</p>
             </div>
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              <div className="text-xs font-bold text-slate-900">Garantía Custodiada</div>
+              <div className="text-xs font-bold text-slate-900">Garantía custodiada</div>
               <p className="text-[11px] text-slate-500">Depósitos de garantía retenidos digitalmente ante eventuales daños.</p>
             </div>
           </div>
@@ -126,7 +126,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
           <div className="space-y-3 bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4">
             <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
               <Lock className="w-4 h-4 text-amber-700" />
-              Acuerdo Vinculante de Propietario (Spotly Chile v2026.1)
+              Acuerdo vinculante de propietario (Spotly Chile v2026.1)
             </div>
 
             <div className="space-y-3 pt-1">
@@ -138,7 +138,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
                   className="mt-1 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
                 />
                 <span className="text-xs text-slate-700 leading-snug">
-                  Acepto los <strong className="text-slate-900">Términos y Condiciones para Anfitriones y Propietarios</strong> de Spotly, cumpliendo con la Ley 18.101 sobre arrendamiento de predios urbanos y la normativa tributaria chilena del SII.
+                  Acepto los <strong className="text-slate-900">Términos y condiciones para anfitriones y propietarios</strong> de Spotly, cumpliendo con la Ley 18.101 sobre arrendamiento de predios urbanos y la normativa tributaria chilena del SII.
                 </span>
               </label>
 
@@ -191,7 +191,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
               onClick={handleUpgrade}
               className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm ${
                 canSubmit && !loading
-                  ? 'bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white cursor-pointer hover:shadow-md'
+                  ? 'bg-rose-600 hover:from-rose-700 hover:to-amber-700 text-white cursor-pointer hover:shadow-md'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
@@ -199,7 +199,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
                 'Registrando en auditoría...'
               ) : (
                 <>
-                  <span>Habilitar Perfil de Propietario</span>
+                  <span>Habilitar perfil de propietario</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

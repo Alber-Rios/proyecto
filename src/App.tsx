@@ -94,7 +94,7 @@ function AppContent() {
     || Boolean(currentUser?.ownerTermsAccepted);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff_0%,_#f8fafc_44%,_#eef2ff_100%)] text-slate-800 flex flex-col font-sans antialiased selection:bg-rose-500 selection:text-white">
+    <div className="min-h-screen bg-stone-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-rose-500 selection:text-white">
       {/* Header Principal */}
       <Header
         currentView={currentViewString as any}

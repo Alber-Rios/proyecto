@@ -49,11 +49,11 @@ interface BookingModalProps {
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
-  office: 'Oficina Privada',
+  office: 'Oficina privada',
   cowork: 'Coworking',
-  event: 'Eventos & Workshops',
-  studio: 'Estudio Creativo',
-  warehouse: 'Bodega Urbana',
+  event: 'Eventos & workshops',
+  studio: 'Estudio creativo',
+  warehouse: 'Bodega urbana',
 };
 
 const POPULAR_USES = [
@@ -348,7 +348,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           </button>
         </div>
 
-        {/* Pestañas Superiores: [ 📅 Reservar Espacio ] vs [ 📍 Solicitar Visita Gratuita ] */}
+        {/* Pestañas Superiores: [ Reservar Espacio ] vs [ Solicitar Visita Gratuita ] */}
         <div className="bg-slate-100 p-2 border-b border-slate-200 flex items-center gap-2">
           <button
             type="button"
@@ -363,7 +363,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             }`}
           >
             <CalendarIcon className="w-4 h-4" />
-            <span>Reservar Espacio (Contrato y Pago)</span>
+            <span>Reservar espacio (Contrato y pago)</span>
           </button>
 
           <button
@@ -379,7 +379,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             }`}
           >
             <MapPin className="w-4 h-4" />
-            <span>Solicitar Visita (Gratuita)</span>
+            <span>Solicitar visita (Gratuita)</span>
           </button>
         </div>
 
@@ -414,7 +414,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
                   
                   <div className="space-y-2">
-                    <h3 className={`text-xl font-black ${
+                    <h3 className={`text-xl font-bold ${
                       currentUser?.verificationStatus === 'rejected' ? 'text-rose-950' : 'text-amber-950'
                     }`}>
                       {currentUser?.verificationStatus === 'rejected'
@@ -434,7 +434,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         </>
                       ) : (
                         <>
-                          Por normativa de seguridad, solo usuarios con <strong>Perfil Verificado</strong> pueden emitir contratos bajo la <strong>Ley 18.101</strong> y realizar pagos en Spotly.
+                          Por normativa de seguridad, solo usuarios con <strong>Perfil verificado</strong> pueden emitir contratos bajo la <strong>Ley 18.101</strong> y realizar pagos en Spotly.
                         </>
                       )}
                     </p>
@@ -469,7 +469,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         navigate('/onboarding');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className={`w-full py-4 text-white rounded-2xl font-black text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
+                      className={`w-full py-4 text-white rounded-2xl font-bold text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                         currentUser?.verificationStatus === 'rejected'
                           ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
                           : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
@@ -478,8 +478,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       <FileCheck2 className="w-5 h-5" />
                       <span>
                         {currentUser?.verificationStatus === 'rejected'
-                          ? 'Ver Estado de Solicitud y Corregir Documentos'
-                          : 'Verificar mi Identidad Ahora'}
+                          ? 'Ver estado de solicitud y corregir documentos'
+                          : 'Verificar mi identidad ahora'}
                       </span>
                     </button>
                     <button
@@ -496,7 +496,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition ${
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition ${
                       bookingStep === 1
                         ? 'bg-rose-600 text-white shadow-xs'
                         : 'bg-emerald-600 text-white'
@@ -513,7 +513,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition ${
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition ${
                       bookingStep === 2
                         ? 'bg-rose-600 text-white shadow-xs'
                         : 'bg-slate-200 text-slate-500'
@@ -554,7 +554,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             }}
                             className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
                           >
-                            Iniciar Sesión
+                            Iniciar sesión
                           </button>
                           <button
                             type="button"
@@ -564,7 +564,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             }}
                             className="px-3.5 py-1.5 bg-white hover:bg-amber-100 border border-amber-300 text-amber-950 rounded-xl text-xs font-bold transition cursor-pointer"
                           >
-                            Crear Cuenta
+                            Crear cuenta
                           </button>
                         </div>
                       )}
@@ -574,9 +574,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
                     <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                       <div>
-                        <span className="text-sm font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
+                        <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
                           <FileCheck2 className="w-4 h-4 text-rose-600" />
-                          Contrato de Arrendamiento
+                          Contrato de arrendamiento
                         </span>
                         <span className="text-[10px] text-slate-500 font-bold mt-1 block">
                           Generado automáticamente por Spotly
@@ -610,7 +610,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       
                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                         <p>
-                          <strong>Segundo (Vigencia y Horario):</strong>{' '}
+                          <strong>Segundo (Vigencia y horario):</strong>{' '}
                           {selectedModality === 'por_hora' ? (
                             <span>
                               La vigencia y ocupación será el día <strong>{startDate || todayStr}</strong>, en el horario exacto de <strong>{String(hourStart).padStart(2, '0')}:00 a {String(hourEnd).padStart(2, '0')}:00 hrs</strong> ({calculations.units} {calculations.label} cronológicas continuas). Dicha franja horaria queda bloqueada y sincronizada exclusivamente para el arrendatario en el sistema Spotly.
@@ -676,7 +676,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" />
-                      <span>Volver al Detalle</span>
+                      <span>Volver al detalle</span>
                     </button>
 
                     <button
@@ -707,7 +707,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       }}
                       className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-md"
                     >
-                      <span>Continuar al Pago Seguro</span>
+                      <span>Continuar al pago seguro</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -733,7 +733,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           onClick={() => onOpenAuth('login', 'Inicia sesión para formalizar tu reserva')}
                           className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
                         >
-                          Iniciar Sesión Ahora
+                          Iniciar sesión ahora
                         </button>
                       )}
                     </div>
@@ -742,7 +742,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       <div className="text-xs font-bold text-indigo-900 flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                          <span>Validación de Identidad Requerida</span>
+                          <span>Validación de identidad requerida</span>
                         </span>
                         <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold">
                           KYC Chile
@@ -804,9 +804,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                   <div>
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold mb-2">
-                      ✓ Solicitud Registrada y Confirmada
+                      Solicitud registrada y confirmada
                     </span>
-                    <h3 className="text-lg font-black text-white">¡Visita Agendada con Éxito!</h3>
+                    <h3 className="text-lg font-bold text-white">¡Visita agendada con éxito!</h3>
                     <p className="text-xs text-slate-300 max-w-md mx-auto mt-1">
                       El anfitrión <strong>{createdVisit.ownerName}</strong> ha sido notificado para recibirte en el recinto.
                     </p>
@@ -815,21 +815,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   {/* Voucher Card */}
                   <div className="bg-slate-900/90 border border-slate-700 rounded-2xl p-4 text-left text-xs space-y-2.5 max-w-md mx-auto">
                     <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                      <span className="text-slate-400">Código de Visita:</span>
+                      <span className="text-slate-400">Código de visita:</span>
                       <span className="font-mono font-bold text-emerald-400">{createdVisit.id}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Fecha Pactada:</span>
+                      <span className="text-slate-400">Fecha pactada:</span>
                       <span className="font-bold text-white">{createdVisit.visitDate}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Franja Horaria:</span>
+                      <span className="text-slate-400">Franja horaria:</span>
                       <span className="font-bold text-cyan-400">{createdVisit.visitTimeSlot}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Modalidad:</span>
                       <span className="font-bold capitalize text-white">
-                        {createdVisit.modality === 'presencial' ? '🏢 Presencial en el Recinto' : '💻 Virtual (Videollamada)'}
+                        {createdVisit.modality === 'presencial' ? 'Presencial en el recinto' : 'Virtual (Videollamada)'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -846,14 +846,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       onClick={() => setCreatedVisit(null)}
                       className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
                     >
-                      Agendar Otra Fecha
+                      Agendar otra fecha
                     </button>
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-black transition cursor-pointer shadow-md"
+                      className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-bold transition cursor-pointer shadow-md"
                     >
-                      Entendido, Cerrar
+                      Entendido, cerrar
                     </button>
                   </div>
                 </div>
@@ -867,7 +867,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-indigo-950">
-                        Visita 100% Gratuita y Sin Compromiso
+                        Visita 100% gratuita y sin compromiso
                       </h4>
                       <p className="text-xs text-indigo-700 mt-0.5 leading-relaxed">
                         Conoce el espacio, verifica su acústica, iluminación o capacidad antes de arrendar. Puedes coordinar una visita presencial o una videollamada guiada en vivo.
@@ -894,7 +894,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-slate-900">Visita Presencial</div>
+                          <div className="text-xs font-bold text-slate-900">Visita presencial</div>
                           <div className="text-[11px] text-slate-500">En {space.commune}</div>
                         </div>
                       </button>
@@ -914,7 +914,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           <Video className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-slate-900">Visita Virtual</div>
+                          <div className="text-xs font-bold text-slate-900">Visita virtual</div>
                           <div className="text-[11px] text-slate-500">Videollamada en vivo</div>
                         </div>
                       </button>
@@ -958,7 +958,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                   {/* Franja Horaria */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-800">Franja Horaria de Preferencia:</label>
+                    <label className="text-xs font-bold text-slate-800">Franja horaria de preferencia:</label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {TIME_SLOTS.map((slot) => (
                         <button
@@ -1022,12 +1022,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       {loading ? (
                         <>
                           <RotateCcw className="w-4 h-4 animate-spin" />
-                          <span>Agendando Visita...</span>
+                          <span>Agendando visita...</span>
                         </>
                       ) : (
                         <>
                           <CalendarCheck className="w-4 h-4" />
-                          <span>Confirmar Solicitud de Visita Gratuita</span>
+                          <span>Confirmar solicitud de visita gratuita</span>
                         </>
                       )}
                     </button>

@@ -41,8 +41,10 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
   };
 
   const handleCopyHash = () => {
-    navigator.clipboard?.writeText(contract.contractHash);
-    alert('Hash criptográfico copiado al portapapeles');
+    navigator.clipboard?.writeText(contract.contractHash).then(
+      () => alert('Código de verificación copiado.'),
+      () => alert('No se pudo copiar. Selecciona el código y cópialo manualmente.')
+    );
   };
 
   const handlePrint = () => {
@@ -57,13 +59,13 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
           <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-xs font-semibold mb-2">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Contrato Digital Vinculante (Ley 19.799 & Ley 18.101)</span>
+              <span className="truncate">Contrato digital vinculante (Ley 19.799 & Ley 18.101)</span>
             </div>
             <h2 className="text-lg sm:text-2xl font-bold tracking-tight">
-              Contrato de Arrendamiento Temporal
+              Contrato de arrendamiento temporal
             </h2>
             <p className="text-xs text-slate-400 mt-1 break-all">
-              Folio de Instrumento: <span className="font-mono text-slate-300">{contract.id}</span>
+              Folio de instrumento: <span className="font-mono text-slate-300">{contract.id}</span>
             </p>
           </div>
           <button
@@ -117,7 +119,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
             {/* Firma Arrendatario */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 min-w-0">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Firma Digital Arrendatario (Ley 19.799)
+                Firma digital arrendatario (Ley 19.799)
               </div>
               {contract.signatureImage ? (
                 <div className="bg-white p-2 rounded-xl border border-slate-200 inline-block w-full">
@@ -141,7 +143,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
             {/* Propietario */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 min-w-0">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Propietario / Anfitrión
+                Propietario / anfitrión
               </div>
               <div className="text-sm font-bold text-slate-900 break-words">{contract.ownerName}</div>
               <div className="text-xs text-slate-600">RUT: {formatRut(contract.ownerRut)}</div>
@@ -200,14 +202,14 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
               className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
             >
               <Printer className="w-4 h-4 shrink-0" />
-              Imprimir / Guardar PDF
+              Imprimir / guardar PDF
             </button>
           </div>
           <button
             onClick={onClose}
             className="w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition cursor-pointer text-center"
           >
-            Cerrar Instrumento
+            Cerrar instrumento
           </button>
         </div>
       </div>

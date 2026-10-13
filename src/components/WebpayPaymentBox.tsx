@@ -89,7 +89,7 @@ export const WebpayPaymentBox: React.FC<WebpayPaymentBoxProps> = ({
       <div className="bg-slate-900 text-white rounded-2xl p-4 border border-slate-800 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <span className="text-sm font-black tracking-tight">Webpay Plus</span>
+            <span className="text-sm font-bold tracking-tight">Webpay Plus</span>
             <p className="text-[11px] text-slate-300">
               Pagarás en el formulario seguro de Transbank. Spotly no recibe los datos de tu tarjeta.
             </p>
@@ -122,8 +122,8 @@ export const WebpayPaymentBox: React.FC<WebpayPaymentBoxProps> = ({
           </div>
         )}
         <div className="flex justify-between border-t border-slate-200 pt-2 text-sm">
-          <span className="font-black text-slate-900">Total a pagar</span>
-          <span className="font-black text-rose-600">{formatClp(total)}</span>
+          <span className="font-bold text-slate-900">Total a pagar</span>
+          <span className="font-bold text-rose-600">{formatClp(total)}</span>
         </div>
       </div>
 
@@ -199,7 +199,7 @@ export const WebpayPaymentBox: React.FC<WebpayPaymentBoxProps> = ({
           className="ml-auto px-6 py-3 rounded-xl font-bold text-xs text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 transition flex items-center gap-2 shadow-lg cursor-pointer"
         >
           {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-          <span>{paying ? 'Redirigiendo a Webpay…' : `Pagar ${formatClp(total)} con Webpay Plus`}</span>
+          <span>{paying ? 'Redirigiendo a webpay…' : `Pagar ${formatClp(total)} con Webpay Plus`}</span>
         </button>
       </div>
     </div>

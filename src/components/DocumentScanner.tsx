@@ -185,7 +185,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
     if (countdown !== null) return;
     let current = seconds;
     setCountdown(current);
-    setDetectionMessage(`⏱️ Mantén tu cédula firme en el recuadro. Capturando en ${current} segundos...`);
+    setDetectionMessage(`Mantén tu cédula firme en el recuadro. Capturando en ${current} segundos...`);
 
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
 
@@ -193,7 +193,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       current -= 1;
       if (current > 0) {
         setCountdown(current);
-        setDetectionMessage(`⏱️ Mantén tu cédula firme en el recuadro. Capturando en ${current} segundos...`);
+        setDetectionMessage(`Mantén tu cédula firme en el recuadro. Capturando en ${current} segundos...`);
       } else {
         if (countdownTimerRef.current) {
           clearInterval(countdownTimerRef.current);
@@ -303,11 +303,11 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
           setDetectionMessage('Cédula en posición.');
         } else {
           if (progress < 50) {
-            setDetectionMessage('📸 Cédula posicionada. Manténla firme...');
+            setDetectionMessage('Cédula posicionada. Manténla firme...');
           } else if (progress < 90) {
-            setDetectionMessage('✨ Enfocando detalles de la cédula...');
+            setDetectionMessage('Enfocando detalles de la cédula...');
           } else {
-            setDetectionMessage('✅ Capturando fotografía...');
+            setDetectionMessage('Capturando fotografía...');
             if (progress >= 100) {
               executeCaptureAndVerify();
               return;
@@ -317,9 +317,9 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       } else {
         setScanProgress(0);
         if (!isGoodLighting && avgBrightness <= 30) {
-          setDetectionMessage('⚠️ Iluminación muy baja. Acerca tu cédula a la luz.');
+          setDetectionMessage('Iluminación muy baja. Acerca tu cédula a la luz.');
         } else if (!isGoodLighting && avgBrightness >= 235) {
-          setDetectionMessage('⚠️ Mucho reflejo. Inclina suavemente la cédula.');
+          setDetectionMessage('Mucho reflejo. Inclina suavemente la cédula.');
         } else {
           setDetectionMessage(`Alinea el ${side === 'front' ? 'FRENTE (Anverso)' : 'REVERSO (Dorso)'} de tu cédula dentro del recuadro.`);
         }
@@ -479,7 +479,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                         className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
-                        Aceptar y Continuar
+                        Aceptar y continuar
                       </button>
                       <button
                         type="button"
@@ -497,7 +497,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
                         <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                        No se detectó una Cédula de Identidad
+                        No se detectó una cédula de identidad
                       </span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold">
                         Revisión manual
@@ -516,7 +516,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                         className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <RotateCcw className="w-4 h-4" />
-                        Volver a Escanear con Cámara
+                        Volver a escanear con cámara
                       </button>
                       <button
                         type="button"
@@ -601,7 +601,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
             {/* COUNTDOWN OVERLAY ENORME SI EL USUARIO ACTIVÓ EL TEMPORIZADOR */}
             {countdown !== null && (
               <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs flex flex-col items-center justify-center z-30 animate-in fade-in">
-                <div className="w-24 h-24 rounded-full bg-indigo-600 text-white font-black text-4xl flex items-center justify-center shadow-2xl border-4 border-white animate-pulse">
+                <div className="w-24 h-24 rounded-full bg-indigo-600 text-white font-bold text-4xl flex items-center justify-center shadow-2xl border-4 border-white animate-pulse">
                   {countdown}
                 </div>
                 <p className="text-xs font-bold text-white mt-3">Alinea tu cédula...</p>
@@ -629,7 +629,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                     isDocDetected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'
                   }`}
                 />
-                <span>{isDocDetected ? '✅ Cédula Encuadrada' : '⚠️ Sostén tu Cédula Frente al Lente'}</span>
+                <span>{isDocDetected ? 'Cédula encuadrada' : 'Sostén tu cédula frente al lente'}</span>
               </div>
             </div>
 
@@ -670,7 +670,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                   }`}
                 >
                   <Camera className="w-4 h-4" />
-                  <span>{isDocDetected ? '📸 Capturar Cédula Ahora' : '📸 Tomar Foto'}</span>
+                  <span>{isDocDetected ? 'Capturar cédula ahora' : 'Tomar foto'}</span>
                 </button>
               </div>
             </div>
@@ -698,12 +698,12 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                 {isStartingCamera ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Iniciando Cámara...
+                    Iniciando cámara...
                   </>
                 ) : (
                   <>
                     <Camera className="w-4 h-4" />
-                    Iniciar Cámara para Escaneo
+                    Iniciar cámara para escaneo
                   </>
                 )}
               </button>
@@ -729,7 +729,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
             }`}
           >
-            {autoCaptureEnabled ? '⚡ Auto-disparo: Activo' : '⚡ Auto-disparo: Inactivo'}
+            {autoCaptureEnabled ? 'Auto-disparo: Activo' : 'Auto-disparo: Inactivo'}
           </button>
         )}
       </div>

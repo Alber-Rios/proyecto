@@ -38,7 +38,7 @@ export const VerifyContractPage: React.FC<VerifyContractPageProps> = ({ onOpenAu
   return (
     <div className="max-w-2xl mx-auto py-8 space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-black text-slate-900">Verificar contrato</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Verificar contrato</h1>
         <p className="text-sm text-slate-600">
           Cada contrato queda sellado con una huella SHA-256 calculada sobre su contenido íntegro. Ingresa el folio y,
           si quieres, el hash impreso en tu PDF para comprobar que el documento no fue alterado.
@@ -97,7 +97,7 @@ export const VerifyContractPage: React.FC<VerifyContractPageProps> = ({ onOpenAu
                   : 'bg-rose-50 border-rose-200 text-rose-900'
               }`}
             >
-              <p className="font-black text-sm flex items-center gap-2">
+              <p className="font-bold text-sm flex items-center gap-2">
                 {result.status === 'valid' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
                 {result.message}
               </p>

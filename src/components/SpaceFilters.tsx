@@ -38,12 +38,12 @@ interface SpaceFiltersProps {
 }
 
 const CATEGORIES: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'all', label: 'Todos los Espacios', icon: Building },
+  { id: 'all', label: 'Todos los espacios', icon: Building },
   { id: 'office', label: 'Oficinas', icon: Building },
   { id: 'cowork', label: 'Coworking', icon: Laptop },
-  { id: 'event', label: 'Eventos & Workshops', icon: PartyPopper },
-  { id: 'studio', label: 'Estudios Creativos', icon: Camera },
-  { id: 'warehouse', label: 'Bodegas Urbanas', icon: Warehouse },
+  { id: 'event', label: 'Eventos & workshops', icon: PartyPopper },
+  { id: 'studio', label: 'Estudios creativos', icon: Camera },
+  { id: 'warehouse', label: 'Bodegas urbanas', icon: Warehouse },
 ];
 
 const COMMUNES = [
@@ -160,17 +160,17 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-rose-500" />
-              Modalidad de Cobro:
+              Modalidad de cobro:
             </span>
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-              {selectedRateModality === 'all' ? 'Todas' : selectedRateModality === 'hour' ? 'Por Hora' : selectedRateModality === 'day' ? 'Por Día' : 'Por Mes'}
+              {selectedRateModality === 'all' ? 'Todas' : selectedRateModality === 'hour' ? 'Por hora' : selectedRateModality === 'day' ? 'Por Día' : 'Por Mes'}
             </span>
           </div>
 
           <div className="grid grid-cols-4 gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
             {[
               { id: 'all', label: 'Todas' },
-              { id: 'hour', label: 'Por Hora' },
+              { id: 'hour', label: 'Por hora' },
               { id: 'day', label: 'Por Día' },
               { id: 'month', label: 'Por Mes' },
             ].map((item) => (
@@ -246,9 +246,9 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Maximize2 className="w-3.5 h-3.5 text-emerald-600" />
-              Superficie Mínima:
+              Superficie mínima:
             </span>
-            <span className="text-xs font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
               {minSurfaceM2} m²
             </span>
           </div>

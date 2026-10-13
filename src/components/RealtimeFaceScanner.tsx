@@ -172,7 +172,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
     if (countdown !== null) return;
     let current = seconds;
     setCountdown(current);
-    setDetectionMessage(`⏱️ Mira fijamente a la cámara. Capturando selfie en ${current} segundos...`);
+    setDetectionMessage(`Mira fijamente a la cámara. Capturando selfie en ${current} segundos...`);
 
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
 
@@ -180,7 +180,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
       current -= 1;
       if (current > 0) {
         setCountdown(current);
-        setDetectionMessage(`⏱️ Mira fijamente a la cámara. Capturando selfie en ${current} segundos...`);
+        setDetectionMessage(`Mira fijamente a la cámara. Capturando selfie en ${current} segundos...`);
       } else {
         if (countdownTimerRef.current) {
           clearInterval(countdownTimerRef.current);
@@ -468,7 +468,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                         className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
-                        Aceptar y Continuar a Antecedentes
+                        Aceptar y continuar a antecedentes
                       </button>
                       <button
                         type="button"
@@ -497,7 +497,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                         className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <RotateCcw className="w-4 h-4" />
-                        Volver a Capturar Selfie
+                        Volver a capturar selfie
                       </button>
                       <button
                         type="button"
@@ -549,7 +549,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
             {/* OVERLAY DEL TEMPORIZADOR GIGANTE SI ESTÁ ACTIVO */}
             {countdown !== null && (
               <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs flex flex-col items-center justify-center z-30 animate-in fade-in">
-                <div className="w-24 h-24 rounded-full bg-indigo-600 text-white font-black text-4xl flex items-center justify-center shadow-2xl border-4 border-white animate-pulse">
+                <div className="w-24 h-24 rounded-full bg-indigo-600 text-white font-bold text-4xl flex items-center justify-center shadow-2xl border-4 border-white animate-pulse">
                   {countdown}
                 </div>
                 <p className="text-xs font-bold text-white mt-3">Mira a la cámara...</p>
@@ -578,7 +578,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                   }`}
                 />
                 <span className="truncate max-w-[150px] sm:max-w-none">
-                  {isFaceDetected ? 'Rostro en Posición' : 'Centra tu Rostro'}
+                  {isFaceDetected ? 'Rostro en posición' : 'Centra tu rostro'}
                 </span>
               </div>
 
@@ -631,7 +631,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                   }`}
                 >
                   <Camera className="w-4 h-4" />
-                  <span>{isFaceDetected ? 'Tomar Selfie Ahora' : 'Capturar Foto'}</span>
+                  <span>{isFaceDetected ? 'Tomar selfie ahora' : 'Capturar foto'}</span>
                 </button>
               </div>
             </div>
@@ -644,7 +644,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-bold text-white">Reconocimiento Facial Biométrico</p>
+              <p className="text-sm font-bold text-white">Reconocimiento facial biométrico</p>
               <p className="text-xs text-slate-400 max-w-xs mx-auto">
                 Tómate una selfie de frente. Tendrás 5 segundos o captura manual para mirar al lente con tranquilidad.
               </p>
@@ -660,12 +660,12 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 {isStartingCamera ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Iniciando Cámara...
+                    Iniciando cámara...
                   </>
                 ) : (
                   <>
                     <Camera className="w-4 h-4" />
-                    Iniciar Cámara para Rostro
+                    Iniciar cámara para rostro
                   </>
                 )}
               </button>
@@ -691,7 +691,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
             }`}
           >
-            {autoCaptureEnabled ? '⚡ Auto-disparo: Activo' : '⚡ Auto-disparo: Inactivo'}
+            {autoCaptureEnabled ? 'Auto-disparo: Activo' : 'Auto-disparo: Inactivo'}
           </button>
         )}
       </div>

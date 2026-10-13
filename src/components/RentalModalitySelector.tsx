@@ -125,7 +125,7 @@ export const RentalModalitySelector: React.FC<RentalModalitySelectorProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-800">
-              Modalidad de Disponibilidad:
+              Modalidad de disponibilidad:
             </span>
             <span
               className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
@@ -139,12 +139,12 @@ export const RentalModalitySelector: React.FC<RentalModalitySelectorProps> = ({
               }`}
             >
               {isAllOpen || computedModality === 'abierto'
-                ? '✨ Abierto a Todo (Hora, Día y Mes)'
+                ? 'Abierto a todo (Hora, día y mes)'
                 : computedModality === 'por_hora'
-                ? '⏱️ Solo Por Hora'
+                ? 'Solo por hora'
                 : computedModality === 'por_dia'
-                ? '📅 Solo Por Día'
-                : '🏢 Solo Por Mes'}
+                ? 'Solo Por Día'
+                : 'Solo Por Mes'}
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
@@ -163,7 +163,7 @@ export const RentalModalitySelector: React.FC<RentalModalitySelectorProps> = ({
           title="Habilitar arriendo por hora, día y mes en simultáneo"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>{isAllOpen ? '✓ Abierto a todo' : 'Habilitar todo'}</span>
+          <span>{isAllOpen ? 'Abierto a todo' : 'Habilitar todo'}</span>
         </button>
       </div>
 
@@ -183,7 +183,7 @@ export const RentalModalitySelector: React.FC<RentalModalitySelectorProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-900">Por Hora</span>
+                <span className="text-sm font-bold text-slate-900">Por hora</span>
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
                   Flexible
                 </span>
@@ -476,7 +476,7 @@ export const RentalModalitySelector: React.FC<RentalModalitySelectorProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-slate-600">
-                  Garantía / Depósito (CLP)
+                  Garantía / depósito (CLP)
                 </label>
                 {monthlyPrice && Number(monthlyPrice) > 0 && (
                   <button

@@ -1,11 +1,36 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+}
+
 @layer base {
   html,
   body {
     overflow-x: hidden;
     max-width: 100vw;
     -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-stone-50 text-slate-900 antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-rose-600);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   input,

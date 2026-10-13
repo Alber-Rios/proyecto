@@ -21,7 +21,7 @@ const lawLinks = [
   },
   {
     href: 'https://www.bcn.cl/leychile/navegar?idNorma=1165504',
-    label: 'Decreto N.º 6 de 2021, Reglamento de Comercio Electrónico',
+    label: 'Decreto n.º 6 de 2021, reglamento de comercio electrónico',
   },
 ];
 
@@ -198,7 +198,7 @@ function PrivacyContent() {
         <ul className="list-disc space-y-2 pl-5">
           <li><strong>Supabase:</strong> autenticación, base de datos y almacenamiento de archivos. El proyecto utiliza un bucket público para imágenes de espacios y buckets privados para documentos de verificación, biometría y contratos, sujetos a la configuración vigente del proyecto.</li>
           <li><strong>Vercel:</strong> alojamiento de la aplicación y ejecución de funciones de servidor.</li>
-          <li><strong>Google Gemini API:</strong> cuando la clave de ese proveedor está configurada, las funciones de verificación pueden enviar imágenes de cédula, selfie y datos de referencia como nombre o RUT para análisis automatizado. Las condiciones de uso, retención y ubicación dependen del tipo de cuenta y configuración del proyecto de Google, que el responsable debe confirmar antes de procesar datos reales.</li>
+          <li><strong>Google gemini API:</strong> cuando la clave de ese proveedor está configurada, las funciones de verificación pueden enviar imágenes de cédula, selfie y datos de referencia como nombre o RUT para análisis automatizado. Las condiciones de uso, retención y ubicación dependen del tipo de cuenta y configuración del proyecto de Google, que el responsable debe confirmar antes de procesar datos reales.</li>
           <li><strong>Transbank:</strong> la versión revisada no realiza una conexión real con Transbank; el flujo mostrado es simulado. No se debe interpretar la pantalla como pago procesado.</li>
         </ul>
         <p>Los proveedores pueden alojar o procesar datos fuera de Chile. Deben identificarse las regiones efectivas de Supabase, Vercel y Google y evaluarse las condiciones aplicables antes de operar con personas reales.</p>

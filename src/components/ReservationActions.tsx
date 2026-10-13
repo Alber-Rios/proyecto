@@ -134,7 +134,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-start justify-between">
-              <h3 className="text-base font-black text-slate-900">Cancelar reserva #{reservation.id.slice(-6)}</h3>
+              <h3 className="text-base font-bold text-slate-900">Cancelar reserva #{reservation.id.slice(-6)}</h3>
               <button onClick={() => setShowCancel(false)} aria-label="Cerrar" className="cursor-pointer">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
@@ -146,7 +146,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
             ) : (
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
                 <p className="text-xs text-slate-700">{refundPreview.description}</p>
-                <p className="text-sm font-black text-slate-900">
+                <p className="text-sm font-bold text-slate-900">
                   Reembolso estimado: {formatClp(refundPreview.refundClp)}
                 </p>
                 <p className="text-[11px] text-slate-500">
@@ -190,7 +190,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-start justify-between">
-              <h3 className="text-base font-black text-slate-900">Valorar “{reservation.spaceTitle}”</h3>
+              <h3 className="text-base font-bold text-slate-900">Valorar “{reservation.spaceTitle}”</h3>
               <button onClick={() => setShowReview(false)} aria-label="Cerrar" className="cursor-pointer">
                 <X className="w-4 h-4 text-slate-500" />
               </button>

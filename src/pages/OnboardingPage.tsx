@@ -137,7 +137,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
 
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
-              Verificación de Identidad
+              Verificación de identidad
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               Inicia sesión para verificar tu perfil
@@ -152,13 +152,13 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               onClick={() => onOpenAuth?.('login', 'Inicia sesión para continuar tu verificación de identidad.')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              Iniciar Sesión
+              Iniciar sesión
             </button>
             <button
               onClick={() => onOpenAuth?.('register', 'Crea una cuenta antes de verificar tu identidad.')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              Registrarte Gratis
+              Registrarte gratis
             </button>
           </div>
         </div>
@@ -177,7 +177,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
 
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
-              Identidad Aprobada
+              Identidad aprobada
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               ¡Tu cuenta ya está verificada!
@@ -198,7 +198,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Estado:</span>
-              <span className="font-bold text-emerald-700">✓ Verificado por el Administrador</span>
+              <span className="font-bold text-emerald-700">Verificado por el administrador</span>
             </div>
           </div>
 
@@ -207,13 +207,13 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               onClick={() => onNavigate('home')}
               className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
             >
-              Ir al Catálogo de Espacios
+              Ir al catálogo de espacios
             </button>
             <button
               onClick={() => onNavigate('profile')}
               className="w-full sm:w-auto px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
             >
-              Ver Mi Perfil
+              Ver mi perfil
             </button>
           </div>
         </div>
@@ -341,10 +341,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs font-bold">
           <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" />
-          Acreditación de Identidad • Spotly Chile
+          Acreditación de identidad • Spotly Chile
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Verificación de Identidad
+          Verificación de identidad
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
           Completa los pasos requeridos. La documentación será revisada por el Administrador en un plazo aproximado de 2 días hábiles.
@@ -387,8 +387,8 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-black uppercase tracking-wider text-rose-900">
-                  Estado de la Solicitud: Rechazada
+                <span className="text-xs font-bold uppercase tracking-wider text-rose-900">
+                  Estado de la solicitud: Rechazada
                 </span>
               </div>
               <p className="text-xs text-rose-800 leading-relaxed">
@@ -404,7 +404,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
             onClick={() => setCurrentStep(4)}
             className="px-3.5 py-2 bg-white hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold shrink-0 cursor-pointer transition"
           >
-            Ver Estado de Solicitud
+            Ver estado de solicitud
           </button>
         </div>
       )}
@@ -422,7 +422,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Paso 1: Cédula de Identidad (Anverso y Reverso)
+                  Paso 1: Cédula de identidad (Anverso y reverso)
                 </h3>
                 <p className="text-xs text-slate-500">
                   Alinea tu cédula chilena para capturar imágenes nítidas que revisará un administrador.
@@ -444,7 +444,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                       <UserCheck className="w-4 h-4 text-indigo-600" />
-                      Frente / Anverso
+                      Frente / anverso
                     </span>
                     {idFrontPhoto && (
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -462,7 +462,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                         className="w-full h-full flex flex-col items-center justify-center gap-2 hover:bg-slate-800/40 transition group cursor-pointer"
                       >
                         <Camera className="w-8 h-8 text-slate-500 group-hover:text-indigo-400 transition" />
-                        <span className="text-[11px] font-bold text-slate-400 group-hover:text-slate-200">Iniciar Escaneo Anverso</span>
+                        <span className="text-[11px] font-bold text-slate-400 group-hover:text-slate-200">Iniciar escaneo anverso</span>
                       </button>
                     )}
                   </div>
@@ -472,7 +472,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                       onClick={() => setIdFrontPhoto(null)}
                       className="w-full py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                     >
-                      Eliminar y Volver a Escanear
+                      Eliminar y volver a escanear
                     </button>
                   )}
                 </div>
@@ -482,7 +482,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                       <ScanLine className="w-4 h-4 text-indigo-600" />
-                      Reverso / Dorso
+                      Reverso / dorso
                     </span>
                     {idBackPhoto && (
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -500,7 +500,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                         className="w-full h-full flex flex-col items-center justify-center gap-2 hover:bg-slate-800/40 transition group cursor-pointer"
                       >
                         <Camera className="w-8 h-8 text-slate-500 group-hover:text-indigo-400 transition" />
-                        <span className="text-[11px] font-bold text-slate-400 group-hover:text-slate-200">Iniciar Escaneo Reverso</span>
+                        <span className="text-[11px] font-bold text-slate-400 group-hover:text-slate-200">Iniciar escaneo reverso</span>
                       </button>
                     )}
                   </div>
@@ -510,7 +510,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                       onClick={() => setIdBackPhoto(null)}
                       className="w-full py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                     >
-                      Eliminar y Volver a Escanear
+                      Eliminar y volver a escanear
                     </button>
                   )}
                 </div>
@@ -535,7 +535,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   onClick={handleValidateStep1}
                   className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs"
                 >
-                  <span>Continuar a Reconocimiento Facial</span>
+                  <span>Continuar a reconocimiento facial</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -554,7 +554,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Paso 2: Reconocimiento Facial Biométrico
+                  Paso 2: Reconocimiento facial biométrico
                 </h3>
                 <p className="text-xs text-slate-500">
                   Tómate una selfie clara. El administrador la revisará junto con tu cédula.
@@ -589,7 +589,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                     className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Camera className="w-5 h-5" />
-                    Iniciar Reconocimiento Facial
+                    Iniciar reconocimiento facial
                   </button>
                 )}
 
@@ -598,7 +598,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                     onClick={() => setFacialPhoto(null)}
                     className="w-full py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                   >
-                    Eliminar y Volver a Capturar
+                    Eliminar y volver a capturar
                   </button>
                 )}
               </div>
@@ -619,7 +619,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-medium flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Volver a Cédula
+                  Volver a cédula
                 </button>
                 <button
                   type="button"
@@ -631,7 +631,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
-                  <span>Continuar a Antecedentes</span>
+                  <span>Continuar a antecedentes</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -650,10 +650,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Paso 3: Certificado de Antecedentes para Fines Especiales
+                  Paso 3: Certificado de antecedentes para fines especiales
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Sube únicamente tu Certificado de Antecedentes emitido por el Servicio de Registro Civil e Identificación de Chile.
+                  Sube únicamente tu certificado de antecedentes emitido por el servicio de registro civil e identificación de Chile.
                 </p>
               </div>
             </div>
@@ -666,7 +666,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
 
               <div>
                 <h4 className="text-sm font-bold text-slate-900">
-                  {criminalRecordFileName ? `Archivo: ${criminalRecordFileName}` : 'Subir Certificado de Antecedentes'}
+                  {criminalRecordFileName ? `Archivo: ${criminalRecordFileName}` : 'Subir certificado de antecedentes'}
                 </h4>
                 <p className="text-xs text-slate-500 mt-1">
                   Formatos aceptados: PDF, JPG, PNG (máx. 10MB)
@@ -681,7 +681,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               <div className="flex items-center justify-center gap-3">
                 <label className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer transition flex items-center gap-2 shadow-xs">
                   <Upload className="w-4 h-4" />
-                  <span>{criminalRecordFile ? 'Cambiar Documento' : 'Seleccionar Certificado'}</span>
+                  <span>{criminalRecordFile ? 'Cambiar documento' : 'Seleccionar certificado'}</span>
                   <input
                     type="file"
                     accept=".pdf,image/jpeg,image/png"
@@ -708,7 +708,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
 
             {/* Nota de verificación por el administrador */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 space-y-1">
-              <div className="font-bold text-slate-800">📌 Información importante sobre la revisión:</div>
+              <div className="font-bold text-slate-800">Información importante sobre la revisión:</div>
               <p>
                 Al enviar este documento, tu expediente pasará a la bandeja del <strong>Administrador</strong>, quien revisará manualmente la autenticidad del certificado, tu carnet y el reconocimiento facial.
               </p>
@@ -750,7 +750,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-medium flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Volver a Reconocimiento
+                  Volver a reconocimiento
                 </button>
                 <button
                   type="button"
@@ -783,8 +783,8 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
 
               {/* Títulos de Estado Rechazado */}
               <div className="space-y-2 max-w-xl mx-auto">
-                <span className="px-3.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300 uppercase tracking-wider">
-                  Estado de la Solicitud: Rechazada
+                <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 uppercase tracking-wider">
+                  Estado de la solicitud: Rechazada
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight">
                   Tu solicitud de verificación fue rechazada
@@ -797,11 +797,11 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               {/* Cuadro Principal con el Porqué / Motivo del Rechazo */}
               <div className="bg-rose-50/90 rounded-3xl p-5 sm:p-6 border-2 border-rose-200 max-w-lg mx-auto text-left space-y-4 shadow-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-rose-200/80">
-                  <span className="text-rose-950 font-black text-sm flex items-center gap-2">
+                  <span className="text-rose-950 font-bold text-sm flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                     ¿Por qué fue rechazada tu solicitud?
                   </span>
-                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-600 text-white uppercase">
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-600 text-white uppercase">
                     Rechazada
                   </span>
                 </div>
@@ -817,20 +817,20 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
 
                 <div className="space-y-2 text-xs text-slate-700 pt-1">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Titular Solicitante:</span>
+                    <span className="text-slate-500">Titular solicitante:</span>
                     <span className="font-bold text-slate-900">{currentUser.fullName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">RUT Oficial:</span>
+                    <span className="text-slate-500">RUT oficial:</span>
                     <span className="font-bold text-slate-900">{formatRut(currentUser.rut)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Estado Actual:</span>
-                    <span className="font-bold text-rose-700">✗ Solicitud Rechazada (Requiere corrección)</span>
+                    <span className="text-slate-500">Estado actual:</span>
+                    <span className="font-bold text-rose-700">Solicitud Rechazada (Requiere corrección)</span>
                   </div>
                   {currentUser.kycData?.rejectedAt && (
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Fecha de Revisión:</span>
+                      <span className="text-slate-500">Fecha de revisión:</span>
                       <span className="font-semibold text-slate-800">
                         {new Date(currentUser.kycData.rejectedAt).toLocaleDateString('es-CL')}
                       </span>
@@ -839,7 +839,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                 </div>
 
                 <div className="p-3 bg-white/80 rounded-2xl border border-rose-200 text-[11px] text-rose-900 leading-relaxed">
-                  📌 <strong>¿Qué debes hacer ahora?:</strong> Haz clic en el botón de abajo para volver al Paso 1, corregir la observación indicada por el Administrador y enviar nuevamente tu solicitud para revisión.
+                  <strong>¿Qué debes hacer ahora?:</strong> Haz clic en el botón de abajo para volver al Paso 1, corregir la observación indicada por el Administrador y enviar nuevamente tu solicitud para revisión.
                 </div>
               </div>
 
@@ -851,10 +851,10 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                     setError(null);
                     setCurrentStep(1);
                   }}
-                  className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Corregir Documentos y Enviar Nuevamente</span>
+                  <span>Corregir documentos y enviar nuevamente</span>
                 </button>
               </div>
             </div>
@@ -868,7 +868,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               {/* Títulos y mensaje solicitado */}
               <div className="space-y-2 max-w-xl mx-auto">
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 uppercase tracking-wider">
-                  Expediente Enviado con Éxito
+                  Expediente enviado con éxito
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight">
                   Tu verificación demorará aproximadamente 2 días
@@ -883,34 +883,34 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                   <span className="text-slate-900 font-bold text-sm flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-amber-600" />
-                    Detalle del Expediente de Verificación
+                    Detalle del expediente de verificación
                   </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-                    En Revisión
+                    En revisión
                   </span>
                 </div>
 
                 <div className="space-y-2.5 text-slate-600">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Titular Solicitante:</span>
+                    <span className="text-slate-500">Titular solicitante:</span>
                     <span className="font-bold text-slate-900">{currentUser.fullName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">RUT Oficial:</span>
+                    <span className="text-slate-500">RUT oficial:</span>
                     <span className="font-bold text-slate-900">{formatRut(currentUser.rut)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Cédula de Identidad:</span>
-                    <span className="font-bold text-emerald-700">✓ Anverso y Reverso Adjuntos</span>
+                    <span className="text-slate-500">Cédula de identidad:</span>
+                    <span className="font-bold text-emerald-700">Anverso y reverso adjuntos</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Reconocimiento Facial:</span>
-                    <span className="font-bold text-emerald-700">✓ Rostro Reconocido en Vivo</span>
+                    <span className="text-slate-500">Reconocimiento facial:</span>
+                    <span className="font-bold text-emerald-700">Selfie capturada</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Certificado de Antecedentes:</span>
+                    <span className="text-slate-500">Certificado de antecedentes:</span>
                     <span className="font-bold text-emerald-700">
-                      ✓ {criminalRecordFileName || currentUser.kycData?.criminalRecordDocCode || 'Documento Adjunto'}
+                      {criminalRecordFileName || currentUser.kycData?.criminalRecordDocCode || 'Documento Adjunto'}
                     </span>
                   </div>
                   <div className="flex justify-between border-t border-slate-200 pt-2">
@@ -918,13 +918,13 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                     <span className="font-bold text-indigo-900">El Administrador de la plataforma</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Tiempo de Respuesta:</span>
+                    <span className="text-slate-500">Tiempo de respuesta:</span>
                     <span className="font-bold text-amber-900">Aprox. 2 días hábiles</span>
                   </div>
                 </div>
 
                 <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
-                  💡 <strong>Información para el usuario:</strong> Mientras el Administrador valida tu expediente, puedes explorar todos los espacios, ubicaciones y precios en Spotly. Una vez aprobada tu cuenta, podrás formalizar contratos y publicar propiedades.
+                  <strong>Información para el usuario:</strong> Mientras el Administrador valida tu expediente, puedes explorar todos los espacios, ubicaciones y precios en Spotly. Una vez aprobada tu cuenta, podrás formalizar contratos y publicar propiedades.
                 </div>
               </div>
 
@@ -935,14 +935,14 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   onClick={() => onNavigate('home')}
                   className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
                 >
-                  Explorar Catálogo de Espacios
+                  Explorar catálogo de espacios
                 </button>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
                   className="w-full sm:w-auto px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
-                  Actualizar Documentación
+                  Actualizar documentación
                 </button>
               </div>
             </div>

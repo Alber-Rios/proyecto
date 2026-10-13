@@ -59,7 +59,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     <div className="max-w-5xl mx-auto py-2 sm:py-4">
       <div className="grid grid-cols-1 lg:grid-cols-12 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
         {/* Columna Izquierda: Información de Marca y Garantías */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white p-5 sm:p-7 lg:p-8 flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-5 bg-slate-950 text-white p-5 sm:p-7 lg:p-8 flex flex-col justify-between relative overflow-hidden">
           <div className="space-y-4 sm:space-y-5 relative z-10">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white shadow-lg shrink-0">
@@ -105,7 +105,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
           </div>
 
           {/* Efecto de luz */}
-          <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-rose-600/20 blur-3xl pointer-events-none" />
         </div>
 
         {/* Columna Derecha: Formulario */}
@@ -113,7 +112,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
           <div className="max-w-md w-full mx-auto space-y-4">
             {/* Header del Formulario */}
             <div className="space-y-1">
-              <h3 className="text-2xl font-bold text-slate-900">Iniciar Sesión</h3>
+              <h3 className="text-2xl font-bold text-slate-900">Iniciar sesión</h3>
               <p className="text-xs text-slate-500">
                 Ingresa con tu cuenta registrada en Spotly Chile.
               </p>
@@ -138,7 +137,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             <form onSubmit={handleSubmit} className="space-y-4 pt-1" autoComplete="off">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Correo Electrónico
+                  Correo electrónico
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -209,7 +208,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <LogIn className="w-4 h-4" />
-                <span>{loading ? 'Iniciando Sesión...' : 'Ingresar a mi Cuenta'}</span>
+                <span>{loading ? 'Iniciando sesión...' : 'Ingresar a mi cuenta'}</span>
               </button>
             </form>
 

@@ -134,7 +134,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     <div className="max-w-5xl mx-auto py-2 sm:py-4">
       <div className="grid grid-cols-1 lg:grid-cols-12 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
         {/* Columna Izquierda: Información de Registro */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white p-5 sm:p-7 lg:p-8 flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-5 bg-slate-950 text-white p-5 sm:p-7 lg:p-8 flex flex-col justify-between relative overflow-hidden">
           <div className="space-y-4 sm:space-y-5 relative z-10">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white shadow-lg shrink-0">
@@ -182,14 +182,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
             © 2026 Spotly · Espacios Chile
           </div>
 
-          <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-rose-600/20 blur-3xl pointer-events-none" />
         </div>
 
         {/* Columna Derecha: Formulario de Registro */}
         <div className="lg:col-span-7 p-5 sm:p-7 lg:p-8 flex flex-col justify-center">
           <div className="max-w-lg w-full mx-auto space-y-4">
             <div className="space-y-0.5">
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900">Crear Cuenta en Spotly</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900">Crear cuenta en Spotly</h3>
               <p className="text-xs text-slate-500">
                 Completa tus datos personales para acceder a la plataforma.
               </p>
@@ -226,7 +225,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     }`}
                   >
                     <User className="w-3.5 h-3.5 shrink-0" />
-                    <span>Quiero Arrendar</span>
+                    <span>Quiero arrendar</span>
                   </button>
                   <button
                     type="button"
@@ -238,7 +237,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     }`}
                   >
                     <Building className="w-3.5 h-3.5 shrink-0" />
-                    <span>Soy Propietario</span>
+                    <span>Soy propietario</span>
                   </button>
                 </div>
               </div>
@@ -262,7 +261,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Fecha de Nacimiento
+                    Fecha de nacimiento
                   </label>
                   <input
                     type="date"
@@ -297,7 +296,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    RUT Chileno
+                    RUT chileno
                   </label>
                   <input
                     type="text"
@@ -310,7 +309,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Teléfono Móvil (+56)
+                    Teléfono móvil (+56)
                   </label>
                   <input
                     type="tel"
@@ -330,7 +329,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               {/* Correo Electrónico */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Correo Electrónico
+                  Correo electrónico
                 </label>
                 <input
                   type="text"
@@ -365,7 +364,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Confirmar Contraseña
+                    Confirmar contraseña
                   </label>
                   <input
                     type="password"
@@ -388,7 +387,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   className="mt-0.5 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
                 />
                 <span className="text-[11px] text-slate-600 leading-snug">
-                  Al tocar «Crear cuenta», aceptas los <Link to="/terminos" className="font-semibold text-blue-700 hover:underline">Términos y Condiciones</Link> de Spotly y confirmas que has leído la <Link to="/privacidad" className="font-semibold text-blue-700 hover:underline">Política de Privacidad</Link> y la <Link to="/cookies" className="font-semibold text-blue-700 hover:underline">Política de Cookies</Link>.
+                  Al tocar «Crear cuenta», aceptas los <Link to="/terminos" className="font-semibold text-blue-700 hover:underline">Términos y condiciones</Link> de Spotly y confirmas que has leído la <Link to="/privacidad" className="font-semibold text-blue-700 hover:underline">Política de privacidad</Link> y la <Link to="/cookies" className="font-semibold text-blue-700 hover:underline">Política de cookies</Link>.
                 </span>
               </label>
 
@@ -398,7 +397,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{loading ? 'Creando cuenta...' : 'Crear Cuenta Gratis'}</span>
+                <span>{loading ? 'Creando cuenta...' : 'Crear cuenta gratis'}</span>
               </button>
             </form>
 

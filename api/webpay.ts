@@ -399,7 +399,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ success: false, message: 'Acción no soportada.' });
   } catch (err) {
     const status = err instanceof HttpError ? err.status : 500;
-    const message = err instanceof Error ? err.message : 'Error inesperado en el servidor de pagos.';
+    if (!(err instanceof HttpError)) console.error('Error en /api/webpay:', err);
+    const message = err instanceof HttpError ? err.message : 'Error inesperado en el servidor de pagos.';
     if (action === 'return') {
       res.statusCode = 303;
       res.setHeader('Location', `${appOrigin(req)}/my-bookings?pago=error`);

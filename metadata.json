@@ -1,6 +1,5 @@
 {
-  "name": "Spotly - EspaciosChile",
-  "description": "Plataforma de gestión y reserva de espacios en Chile con arquitectura multi-rol, verificación de identidad KYC y contratos digitales en CLP.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "Spotly",
+  "description": "Arriendo de oficinas, estudios, salones y bodegas en Chile por hora, día o mes.",
+  "requestFramePermissions": ["camera"]
 }

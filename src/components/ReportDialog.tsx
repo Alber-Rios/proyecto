@@ -72,7 +72,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <form onSubmit={handleSubmit} className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-start justify-between">
-              <h3 className="text-base font-black text-slate-900">Reportar “{targetLabel}”</h3>
+              <h3 className="text-base font-bold text-slate-900">Reportar “{targetLabel}”</h3>
               <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar" className="cursor-pointer">
                 <X className="w-4 h-4 text-slate-500" />
               </button>

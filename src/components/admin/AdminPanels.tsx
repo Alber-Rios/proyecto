@@ -357,7 +357,7 @@ export const KpiDashboard: React.FC = () => {
                 <span className={`w-3 h-3 rounded-full ${LIGHT_CLASS[kpi.light]}`} aria-label={`Semáforo ${kpi.light}`} />
               </div>
               <p className="text-xs font-bold text-slate-900">{kpi.name}</p>
-              <p className="text-2xl font-black text-slate-900 tabular-nums">{kpi.display}</p>
+              <p className="text-2xl font-bold text-slate-900 tabular-nums">{kpi.display}</p>
               <p className="text-[11px] text-slate-500">Meta: {kpi.target}</p>
               {kpi.detail && <p className="text-[10px] text-slate-400">{kpi.detail}</p>}
             </div>
