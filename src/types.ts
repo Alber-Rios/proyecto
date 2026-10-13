@@ -8,7 +8,22 @@ export type VerificationStatus = 'unverified' | 'in_progress' | 'pending_review'
 
 export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'rejected' | 'completed';
 
-export type SpaceCategory = 'office' | 'cowork' | 'event' | 'studio' | 'warehouse' | 'retail';
+export type SpaceCategory =
+  | 'departamento'
+  | 'casa'
+  | 'cabana'
+  | 'oficina'
+  | 'cowork'
+  | 'sala_reuniones'
+  | 'consulta'
+  | 'estudio'
+  | 'salon_eventos'
+  | 'quincho'
+  | 'terreno'
+  | 'local_comercial'
+  | 'bodega'
+  | 'estacionamiento'
+  | 'otro';
 
 export type PaymentStatus =
   | 'pending'
@@ -133,15 +148,11 @@ export interface PaymentSimulationData {
   bankName?: string;
 }
 
-export interface SavedCard {
+// Tarjeta inscrita en Transbank Oneclick: Spotly solo conoce el tipo y los últimos 4 dígitos.
+export interface WalletCard {
   id: string;
-  userId: string;
-  cardBrand: 'visa' | 'mastercard' | 'redcompra';
-  cardHolder: string;
+  cardType: string;
   last4: string;
-  expiryMonth: string;
-  expiryYear: string;
-  bankName: string;
   isDefault: boolean;
   createdAt: string;
 }
@@ -329,6 +340,7 @@ export interface PaymentRecord {
   id: string;
   reservationId: string;
   buyOrder: string;
+  provider?: 'webpay_plus' | 'oneclick_mall';
   amountClp: number;
   status: 'created' | 'authorized' | 'failed' | 'aborted' | 'refunded' | 'partially_refunded';
   environment: 'integration' | 'production';

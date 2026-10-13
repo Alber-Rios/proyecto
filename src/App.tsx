@@ -23,6 +23,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage.tsx').then((m) => (
 const LegalPage = lazy(() => import('./pages/LegalPage.tsx').then((m) => ({ default: m.LegalPage })));
 const VerifyContractPage = lazy(() => import('./pages/VerifyContractPage.tsx').then((m) => ({ default: m.VerifyContractPage })));
 const OwnerUpgradeModal = lazy(() => import('./components/OwnerUpgradeModal.tsx').then((m) => ({ default: m.OwnerUpgradeModal })));
+const WalletPage = lazy(() => import('./pages/WalletPage.tsx').then((m) => ({ default: m.WalletPage })));
 const SiteMapPage = lazy(() => import('./pages/SiteMapPage.tsx').then((m) => ({ default: m.SiteMapPage })));
 
 function AppContent() {
@@ -78,6 +79,7 @@ function AppContent() {
       'cookies': '/cookies',
       'legal-notice': '/aviso-legal',
       'sitemap': '/mapa-del-sitio',
+      'wallet': '/billetera',
       'verify-contract': '/verificar-contrato'
     };
     
@@ -195,6 +197,7 @@ function AppContent() {
           } />
 
           <Route path="/verificar-contrato" element={<VerifyContractPage onOpenAuth={handleOpenAuth} />} />
+          <Route path="/billetera" element={<WalletPage onOpenAuth={handleOpenAuth} />} />
           <Route path="/aviso-legal" element={<LegalPage document="notice" />} />
           <Route path="/mapa-del-sitio" element={<SiteMapPage />} />
           <Route path="/terminos" element={<LegalPage document="terms" />} />

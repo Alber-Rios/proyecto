@@ -229,3 +229,26 @@ npm run test:coverage # cobertura de la lógica crítica (umbral 60 %)
 
 ### 5. Documentación de la API
 Especificación OpenAPI en `public/openapi.yaml` (publicada en `/openapi.yaml`).
+
+## Actualización: categorías en español, garantía mensual opcional y billetera
+
+**Base de datos:** todo el esquema está en un único script, `supabase/reset-and-setup.sql`. En Supabase → SQL Editor pégalo completo y presiona Run. Es destructivo (borra los datos de Spotly, conserva las cuentas de `auth.users` y los archivos de Storage) y corre en una sola transacción: si algo falla no se aplica nada. Después vuelve a asignar tu administrador con `UPDATE public.profiles SET role = 'admin' WHERE email = 'TU_CORREO';`.
+
+El script incluye:
+
+- Categorías de espacio en español (departamento, casa, cabaña, quincho, sala de reuniones, etc.).
+- Garantía **solo en arriendos mensuales** y solo si el propietario la pide.
+- Billetera (`wallet_cards`) y columnas de Oneclick en `payments`.
+- Seguridad: RLS en todas las tablas, permisos mínimos por tabla, columna y función, `search_path` fijo en todas las funciones, sin SQL dinámico con datos del usuario (protección contra inyección SQL), validaciones de largo y rango en los campos y unicidad para evitar duplicados (RUT, espacios repetidos, visitas repetidas, tarjetas repetidas).
+
+**Disponibilidad 24/7:** `vercel.json` programa una llamada diaria a `/api/health` (Vercel Cron), que consulta la base y evita que un proyecto gratuito de Supabase se pause por inactividad. Para producción real se recomienda el plan Pro de Supabase (sin pausas y con respaldos diarios).
+
+**Billetera (Transbank Oneclick Mall):** la función `api/wallet.ts` inscribe tarjetas, las elimina y cobra reservas con una tarjeta guardada. En el ambiente de integración usa las credenciales públicas de prueba de Transbank, sin configurar nada. Para producción agrega en Vercel:
+
+| Variable | Valor |
+|---|---|
+| `ONECLICK_COMMERCE_CODE` | Código del comercio mall Oneclick |
+| `ONECLICK_CHILD_COMMERCE_CODE` | Código de la tienda hija que recibe los pagos |
+| `ONECLICK_API_KEY` | Llave secreta entregada por Transbank |
+
+Spotly nunca recibe el número de la tarjeta: Transbank entrega un identificador (`tbk_user`) que solo lee el backend.

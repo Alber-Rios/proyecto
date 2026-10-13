@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Space, VisitRequest } from '../types.ts';
 import { formatClp, getSpaceAvailableModalities, getTodayIso } from '../utils/formatters.ts';
+import { calculateBookingAmounts, monthlyRange, upcomingMonths } from '../utils/pricing.ts';
+import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { useSpaceReservations } from '../hooks/useSpaceReservations.ts';
 import {
@@ -76,8 +78,9 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
 }) => {
   const { currentUser } = useApp();
   const navigate = useNavigate();
+  const isOwnSpace = Boolean(currentUser && currentUser.id === space.ownerId);
   const [activeTab, setActiveTab] = useState<'booking' | 'visit'>('booking');
-  const [monthDuration, setMonthDuration] = useState('6 meses renovables (Estándar)');
+  const [monthCount, setMonthCount] = useState(1);
 
   // Reservas activas de este recinto (sincronizadas en tiempo real con el propietario)
   const activeReservationsForSpace = useSpaceReservations(space);
@@ -108,7 +111,38 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
   }, [startDate, endDate]);
 
   // Horas seleccionadas
-  const totalHours = Math.max(2, hourEnd - hourStart);
+  const minHours = Math.max(1, space.minBookingHours || 1);
+  const totalHours = Math.max(1, hourEnd - hourStart);
+  const hourOptions = useMemo(() => {
+    const opts: number[] = [];
+    for (let h = minHours; h <= 12; h++) opts.push(h);
+    return opts;
+  }, [minHours]);
+
+  // Próximos 6 meses disponibles para arriendo mensual.
+  const monthOptions = useMemo(() => upcomingMonths(getTodayIso(), 6), []);
+
+  // El arriendo mensual se cobra en bloques de 30 días desde la fecha de inicio.
+  useEffect(() => {
+    if (activeModality !== 'mensual') return;
+    const validMonth = monthOptions.some((m) => m.key === selectedMonth) ? selectedMonth : monthOptions[0].key;
+    if (validMonth !== selectedMonth) {
+      onMonthChange(validMonth);
+      return;
+    }
+    const range = monthlyRange(validMonth, monthCount, getTodayIso());
+    if (range.start !== startDate) onStartDateChange(range.start);
+    if (range.end !== endDate) onEndDateChange(range.end);
+  }, [activeModality, selectedMonth, monthCount]);
+
+  // Al volver a arriendo por hora o por día se parte con un solo día seleccionado.
+  const previousModality = useRef(activeModality);
+  useEffect(() => {
+    if (previousModality.current !== activeModality && activeModality !== 'mensual' && endDate !== startDate) {
+      onEndDateChange(startDate);
+    }
+    previousModality.current = activeModality;
+  }, [activeModality]);
 
   // Sugerencias automáticas e inteligentes según categoría del espacio, modalidad y título
   const automaticSuggestions = useMemo(() => {
@@ -133,7 +167,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       ];
     }
 
-    if (cat === 'studio') {
+    if (cat === 'estudio') {
       return [
         {
           label: 'Sesión de fotos y video comercial',
@@ -152,7 +186,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       ];
     }
 
-    if (cat === 'event') {
+    if (cat === 'salon_eventos') {
       return [
         {
           label: 'Workshop y capacitación práctica',
@@ -169,7 +203,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       ];
     }
 
-    if (cat === 'office' || cat === 'cowork') {
+    if (cat === 'oficina' || cat === 'cowork' || cat === 'sala_reuniones') {
       return [
         {
           label: 'Offsite y planeación estratégica',
@@ -186,7 +220,54 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       ];
     }
 
-    if (cat === 'warehouse') {
+    if (cat === 'quincho' || cat === 'terreno') {
+      return [
+        {
+          label: 'Asado o celebración familiar',
+          fullText: `Celebración familiar o asado con amigos en ${space.title}, respetando el aforo, los horarios y las normas del recinto.`,
+        },
+        {
+          label: 'Cumpleaños',
+          fullText: `Celebración de cumpleaños con invitados en ${space.title}, con entrega del espacio limpio al término.`,
+        },
+        {
+          label: 'Encuentro de equipo',
+          fullText: `Actividad de camaradería para el equipo de trabajo en ${space.title}.`,
+        },
+      ];
+    }
+
+    if (cat === 'departamento' || cat === 'casa' || cat === 'cabana') {
+      return [
+        {
+          label: 'Estadía de descanso',
+          fullText: `Estadía de descanso en ${space.title} para el número de personas indicado, respetando las normas de convivencia.`,
+        },
+        {
+          label: 'Trabajo remoto',
+          fullText: `Uso de ${space.title} como lugar tranquilo para trabajo remoto durante el período reservado.`,
+        },
+        {
+          label: '‍‍Reunión familiar',
+          fullText: `Reunión familiar en ${space.title}, dentro del aforo y del horario permitido.`,
+        },
+      ];
+    }
+
+    if (cat === 'consulta') {
+      return [
+        {
+          label: 'Atención de pacientes',
+          fullText: `Atención profesional de pacientes con agenda previa en ${space.title}.`,
+        },
+        {
+          label: 'Sesiones de terapia',
+          fullText: `Sesiones individuales de terapia o acompañamiento en ${space.title}, en un ambiente privado.`,
+        },
+      ];
+    }
+
+    if (cat === 'bodega' || cat === 'estacionamiento') {
       return [
         {
           label: 'Almacenaje temporal y logística',
@@ -242,9 +323,8 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
 
   // Verificar si un mes está ocupado
   const isMonthOccupied = (monthKey: string) => {
-    return activeReservationsForSpace.some(
-      (r) => r.rentalMonth === monthKey || (r.startDate.startsWith(monthKey) && r.status === 'confirmed')
-    );
+    const range = monthlyRange(monthKey, monthCount, todayIso);
+    return activeReservationsForSpace.some((r) => range.start <= r.endDate && range.end >= r.startDate);
   };
 
   // Detección estricta de colisión / doble reserva para la selección actual
@@ -261,7 +341,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       return false;
     }
     if (activeModality === 'mensual') {
-      return isMonthOccupied(selectedMonth);
+      return activeReservationsForSpace.some((r) => startDate <= r.endDate && endDate >= r.startDate);
     }
     return false;
   }, [activeModality, activeReservationsForSpace, startDate, endDate, hourStart, hourEnd, occupiedHoursOnSelectedDate, selectedMonth]);
@@ -320,55 +400,23 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
     }
   };
 
-  // Cálculos detallados
+  // Montos con la misma regla que valida la base de datos (src/utils/pricing.ts).
   const calculations = useMemo(() => {
-    if (activeModality === 'por_dia') {
-      const subtotal = priceDay * diffDays;
-      const deposit = space.securityDeposit || 150000;
-      const platformFee = Math.round(subtotal * 0.05);
-      const total = subtotal + deposit + platformFee;
-      return {
-        unitLabel: `${diffDays} ${diffDays === 1 ? 'Día' : 'Días'} (Jornadas completas)`,
-        subtotal,
-        deposit,
-        platformFee,
-        total,
-      };
-    } else if (activeModality === 'mensual') {
-      const subtotal = priceMonth;
-      const deposit = space.securityDeposit || priceMonth; // 1 mes de garantía
-      const commonExpenses = 0; // Incluidos
-      const legalFee = Math.round(priceMonth * 0.0125); // 1.25% comisión de firma y verificación legal
-      const total = subtotal + deposit + legalFee;
-      return {
-        unitLabel: 'Primer mes de arriendo',
-        subtotal,
-        deposit,
-        commonExpenses,
-        legalFee,
-        total,
-      };
-    } else {
-      // por_hora
-      const subtotal = priceHour * totalHours;
-      const deposit = 50000;
-      const platformFee = Math.round(subtotal * 0.05);
-      const total = subtotal + deposit + platformFee;
-      return {
-        unitLabel: `${totalHours} Horas x ${formatClp(priceHour)}/hr`,
-        subtotal,
-        deposit,
-        platformFee,
-        total,
-      };
-    }
-  }, [activeModality, priceDay, priceHour, priceMonth, diffDays, totalHours, space.securityDeposit]);
+    const amounts = calculateBookingAmounts({
+      space,
+      modality: activeModality,
+      startDate,
+      endDate: activeModality === 'por_hora' ? startDate : endDate,
+      hourStart: activeModality === 'por_hora' ? hourStart : undefined,
+      hourEnd: activeModality === 'por_hora' ? hourEnd : undefined,
+    });
+    return {
+      ...amounts,
+      unitLabel: `${amounts.units} ${amounts.label}`,
+    };
+  }, [space, activeModality, startDate, endDate, hourStart, hourEnd]);
 
-  const categoryName = space.category === 'event'
-    ? 'EVENTOS & WORKSHOPS'
-    : space.category === 'office'
-    ? 'OFICINA PRIVADA & RESIDENCIA'
-    : 'ESPACIO CORPORATIVO';
+  const categoryName = getCategoryLabel(space.category).toUpperCase();
 
   return (
     <div className="static lg:sticky lg:top-24 bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden">
@@ -653,66 +701,40 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-slate-700">Mes de inicio / check-in</label>
+                  <label className="block text-[11px] font-bold text-slate-700">Mes de inicio</label>
                   <select
                     value={selectedMonth}
                     onChange={(e) => onMonthChange(e.target.value)}
                     className="w-full px-2.5 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                   >
-                    <option value="2026-10" disabled={isMonthOccupied('2026-10')}>
-                      01 de Octubre 2026 {isMonthOccupied('2026-10') ? '(Ocupado / Reservado)' : ''}
-                    </option>
-                    <option value="2026-11" disabled={isMonthOccupied('2026-11')}>
-                      01 de Noviembre 2026 {isMonthOccupied('2026-11') ? '(Ocupado / Reservado)' : ''}
-                    </option>
-                    <option value="2026-12" disabled={isMonthOccupied('2026-12')}>
-                      01 de Diciembre 2026 {isMonthOccupied('2026-12') ? '(Ocupado / Reservado)' : ''}
-                    </option>
-                    <option value="2027-01" disabled={isMonthOccupied('2027-01')}>
-                      01 de Enero 2027 {isMonthOccupied('2027-01') ? '(Ocupado / Reservado)' : ''}
-                    </option>
+                    {monthOptions.map((m) => (
+                      <option key={m.key} value={m.key} disabled={isMonthOccupied(m.key)}>
+                        {m.label} {isMonthOccupied(m.key) ? '(ocupado)' : ''}
+                      </option>
+                    ))}
                   </select>
-                  <span className="text-[10px] text-slate-500 block">Mín. 1 mes</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    Desde el {formatIsoToDateDisplay(startDate)}
+                  </span>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-slate-700">Duración estimada</label>
+                  <label className="block text-[11px] font-bold text-slate-700">Duración</label>
                   <select
-                    value={monthDuration}
-                    onChange={(e) => setMonthDuration(e.target.value)}
+                    value={monthCount}
+                    onChange={(e) => setMonthCount(Number(e.target.value))}
                     className="w-full px-2.5 py-2 text-xs font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                   >
-                    <option value="3 meses">3 meses renovables</option>
-                    <option value="6 meses renovables (Estándar)">6 meses renovables (Estándar)</option>
-                    <option value="12 meses">12 meses (Largo plazo)</option>
+                    {[1, 2, 3, 6, 12].map((n) => (
+                      <option key={n} value={n}>
+                        {n} {n === 1 ? 'mes' : 'meses'} • {formatClp(priceMonth * n)}
+                      </option>
+                    ))}
                   </select>
-                  <span className="text-[10px] text-slate-500 block">Término con 30 días de aviso</span>
+                  <span className="text-[10px] text-slate-500 block">Hasta el {formatIsoToDateDisplay(endDate)}</span>
                 </div>
               </div>
 
-              {/* Requisitos de Validación Ley 18.101 */}
-              <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-800">
-                  <span className="flex items-center gap-1">
-                    <FileCheck2 className="w-3.5 h-3.5 text-indigo-600" />
-                    Requisitos de validación (Ley 18.101)
-                  </span>
-                  <span className="text-[10px] text-emerald-600 font-bold">100% digital</span>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 text-[10px] text-slate-600 pt-1">
-                  <div className="flex items-center gap-1.5 bg-white p-2 rounded-xl border border-slate-200">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span>Informe comercial / DICOM</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white p-2 rounded-xl border border-slate-200">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span>Acreditación de renta / F1</span>
-                  </div>
-                </div>
-                <p className="text-[9px] text-slate-400 pt-0.5">
-                  *Podrás subir tu documentación en el siguiente paso o solicitar verificación formal de Spotly.
-                </p>
-              </div>
             </div>
           )}
 
@@ -745,7 +767,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       }}
                       className="w-full px-3 py-2 text-xs font-bold text-slate-900 bg-white border border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden shadow-xs cursor-pointer"
                     >
-                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => (
+                      {hourOptions.map((h) => (
                         <option key={h} value={h}>
                           {h} Horas de arriendo • {formatClp(priceHour * h)}
                         </option>
@@ -758,11 +780,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     <button
                       type="button"
                       onClick={() => {
-                        if (totalHours > 2) {
+                        if (totalHours > minHours) {
                           onHourEndChange(hourStart + (totalHours - 1));
                         }
                       }}
-                      disabled={totalHours <= 2}
+                      disabled={totalHours <= minHours}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                       title="Restar 1 hora"
                     >
@@ -792,7 +814,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 {/* Atajos rápidos en píldoras */}
                 <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                   <span className="text-[10px] text-slate-500 font-bold mr-1">Opciones rápidas:</span>
-                  {[2, 3, 4, 6, 8, 10].map((h) => (
+                  {[2, 3, 4, 6, 8, 10].filter((h) => h >= minHours).map((h) => (
                     <button
                       key={h}
                       type="button"
@@ -988,74 +1010,36 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
               <span>Importe en CLP</span>
             </div>
 
-            {activeModality === 'por_dia' && (
-              <>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>{formatClp(priceDay)} x {calculations.unitLabel}</span>
-                  <span className="font-bold">{formatClp(calculations.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span className="flex items-center gap-1">
-                    Garantía de arriendo (Reembolsable)
-                    <Info className="w-3 h-3 text-slate-400" />
-                  </span>
-                  <span className="font-bold">{formatClp(calculations.deposit)}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>Servicio de plataforma Spotly (5%)</span>
-                  <span className="font-bold">{formatClp(calculations.platformFee)}</span>
-                </div>
-              </>
+            <div className="flex items-center justify-between text-slate-700">
+              <span>
+                {formatClp(calculations.basePrice)} × {calculations.unitLabel}
+                {activeModality === 'por_hora' && (
+                  <> ({String(hourStart).padStart(2, '0')}:00 - {String(hourEnd).padStart(2, '0')}:00)</>
+                )}
+              </span>
+              <span className="font-bold">{formatClp(calculations.subtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-700">
+              <span>Comisión de servicio Spotly (5 %)</span>
+              <span className="font-bold">{formatClp(calculations.platformFee)}</span>
+            </div>
+            {calculations.deposit > 0 && (
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="flex items-center gap-1">
+                  Garantía mensual (reembolsable)
+                  <Info className="w-3 h-3 text-slate-400" />
+                </span>
+                <span className="font-bold">{formatClp(calculations.deposit)}</span>
+              </div>
             )}
-
-            {activeModality === 'mensual' && (
-              <>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>Primer Mes de Arriendo ({selectedMonth === '2026-10' ? 'Octubre 2026' : 'Próximo Mes'})</span>
-                  <span className="font-bold">{formatClp(calculations.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span className="flex items-center gap-1">
-                    Mes de garantía (Custodia Spotly escrow)
-                    <Info className="w-3 h-3 text-slate-400" />
-                  </span>
-                  <span className="font-bold">{formatClp(calculations.deposit)}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>Gastos comunes y servicios (Agua, luz e internet)</span>
-                  <span className="font-bold text-emerald-600">CLP 0 (Incluidos)</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>Comisión de firma y verificación legal (1.25%)</span>
-                  <span className="font-bold">{formatClp(calculations.legalFee || 0)}</span>
-                </div>
-              </>
-            )}
-
-            {activeModality === 'por_hora' && (
-              <>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>{totalHours} Horas x {formatClp(priceHour)}/hr ({String(hourStart).padStart(2, '0')}:00 - {String(hourEnd).padStart(2, '0')}:00)</span>
-                  <span className="font-bold">{formatClp(calculations.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span className="flex items-center gap-1">
-                    Garantía de uso por bloqueo (Reembolsable)
-                    <Info className="w-3 h-3 text-slate-400" />
-                  </span>
-                  <span className="font-bold">{formatClp(calculations.deposit)}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>Tarifa por servicio Spotly (5%)</span>
-                  <span className="font-bold">{formatClp(calculations.platformFee)}</span>
-                </div>
-              </>
+            {activeModality === 'mensual' && calculations.deposit === 0 && (
+              <div className="text-[11px] text-emerald-700 font-semibold">Este propietario no exige garantía.</div>
             )}
 
             {/* TOTAL EN CLP A PAGAR */}
             <div className="border-t border-slate-200 pt-3 flex items-baseline justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-900 block">Total en CLP a transferir/Pagar</span>
+                <span className="text-xs font-bold text-slate-900 block">Total a pagar</span>
                 <span className="text-[10px] text-slate-400">Valores exentos de IVA para personas naturales</span>
               </div>
               <div className="text-xl sm:text-2xl font-bold text-rose-600 tracking-tight">
@@ -1183,6 +1167,22 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 <span>Bloqueado • falta verificación</span>
               </button>
             </div>
+          ) : isOwnSpace || space.status !== 'active' ? (
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-2.5 text-slate-700 text-xs">
+              <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-slate-900">
+                  {isOwnSpace ? 'Este espacio es tuyo' : 'Espacio aún no disponible para reservas'}
+                </div>
+                <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                  {isOwnSpace
+                    ? 'No puedes reservar tus propias publicaciones. Así es como lo verán los arrendatarios.'
+                    : space.status === 'pending_approval'
+                    ? 'La publicación está en revisión por administración. Se podrá reservar cuando sea aprobada.'
+                    : 'El propietario pausó esta publicación temporalmente.'}
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="space-y-2 pt-1">
               {hasCollision && (
@@ -1191,7 +1191,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   <div>
                     <div className="font-bold">Horario o fecha bloqueada</div>
                     <div className="text-[11px] text-rose-700 mt-0.5 leading-snug">
-                      Este recinto ya cuenta con una reserva o solicitud activa para el {activeModality === 'por_hora' ? `horario ${hourStart}:00-${hourEnd}:00 hrs` : activeModality === 'mensual' ? `mes de ${selectedMonth}` : 'día seleccionado'}. Selecciona otro rango para evitar doble reserva.
+                      Este recinto ya cuenta con una reserva o solicitud activa para el {activeModality === 'por_hora' ? `horario ${hourStart}:00-${hourEnd}:00 hrs` : activeModality === 'mensual' ? 'período elegido' : 'día seleccionado'}. Selecciona otro rango para evitar doble reserva.
                     </div>
                   </div>
                 </div>
@@ -1217,7 +1217,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     {activeModality === 'por_dia'
                       ? 'Continuar al contrato digital'
                       : activeModality === 'mensual'
-                      ? 'Postular / solicitar arriendo mensual'
+                      ? 'Continuar al contrato mensual'
                       : 'Continuar a reserva inmediata'}
                   </span>
                 )}
@@ -1225,7 +1225,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-emerald-800 bg-emerald-50/80 py-1.5 px-3 rounded-xl border border-emerald-100">
                 <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
-                <span>Perfil verificado • Garantía en custodia escrow (Ley 18.101)</span>
+                <span>Perfil verificado • Pago protegido por Transbank</span>
               </div>
             </div>
           )}

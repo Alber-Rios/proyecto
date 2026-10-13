@@ -328,6 +328,26 @@ async function handleReturn(req: VercelRequest, res: VercelResponse) {
   return redirect('expirado', payment.reservation_id);
 }
 
+// Reembolso de un pago hecho con tarjeta guardada (Oneclick Mall, ver api/wallet.ts).
+async function oneclickRefund(payment: any, amount: number) {
+  const production = process.env.WEBPAY_ENV === 'production';
+  const mallCode = process.env.ONECLICK_COMMERCE_CODE || (production ? '' : '597055555541');
+  const apiKey = process.env.ONECLICK_API_KEY || (production ? '' : INTEGRATION_API_KEY);
+  if (!mallCode || !apiKey) throw new HttpError(503, 'Faltan las credenciales de Oneclick para reembolsar.');
+  const host = production ? PRODUCTION_HOST : INTEGRATION_HOST;
+  const response = await fetch(
+    `${host}/rswebpaytransaction/api/oneclick/v1.2/transactions/${encodeURIComponent(payment.buy_order)}/refunds`,
+    {
+      method: 'POST',
+      headers: { 'Tbk-Api-Key-Id': mallCode, 'Tbk-Api-Key-Secret': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commerce_code: payment.child_commerce_code, detail_buy_order: payment.child_buy_order, amount }),
+    }
+  );
+  const text = await response.text();
+  if (!response.ok) throw new HttpError(502, `Transbank respondió ${response.status}: ${text || 'sin detalle'}`);
+  return text ? JSON.parse(text) : {};
+}
+
 // ---------------------------------------------------------------------------
 // refund
 // ---------------------------------------------------------------------------
@@ -365,7 +385,10 @@ async function handleRefund(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ success: true, refundedClp: 0 });
   }
 
-  const refund = await transbank<any>(config, 'POST', `/${encodeURIComponent(payment.token)}/refunds`, { amount });
+  const refund =
+    payment.provider === 'oneclick_mall'
+      ? await oneclickRefund(payment, amount)
+      : await transbank<any>(config, 'POST', `/${encodeURIComponent(payment.token)}/refunds`, { amount });
   const full = amount >= Math.round(Number(payment.amount_clp));
   await admin
     .from('payments')

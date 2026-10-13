@@ -299,6 +299,7 @@ export async function getPaymentsFromDb(): Promise<PaymentRecord[]> {
     id: row.id,
     reservationId: row.reservation_id,
     buyOrder: row.buy_order,
+    provider: row.provider || 'webpay_plus',
     amountClp: Number(row.amount_clp),
     status: row.status,
     environment: row.environment,

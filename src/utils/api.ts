@@ -81,3 +81,17 @@ export async function callApi<T>(path: string, body: unknown): Promise<T> {
   }
   return payload as T;
 }
+
+// Envía el navegador al formulario de Transbank (Webpay Plus o inscripción Oneclick).
+export function postToTransbank(url: string, field: 'token_ws' | 'TBK_TOKEN', token: string): void {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = field;
+  input.value = token;
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+}
