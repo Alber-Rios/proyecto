@@ -7,7 +7,9 @@
 -- Incluye: categorías de espacio en español, garantía opcional solo en arriendos
 -- mensuales, billetera de tarjetas (Transbank Oneclick Mall), anti-sobreventa,
 -- pagos Webpay Plus, contratos SHA-256, auditoría de solo adición, valoraciones,
--- favoritos, notificaciones, KYC, reportes, descuentos y KPI.
+-- favoritos, notificaciones, KYC, reportes, descuentos, KPI, bloqueos de calendario,
+-- liquidaciones a propietarios, reembolsos, consentimientos, soporte, anonimización
+-- de cuentas y mantenimiento automático con pg_cron.
 --
 -- ATENCIÓN: es destructivo. Borra las tablas y funciones de Spotly en el esquema
 -- public. Conserva auth.users (las cuentas), los buckets y los archivos de Storage;
@@ -29,6 +31,8 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
 
 DROP TABLE IF EXISTS
+  public.support_tickets, public.user_consents, public.payment_refunds,
+  public.owner_payouts, public.space_blocks,
   public.space_views, public.user_reports, public.reviews, public.favorites,
   public.payments, public.wallet_cards, public.discount_codes, public.login_attempts,
   public.kyc_verifications, public.notifications, public.saved_cards,
@@ -60,6 +64,8 @@ END $$;
 -- btree_gist permite la restricción de exclusión anti-sobreventa (texto + rango).
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA extensions;
+-- pg_trgm acelera la búsqueda del catálogo por título (ILIKE '%texto%').
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
 
 -- Ninguna función nueva queda ejecutable por defecto para clientes: los permisos
 -- se conceden uno a uno en la sección 10 (mínimo privilegio).
@@ -149,6 +155,47 @@ AS $$
         auth.role() IS NULL
         AND COALESCE(current_setting('role', true), 'none') NOT IN ('anon', 'authenticated')
       );
+$$;
+
+-- Entra y sale del modo de confianza restaurando el valor previo, para que una
+-- función anidada no apague el modo que activó la función que la llamó.
+CREATE FUNCTION public.begin_trusted()
+RETURNS TEXT
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_prev TEXT := COALESCE(current_setting('spotly.trusted', true), '');
+BEGIN
+  PERFORM set_config('spotly.trusted', 'on', true);
+  RETURN v_prev;
+END;
+$$;
+
+CREATE FUNCTION public.end_trusted(p_prev TEXT)
+RETURNS VOID
+LANGUAGE sql
+SET search_path = public, pg_temp
+AS $$
+  SELECT set_config('spotly.trusted', CASE WHEN p_prev = 'on' THEN 'on' ELSE 'off' END, true);
+$$;
+
+-- Rango ocupado (hora local de Chile). Misma regla que las columnas generadas
+-- booking_period / block_period; se usa en disparadores BEFORE, donde las columnas
+-- generadas todavía no están calculadas.
+CREATE FUNCTION public.period_range(p_start DATE, p_end DATE, p_hour_start INTEGER, p_hour_end INTEGER)
+RETURNS tsrange
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT CASE
+    WHEN p_hour_start IS NOT NULL AND p_hour_end IS NOT NULL
+         AND (p_end > p_start OR p_hour_end > p_hour_start)
+    THEN tsrange(p_start + make_interval(hours => p_hour_start),
+                 p_end + make_interval(hours => p_hour_end), '[)')
+    ELSE tsrange(p_start::timestamp, (p_end + 1)::timestamp, '[)')
+  END;
 $$;
 
 CREATE FUNCTION public.set_current_timestamp_updated_at()
@@ -256,18 +303,20 @@ CREATE TABLE public.discount_codes (
 -- ---------- reservations: reservas (RF-15 a RF-18) ----------
 CREATE TABLE public.reservations (
   id TEXT PRIMARY KEY DEFAULT public.generate_id('res'),
-  space_id TEXT NOT NULL REFERENCES public.spaces(id) ON DELETE CASCADE,
+  -- RESTRICT: una reserva es un registro financiero y legal; no se borra en cascada
+  -- al eliminar el espacio o la cuenta (el espacio se pausa, la cuenta se anonimiza).
+  space_id TEXT NOT NULL REFERENCES public.spaces(id) ON DELETE RESTRICT,
   space_title TEXT NOT NULL,
   space_address TEXT,
   space_image TEXT,
   space_category TEXT,
   space_environment TEXT,
-  tenant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
   tenant_name TEXT NOT NULL CHECK (length(tenant_name) <= 200),
   tenant_email TEXT NOT NULL CHECK (length(tenant_email) <= 320),
   tenant_phone TEXT CHECK (tenant_phone IS NULL OR length(tenant_phone) <= 30),
   tenant_rut TEXT NOT NULL CHECK (length(tenant_rut) <= 15),
-  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
   owner_name TEXT NOT NULL,
   owner_rut TEXT,
   start_date DATE NOT NULL,
@@ -317,6 +366,8 @@ CREATE TABLE public.reservations (
     END
   ) STORED,
   CONSTRAINT reservations_dates_check CHECK (end_date >= start_date),
+  CONSTRAINT reservations_hours_check CHECK (
+    hour_start IS NULL OR hour_end IS NULL OR end_date > start_date OR hour_end > hour_start),
   -- Anti-sobreventa (RF-16, RNF-03): el motor rechaza dos reservas activas que se solapen.
   CONSTRAINT reservations_no_overlap EXCLUDE USING gist (space_id WITH =, booking_period WITH &&)
     WHERE (status IN ('pending', 'confirmed'))
@@ -326,7 +377,8 @@ COMMENT ON TABLE public.reservations IS 'Reservas de espacios con pago, garantí
 -- ---------- contracts: contratos digitales (RF-24, RF-26) ----------
 CREATE TABLE public.contracts (
   id TEXT PRIMARY KEY DEFAULT public.generate_id('ctr'),
-  reservation_id TEXT NOT NULL REFERENCES public.reservations(id) ON DELETE CASCADE,
+  -- Un contrato por reserva; no se borra junto con la reserva.
+  reservation_id TEXT NOT NULL UNIQUE REFERENCES public.reservations(id) ON DELETE RESTRICT,
   space_title TEXT NOT NULL,
   space_address TEXT NOT NULL,
   tenant_name TEXT NOT NULL,
@@ -377,6 +429,7 @@ CREATE TABLE public.disputes (
   space_id TEXT REFERENCES public.spaces(id) ON DELETE SET NULL,
   space_title TEXT NOT NULL,
   tenant_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   tenant_name TEXT NOT NULL,
   tenant_rut TEXT NOT NULL,
   owner_name TEXT NOT NULL,
@@ -479,9 +532,9 @@ CREATE TABLE public.wallet_cards (
 -- ---------- payments: pagos Webpay Plus y Oneclick (RF-17) ----------
 CREATE TABLE public.payments (
   id TEXT PRIMARY KEY DEFAULT public.generate_id('pay'),
-  reservation_id TEXT NOT NULL REFERENCES public.reservations(id) ON DELETE CASCADE,
-  tenant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL DEFAULT 'webpay_plus',
+  reservation_id TEXT NOT NULL REFERENCES public.reservations(id) ON DELETE RESTRICT,
+  tenant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  provider TEXT NOT NULL DEFAULT 'webpay_plus' CHECK (provider IN ('webpay_plus', 'oneclick_mall')),
   environment TEXT NOT NULL DEFAULT 'integration' CHECK (environment IN ('integration', 'production')),
   buy_order TEXT NOT NULL UNIQUE,
   session_id TEXT NOT NULL,
@@ -491,7 +544,7 @@ CREATE TABLE public.payments (
     CHECK (status IN ('created', 'authorized', 'failed', 'aborted', 'refunded', 'partially_refunded')),
   response_code INTEGER,
   authorization_code TEXT,
-  card_last4 TEXT,
+  card_last4 TEXT CHECK (card_last4 IS NULL OR card_last4 ~ '^[0-9]{4}$'),
   payment_type_code TEXT,
   installments_number INTEGER,
   transaction_date TIMESTAMPTZ,
@@ -557,8 +610,105 @@ CREATE TABLE public.space_views (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   space_id TEXT NOT NULL REFERENCES public.spaces(id) ON DELETE CASCADE,
   viewer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  -- Clave de deduplicación (usuario o hash de IP) que fija el disparador.
+  viewer_key TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ---------- space_blocks: fechas bloqueadas por el propietario (RF-14) ----------
+-- Mantención, uso propio, etc. Bloquean el calendario igual que una reserva.
+CREATE TABLE public.space_blocks (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('blk'),
+  space_id TEXT NOT NULL REFERENCES public.spaces(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  hour_start INTEGER CHECK (hour_start IS NULL OR hour_start BETWEEN 0 AND 23),
+  hour_end INTEGER CHECK (hour_end IS NULL OR hour_end BETWEEN 1 AND 24),
+  reason TEXT CHECK (reason IS NULL OR length(reason) <= 300),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  block_period tsrange GENERATED ALWAYS AS (
+    CASE
+      WHEN hour_start IS NOT NULL AND hour_end IS NOT NULL
+           AND (end_date > start_date OR hour_end > hour_start)
+      THEN tsrange(start_date + make_interval(hours => hour_start),
+                   end_date + make_interval(hours => hour_end), '[)')
+      ELSE tsrange(start_date::timestamp, (end_date + 1)::timestamp, '[)')
+    END
+  ) STORED,
+  CONSTRAINT space_blocks_dates_check CHECK (end_date >= start_date),
+  CONSTRAINT space_blocks_hours_check CHECK (
+    hour_start IS NULL OR hour_end IS NULL OR end_date > start_date OR hour_end > hour_start)
+);
+COMMENT ON TABLE public.space_blocks IS 'Períodos en que el propietario bloquea su espacio';
+
+-- ---------- owner_payouts: liquidaciones al propietario ----------
+-- Se generan al finalizar la reserva: el propietario recibe el arriendo menos el
+-- descuento (la comisión queda en Spotly; la garantía vuelve al arrendatario).
+CREATE TABLE public.owner_payouts (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('pyo'),
+  reservation_id TEXT NOT NULL UNIQUE REFERENCES public.reservations(id) ON DELETE RESTRICT,
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  gross_clp NUMERIC(12,0) NOT NULL CHECK (gross_clp >= 0),
+  platform_fee_clp NUMERIC(12,0) NOT NULL DEFAULT 0 CHECK (platform_fee_clp >= 0),
+  discount_clp NUMERIC(12,0) NOT NULL DEFAULT 0 CHECK (discount_clp >= 0),
+  amount_clp NUMERIC(12,0) NOT NULL CHECK (amount_clp >= 0),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'on_hold', 'cancelled')),
+  transfer_reference TEXT CHECK (transfer_reference IS NULL OR length(transfer_reference) <= 200),
+  paid_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE public.owner_payouts IS 'Liquidaciones de arriendos pagadas a propietarios';
+
+-- ---------- payment_refunds: reembolsos (uno o varios por pago) ----------
+CREATE TABLE public.payment_refunds (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('rfd'),
+  payment_id TEXT NOT NULL REFERENCES public.payments(id) ON DELETE RESTRICT,
+  reservation_id TEXT NOT NULL REFERENCES public.reservations(id) ON DELETE RESTRICT,
+  amount_clp NUMERIC(12,0) NOT NULL CHECK (amount_clp > 0),
+  status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested', 'succeeded', 'failed')),
+  reason TEXT CHECK (reason IS NULL OR length(reason) <= 500),
+  provider_response JSONB,
+  requested_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE public.payment_refunds IS 'Reembolsos de Transbank; los escribe solo el backend';
+
+-- ---------- user_consents: registro de consentimientos (Ley 19.628 / 21.719) ----------
+CREATE TABLE public.user_consents (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('cns'),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  document TEXT NOT NULL CHECK (document IN ('terms', 'privacy', 'owner_terms', 'kyc', 'cookies')),
+  version TEXT NOT NULL CHECK (length(version) BETWEEN 1 AND 30),
+  accepted BOOLEAN NOT NULL DEFAULT true,
+  ip TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE public.user_consents IS 'Historial inmutable de aceptación de términos y privacidad';
+
+-- ---------- support_tickets: mesa de ayuda ----------
+CREATE TABLE public.support_tickets (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('tkt'),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  reservation_id TEXT REFERENCES public.reservations(id) ON DELETE SET NULL,
+  subject TEXT NOT NULL CHECK (length(trim(subject)) BETWEEN 3 AND 200),
+  message TEXT NOT NULL CHECK (length(message) BETWEEN 10 AND 4000),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+  admin_reply TEXT CHECK (admin_reply IS NULL OR length(admin_reply) <= 4000),
+  replied_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  replied_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE public.support_tickets IS 'Solicitudes de soporte de usuarios';
+
+-- La reserva apunta a su contrato (lo fija el disparador de contratos).
+ALTER TABLE public.reservations
+  ADD CONSTRAINT reservations_digital_contract_fk
+  FOREIGN KEY (digital_contract_id) REFERENCES public.contracts(id) ON DELETE SET NULL;
 
 -- ==============================================================================
 -- 5. ÍNDICES Y UNICIDAD (sin índices redundantes)
@@ -582,20 +732,18 @@ CREATE UNIQUE INDEX wallet_cards_no_duplicate_active
 CREATE INDEX idx_spaces_owner ON public.spaces (owner_id);
 CREATE INDEX idx_spaces_active_recent ON public.spaces (created_at DESC) WHERE status = 'active';
 CREATE INDEX idx_spaces_status_commune_category ON public.spaces (status, commune, category);
-CREATE INDEX idx_spaces_category ON public.spaces (category);
+CREATE INDEX idx_spaces_title_trgm ON public.spaces USING gin (title extensions.gin_trgm_ops);
 
 CREATE INDEX idx_reservations_tenant_recent ON public.reservations (tenant_id, created_at DESC);
 CREATE INDEX idx_reservations_owner_recent ON public.reservations (owner_id, created_at DESC);
 CREATE INDEX idx_reservations_space_status ON public.reservations (space_id, status);
-CREATE INDEX idx_reservations_status ON public.reservations (status);
 CREATE INDEX idx_reservations_dates ON public.reservations (start_date, end_date);
-CREATE INDEX idx_reservations_payment_status ON public.reservations (payment_status);
+CREATE INDEX idx_reservations_contract ON public.reservations (digital_contract_id) WHERE digital_contract_id IS NOT NULL;
 CREATE INDEX idx_reservations_discount_code ON public.reservations (discount_code) WHERE discount_code IS NOT NULL;
 CREATE INDEX idx_reservations_cancelled_by ON public.reservations (cancelled_by) WHERE cancelled_by IS NOT NULL;
 CREATE INDEX idx_reservations_pending_payment
   ON public.reservations (space_id, created_at) WHERE status = 'pending' AND payment_status = 'pending';
 
-CREATE INDEX idx_contracts_reservation ON public.contracts (reservation_id);
 CREATE INDEX idx_contracts_signed_at ON public.contracts (signed_at DESC);
 
 CREATE INDEX idx_audit_logs_user ON public.audit_logs (user_id);
@@ -606,6 +754,7 @@ CREATE INDEX idx_audit_logs_severity_time ON public.audit_logs (severity, timest
 CREATE INDEX idx_disputes_reservation ON public.disputes (reservation_id);
 CREATE INDEX idx_disputes_space ON public.disputes (space_id);
 CREATE INDEX idx_disputes_tenant ON public.disputes (tenant_id);
+CREATE INDEX idx_disputes_owner ON public.disputes (owner_id);
 CREATE INDEX idx_disputes_status ON public.disputes (status);
 
 CREATE INDEX idx_visit_requests_space_status ON public.visit_requests (space_id, tenant_id, status);
@@ -642,6 +791,24 @@ CREATE INDEX idx_user_reports_resolved_by ON public.user_reports (resolved_by) W
 CREATE INDEX idx_space_views_space ON public.space_views (space_id, created_at DESC);
 CREATE INDEX idx_space_views_created ON public.space_views (created_at DESC);
 CREATE INDEX idx_space_views_viewer ON public.space_views (viewer_id) WHERE viewer_id IS NOT NULL;
+CREATE INDEX idx_space_views_dedupe ON public.space_views (space_id, viewer_key, created_at DESC);
+
+CREATE INDEX idx_space_blocks_space ON public.space_blocks USING gist (space_id, block_period);
+CREATE INDEX idx_space_blocks_owner ON public.space_blocks (owner_id);
+
+CREATE INDEX idx_owner_payouts_owner ON public.owner_payouts (owner_id, created_at DESC);
+CREATE INDEX idx_owner_payouts_pending ON public.owner_payouts (created_at) WHERE status = 'pending';
+
+CREATE INDEX idx_payment_refunds_payment ON public.payment_refunds (payment_id);
+CREATE INDEX idx_payment_refunds_reservation ON public.payment_refunds (reservation_id);
+CREATE INDEX idx_payment_refunds_requested_by ON public.payment_refunds (requested_by) WHERE requested_by IS NOT NULL;
+
+CREATE INDEX idx_user_consents_user ON public.user_consents (user_id, document, created_at DESC);
+
+CREATE INDEX idx_support_tickets_user ON public.support_tickets (user_id, created_at DESC);
+CREATE INDEX idx_support_tickets_status ON public.support_tickets (status, created_at DESC);
+CREATE INDEX idx_support_tickets_reservation ON public.support_tickets (reservation_id) WHERE reservation_id IS NOT NULL;
+CREATE INDEX idx_support_tickets_replied_by ON public.support_tickets (replied_by) WHERE replied_by IS NOT NULL;
 
 -- ==============================================================================
 -- 6. FUNCIONES DE NEGOCIO Y SEGURIDAD
@@ -688,7 +855,7 @@ BEGIN
     left(p_action, 100),
     COALESCE(p_user_id, 'system'),
     COALESCE(v_email, 'sistema@spotly.cl'),
-    COALESCE(v_role, 'admin'),
+    COALESCE(v_role, 'system'),
     p_severity,
     COALESCE(p_details, '{}'::jsonb),
     left(p_ip, 100),
@@ -785,15 +952,18 @@ BEGIN
     now(),
     now()
   )
+  -- raw_user_meta_data lo controla el usuario (auth.updateUser) y esta ruta corre
+  -- sin JWT, así que no pasa por guard_profile_privileged_fields: con la identidad
+  -- verificada, nombre, RUT y fecha de nacimiento quedan bloqueados.
   ON CONFLICT (id) DO UPDATE SET
-    full_name = EXCLUDED.full_name,
-    first_names = EXCLUDED.first_names,
-    surnames = EXCLUDED.surnames,
+    full_name = CASE WHEN profiles.verification_status = 'verified' THEN profiles.full_name ELSE EXCLUDED.full_name END,
+    first_names = CASE WHEN profiles.verification_status = 'verified' THEN profiles.first_names ELSE EXCLUDED.first_names END,
+    surnames = CASE WHEN profiles.verification_status = 'verified' THEN profiles.surnames ELSE EXCLUDED.surnames END,
     email = EXCLUDED.email,
-    rut = EXCLUDED.rut,
+    rut = CASE WHEN profiles.verification_status = 'verified' THEN profiles.rut ELSE EXCLUDED.rut END,
     phone = EXCLUDED.phone,
     gender = EXCLUDED.gender,
-    birth_date = EXCLUDED.birth_date,
+    birth_date = CASE WHEN profiles.verification_status = 'verified' THEN profiles.birth_date ELSE EXCLUDED.birth_date END,
     updated_at = now();
 
   IF TG_OP = 'INSERT' THEN
@@ -1102,7 +1272,16 @@ BEGIN
 
   NEW.title := trim(NEW.title);
 
+  -- Nombre y RUT del propietario salen del perfil, no del cliente (se copian
+  -- después a reservas y contratos).
+  SELECT COALESCE(NULLIF(trim(p.full_name), ''), NEW.owner_name),
+         COALESCE(NULLIF(p.rut, ''), NEW.owner_rut)
+    INTO NEW.owner_name, NEW.owner_rut
+  FROM public.profiles p
+  WHERE p.id = CASE WHEN TG_OP = 'INSERT' THEN auth.uid() ELSE OLD.owner_id END;
+
   IF TG_OP = 'INSERT' THEN
+    NEW.owner_id := auth.uid();
     IF EXISTS (
       SELECT 1 FROM public.spaces s
       WHERE s.owner_id = NEW.owner_id
@@ -1133,6 +1312,22 @@ BEGIN
     END IF;
   END IF;
   RETURN NEW;
+END;
+$$;
+
+-- Un espacio con historial (reservas) no se borra: se pausa. Mensaje claro en vez
+-- del error genérico de llave foránea.
+CREATE FUNCTION public.guard_space_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.reservations r WHERE r.space_id = OLD.id) THEN
+    RAISE EXCEPTION 'Este espacio tiene reservas registradas: no se puede eliminar, solo pausar';
+  END IF;
+  RETURN OLD;
 END;
 $$;
 
@@ -1193,8 +1388,8 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_count INTEGER;
+  v_prev TEXT := public.begin_trusted();
 BEGIN
-  PERFORM set_config('spotly.trusted', 'on', true);
   UPDATE public.reservations
   SET status = 'cancelled',
       payment_status = 'failed',
@@ -1205,7 +1400,7 @@ BEGIN
     AND created_at < now() - interval '20 minutes'
     AND (p_space_id IS NULL OR space_id = p_space_id);
   GET DIAGNOSTICS v_count = ROW_COUNT;
-  PERFORM set_config('spotly.trusted', 'off', true);
+  PERFORM public.end_trusted(v_prev);
   RETURN v_count;
 END;
 $$;
@@ -1236,13 +1431,18 @@ DECLARE
 BEGIN
   IF p_price_unit = 'hour' THEN
     v_units := GREATEST(COALESCE(p_hour_end - p_hour_start, 1), 1);
-    v_price := COALESCE(NULLIF(p_space.price_per_hour, 0), 45000);
+    v_price := NULLIF(p_space.price_per_hour, 0);
   ELSIF p_price_unit = 'month' THEN
     v_units := GREATEST(ceil(v_days / 30.0)::int, 1);
-    v_price := COALESCE(NULLIF(p_space.price_per_month, 0), 3800000);
+    v_price := NULLIF(p_space.price_per_month, 0);
   ELSE
     v_units := GREATEST(v_days, 1);
     v_price := p_space.price_per_day;
+  END IF;
+
+  -- Sin tarifa publicada para la modalidad no hay precio que cobrar.
+  IF v_price IS NULL THEN
+    RAISE EXCEPTION 'El espacio no tiene tarifa publicada para esta modalidad de arriendo';
   END IF;
 
   v_subtotal := v_units * v_price;
@@ -1305,6 +1505,15 @@ BEGIN
 
   -- Libera retenciones vencidas del mismo espacio antes de verificar la exclusión.
   PERFORM public.release_expired_payment_holds(NEW.space_id);
+
+  -- Fechas bloqueadas por el propietario.
+  IF EXISTS (
+    SELECT 1 FROM public.space_blocks b
+    WHERE b.space_id = NEW.space_id
+      AND b.block_period && public.period_range(NEW.start_date, NEW.end_date, NEW.hour_start, NEW.hour_end)
+  ) THEN
+    RAISE EXCEPTION 'El propietario bloqueó esas fechas: elige otro horario';
+  END IF;
 
   v_unit := COALESCE(NEW.price_unit, 'day');
   v_expected := public.expected_reservation_amounts(
@@ -1416,7 +1625,7 @@ DECLARE
   v_admin BOOLEAN;
   v_tenant BOOLEAN;
   v_owner BOOLEAN;
-  v_mutable TEXT[] := ARRAY['status', 'dispute_status', 'dispute_reason', 'digital_contract_id',
+  v_mutable TEXT[] := ARRAY['status', 'dispute_status', 'dispute_reason',
                             'cancellation_reason', 'updated_at', 'booking_period'];
   v_refund NUMERIC;
 BEGIN
@@ -1427,6 +1636,22 @@ BEGIN
   v_admin := public.is_admin();
   v_tenant := auth.uid() = OLD.tenant_id;
   v_owner := auth.uid() = OLD.owner_id;
+
+  IF NOT v_admin THEN
+    -- El vínculo con el contrato lo fija el disparador de contratos.
+    NEW.digital_contract_id := OLD.digital_contract_id;
+    -- El estado de disputa se sincroniza desde la tabla disputes; el cliente
+    -- solo puede marcar la apertura (none -> opened) como parte de la reserva.
+    IF NEW.dispute_status IS DISTINCT FROM OLD.dispute_status
+       AND NOT (COALESCE(OLD.dispute_status, 'none') = 'none' AND NEW.dispute_status = 'opened'
+                AND (v_tenant OR v_owner)) THEN
+      RAISE EXCEPTION 'El estado de la disputa lo gestiona la administración';
+    END IF;
+    IF NEW.dispute_reason IS DISTINCT FROM OLD.dispute_reason
+       AND NEW.dispute_status IS NOT DISTINCT FROM OLD.dispute_status THEN
+      NEW.dispute_reason := OLD.dispute_reason;
+    END IF;
+  END IF;
 
   IF NOT v_admin AND (to_jsonb(NEW) - v_mutable) IS DISTINCT FROM (to_jsonb(OLD) - v_mutable) THEN
     RAISE EXCEPTION 'Solo se puede modificar el estado de la reserva; montos, fechas y pagos son inmutables';
@@ -1530,6 +1755,14 @@ BEGIN
       WHEN 'completed' THEN 'finalizada'
       ELSE NEW.status END;
 
+    -- Reserva finalizada y pagada: queda pendiente la liquidación al propietario.
+    IF NEW.status = 'completed' AND NEW.payment_status IN ('paid', 'partially_refunded') THEN
+      INSERT INTO public.owner_payouts (reservation_id, owner_id, gross_clp, platform_fee_clp, discount_clp, amount_clp)
+      VALUES (NEW.id, NEW.owner_id, NEW.subtotal_clp, NEW.platform_fee_clp, NEW.discount_clp,
+              GREATEST(NEW.subtotal_clp - NEW.discount_clp, 0))
+      ON CONFLICT (reservation_id) DO NOTHING;
+    END IF;
+
     PERFORM public.write_audit('RESERVATION_STATUS_CHANGED',
       CASE WHEN NEW.status IN ('cancelled', 'rejected') THEN 'warning' ELSE 'info' END,
       COALESCE(auth.uid()::text, 'system'),
@@ -1579,7 +1812,17 @@ AS $$
   JOIN public.spaces s ON s.id = r.space_id AND s.status = 'active'
   WHERE r.space_id = p_space_id
     AND r.status IN ('pending', 'confirmed')
-    AND r.end_date >= public.chile_today() - 1;
+    AND r.end_date >= public.chile_today() - 1
+    -- Las retenciones de pago vencidas ya no ocupan el calendario.
+    AND NOT (r.status = 'pending' AND r.payment_status = 'pending' AND r.created_at < now() - interval '20 minutes')
+  UNION ALL
+  SELECT b.start_date, b.end_date, b.hour_start, b.hour_end,
+         CASE WHEN b.hour_start IS NOT NULL THEN 'por_hora' ELSE 'por_dia' END,
+         NULL::numeric, (b.end_date - b.start_date) + 1, 'blocked'
+  FROM public.space_blocks b
+  JOIN public.spaces s ON s.id = b.space_id AND s.status = 'active'
+  WHERE b.space_id = p_space_id
+    AND b.end_date >= public.chile_today() - 1;
 $$;
 
 -- Dirección exacta y RUT del propietario: solo para el propietario, administración
@@ -1601,12 +1844,329 @@ AS $$
          AND r.tenant_id = auth.uid()
          AND r.status IN ('pending', 'confirmed', 'completed')
      )
+     -- Solo visitas que el propietario aceptó (una solicitud pendiente no basta).
      OR EXISTS (
        SELECT 1 FROM public.visit_requests v
        WHERE v.space_id = s.id
          AND v.tenant_id = auth.uid()
-         AND v.status IN ('pending', 'confirmed')
+         AND v.status IN ('confirmed', 'completed')
      );
+$$;
+
+-- ---------- Visitas: datos confiables y transiciones ----------
+CREATE FUNCTION public.guard_visit_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_space public.spaces;
+  v_tenant BOOLEAN;
+  v_owner BOOLEAN;
+BEGIN
+  IF public.is_trusted_context() OR public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    IF EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_suspended) THEN
+      RAISE EXCEPTION 'Tu cuenta está suspendida: no puedes agendar visitas';
+    END IF;
+    SELECT * INTO v_space FROM public.spaces WHERE id = NEW.space_id;
+    IF NOT FOUND OR v_space.status <> 'active' THEN
+      RAISE EXCEPTION 'El espacio no está disponible para visitas';
+    END IF;
+    IF v_space.owner_id = auth.uid() THEN
+      RAISE EXCEPTION 'No puedes agendar una visita a tu propio espacio';
+    END IF;
+    IF NEW.visit_date < public.chile_today() THEN
+      RAISE EXCEPTION 'La fecha de la visita debe ser desde hoy en adelante';
+    END IF;
+
+    NEW.tenant_id := auth.uid();
+    SELECT left(COALESCE(NULLIF(trim(p.full_name), ''), NEW.tenant_name), 200), p.email,
+           COALESCE(NULLIF(NEW.tenant_phone, ''), NULLIF(p.phone, ''), '')
+      INTO NEW.tenant_name, NEW.tenant_email, NEW.tenant_phone
+    FROM public.profiles p WHERE p.id = auth.uid();
+    NEW.owner_id := v_space.owner_id;
+    NEW.owner_name := v_space.owner_name;
+    NEW.owner_rut := v_space.owner_rut;
+    NEW.space_title := v_space.title;
+    -- La dirección exacta se entrega cuando el propietario acepta la visita.
+    NEW.space_address := v_space.commune || ', ' || v_space.region;
+    NEW.space_image := COALESCE(v_space.images[1], NEW.space_image);
+    NEW.status := 'pending';
+    NEW.created_at := now();
+    RETURN NEW;
+  END IF;
+
+  -- UPDATE: los datos de la visita son inmutables; solo cambia el estado.
+  v_tenant := auth.uid() = OLD.tenant_id;
+  v_owner := auth.uid() = OLD.owner_id;
+  IF (to_jsonb(NEW) - 'status') IS DISTINCT FROM (to_jsonb(OLD) - 'status') THEN
+    RAISE EXCEPTION 'Solo se puede cambiar el estado de la visita';
+  END IF;
+  IF NEW.status IS DISTINCT FROM OLD.status THEN
+    IF NEW.status = 'cancelled' AND OLD.status IN ('pending', 'confirmed') AND (v_tenant OR v_owner) THEN
+      NULL;
+    ELSIF NEW.status IN ('confirmed', 'completed') AND v_owner
+          AND OLD.status IN ('pending', 'confirmed') THEN
+      IF NEW.status = 'confirmed' THEN
+        PERFORM public.notify_user(OLD.tenant_id, 'Visita confirmada',
+          format('El propietario confirmó tu visita a "%s" el %s (%s).', OLD.space_title, OLD.visit_date, OLD.visit_time_slot),
+          'success', '/space/' || OLD.space_id);
+      END IF;
+    ELSE
+      RAISE EXCEPTION 'Transición de estado de visita no permitida';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION public.visit_events()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  PERFORM public.notify_user(NEW.owner_id, 'Nueva solicitud de visita',
+    format('%s quiere visitar "%s" el %s (%s). Acéptala o recházala desde tu panel.',
+           NEW.tenant_name, NEW.space_title, NEW.visit_date, NEW.visit_time_slot),
+    'info', '/owner');
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Disputas: solo las partes, con datos tomados de la reserva ----------
+CREATE FUNCTION public.guard_dispute_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_res public.reservations;
+  v_prev TEXT;
+BEGIN
+  IF TG_OP = 'INSERT' AND NOT public.is_trusted_context() AND NOT public.is_admin() THEN
+    SELECT * INTO v_res FROM public.reservations WHERE id = NEW.reservation_id;
+    IF NOT FOUND OR auth.uid() NOT IN (v_res.tenant_id, v_res.owner_id) THEN
+      RAISE EXCEPTION 'Solo las partes de la reserva pueden abrir una disputa';
+    END IF;
+    NEW.space_id := v_res.space_id;
+    NEW.space_title := v_res.space_title;
+    NEW.tenant_id := v_res.tenant_id;
+    NEW.tenant_name := v_res.tenant_name;
+    NEW.tenant_rut := v_res.tenant_rut;
+    NEW.owner_id := v_res.owner_id;
+    NEW.owner_name := v_res.owner_name;
+    NEW.owner_rut := COALESCE(v_res.owner_rut, '');
+    NEW.amount_clp := v_res.total_clp;
+    NEW.subtotal_clp := v_res.subtotal_clp;
+    NEW.security_deposit_clp := v_res.security_deposit_clp;
+    NEW.platform_fee_clp := v_res.platform_fee_clp;
+    NEW.status := 'pending';
+    NEW.resolution_notes := NULL;
+    NEW.resolved_at := NULL;
+    NEW.created_at := now();
+  ELSIF TG_OP = 'INSERT' AND NEW.owner_id IS NULL AND NEW.reservation_id IS NOT NULL THEN
+    SELECT owner_id INTO NEW.owner_id FROM public.reservations WHERE id = NEW.reservation_id;
+  END IF;
+
+  IF TG_OP = 'UPDATE' AND NEW.status IS DISTINCT FROM OLD.status
+     AND NEW.status IN ('resolved_refund', 'resolved_owner') THEN
+    NEW.resolved_at := COALESCE(NEW.resolved_at, now());
+  END IF;
+
+  -- Sincroniza el estado de disputa de la reserva (fuente de verdad: disputes).
+  IF NEW.reservation_id IS NOT NULL THEN
+    v_prev := public.begin_trusted();
+    UPDATE public.reservations
+    SET dispute_status = CASE NEW.status
+          WHEN 'pending' THEN 'opened'
+          WHEN 'investigating' THEN 'in_review'
+          ELSE 'resolved' END,
+        dispute_reason = COALESCE(dispute_reason, left(NEW.reason, 4000))
+    WHERE id = NEW.reservation_id;
+    PERFORM public.end_trusted(v_prev);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Valoraciones: el nombre del autor sale del perfil ----------
+CREATE FUNCTION public.guard_review_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF public.is_trusted_context() OR public.is_admin() THEN
+    RETURN NEW;
+  END IF;
+  SELECT left(COALESCE(NULLIF(trim(full_name), ''), NEW.tenant_name), 200) INTO NEW.tenant_name
+  FROM public.profiles WHERE id = auth.uid();
+  NEW.owner_reply := NULL;
+  NEW.owner_replied_at := NULL;
+  NEW.created_at := now();
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Visitas al detalle: una por visitante cada 30 minutos (KPI-04) ----------
+CREATE FUNCTION public.dedupe_space_view()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  NEW.viewer_key := COALESCE(NEW.viewer_id::text, md5(COALESCE(public.request_ip(), 'sin-ip')));
+  NEW.created_at := now();
+  IF EXISTS (
+    SELECT 1 FROM public.space_views v
+    WHERE v.space_id = NEW.space_id AND v.viewer_key = NEW.viewer_key
+      AND v.created_at > now() - interval '30 minutes'
+  ) THEN
+    RETURN NULL;  -- se descarta en silencio
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Bloqueos de calendario del propietario ----------
+CREATE FUNCTION public.guard_space_block()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  SELECT owner_id INTO NEW.owner_id FROM public.spaces WHERE id = NEW.space_id;
+  IF NEW.owner_id IS NULL THEN
+    RAISE EXCEPTION 'El espacio no existe';
+  END IF;
+  IF NOT (public.is_trusted_context() OR public.is_admin() OR NEW.owner_id = auth.uid()) THEN
+    RAISE EXCEPTION 'Solo el propietario puede bloquear fechas de su espacio';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.reservations r
+    WHERE r.space_id = NEW.space_id AND r.status IN ('pending', 'confirmed')
+      AND r.booking_period && public.period_range(NEW.start_date, NEW.end_date, NEW.hour_start, NEW.hour_end)
+  ) THEN
+    RAISE EXCEPTION 'Ya hay reservas activas en ese período; cancélalas antes de bloquearlo';
+  END IF;
+  NEW.created_at := COALESCE(NEW.created_at, now());
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Consentimientos: IP y agente fijados por la base; inmutables ----------
+CREATE FUNCTION public.consents_before_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  NEW.ip := left(COALESCE(public.request_ip(), NEW.ip), 100);
+  NEW.user_agent := COALESCE(public.request_user_agent(), left(NEW.user_agent, 500));
+  NEW.created_at := now();
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Soporte ----------
+CREATE FUNCTION public.guard_support_ticket()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NOT public.is_trusted_context() THEN
+      NEW.user_id := auth.uid();
+    END IF;
+    NEW.status := 'open';
+    NEW.admin_reply := NULL;
+    NEW.replied_by := NULL;
+    NEW.replied_at := NULL;
+    NEW.created_at := now();
+    RETURN NEW;
+  END IF;
+
+  IF NOT (public.is_trusted_context() OR public.is_admin()) THEN
+    -- El usuario solo puede cerrar su ticket.
+    IF (to_jsonb(NEW) - 'status' - 'updated_at') IS DISTINCT FROM (to_jsonb(OLD) - 'status' - 'updated_at')
+       OR (NEW.status IS DISTINCT FROM OLD.status AND NEW.status <> 'closed') THEN
+      RAISE EXCEPTION 'Solo puedes cerrar tu solicitud de soporte';
+    END IF;
+  ELSIF NEW.admin_reply IS DISTINCT FROM OLD.admin_reply THEN
+    NEW.replied_by := auth.uid();
+    NEW.replied_at := now();
+    PERFORM public.notify_user(NEW.user_id, 'Respuesta de soporte',
+      format('Respondimos tu solicitud "%s".', NEW.subject), 'info', '/support');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Derecho de supresión: anonimizar una cuenta ----------
+-- Las reservas, pagos y contratos se conservan por obligación legal y tributaria;
+-- se eliminan los datos personales del perfil y lo que no tiene valor legal.
+CREATE FUNCTION public.admin_anonymize_user(p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_prev TEXT;
+BEGIN
+  IF NOT (public.is_admin() OR public.is_trusted_context()) THEN
+    RAISE EXCEPTION 'Solo un administrador puede anonimizar cuentas';
+  END IF;
+  IF p_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'No puedes anonimizar tu propia cuenta';
+  END IF;
+
+  v_prev := public.begin_trusted();
+  UPDATE public.spaces SET status = 'paused' WHERE owner_id = p_user_id AND status <> 'paused';
+  UPDATE public.profiles
+  SET full_name = 'Usuario eliminado',
+      first_names = NULL, surnames = NULL,
+      email = 'eliminado+' || replace(p_user_id::text, '-', '') || '@spotly.invalid',
+      phone = NULL, avatar_url = NULL, birth_date = NULL, gender = 'prefiero_no_decir',
+      kyc_data = '{}'::jsonb, commune = NULL, city = NULL,
+      is_suspended = true, suspended_reason = 'Cuenta anonimizada a solicitud del titular'
+  WHERE id = p_user_id;
+  DELETE FROM public.favorites WHERE user_id = p_user_id;
+  DELETE FROM public.notifications WHERE user_id = p_user_id;
+  DELETE FROM public.wallet_cards WHERE user_id = p_user_id;
+  PERFORM public.end_trusted(v_prev);
+
+  PERFORM public.write_audit('ADMIN_USER_ANONYMIZED', 'critical', COALESCE(auth.uid()::text, 'system'),
+    jsonb_build_object('targetUserId', p_user_id));
+END;
+$$;
+
+-- ---------- Mantenimiento periódico (pg_cron) ----------
+CREATE FUNCTION public.run_maintenance()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  PERFORM public.release_expired_payment_holds(NULL);
+  PERFORM public.purge_old_login_attempts();
+  DELETE FROM public.space_views WHERE created_at < now() - interval '400 days';
+  DELETE FROM public.notifications WHERE read AND created_at < now() - interval '180 days';
+END;
 $$;
 
 -- ---------- Pagos (Webpay Plus y Oneclick) ----------
@@ -1656,9 +2216,24 @@ RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
+DECLARE
+  v_res public.reservations;
 BEGIN
   NEW.signer_ip := left(COALESCE(public.request_ip(), NEW.signer_ip), 100);
   NEW.created_at := now();
+  -- El contrato debe corresponder a la reserva (no se reescriben campos porque el
+  -- hash SHA-256 se calcula en el cliente sobre este contenido).
+  IF NOT public.is_trusted_context() AND NOT public.is_admin() THEN
+    SELECT * INTO v_res FROM public.reservations WHERE id = NEW.reservation_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'La reserva del contrato no existe';
+    END IF;
+    IF NEW.start_date <> v_res.start_date OR NEW.end_date <> v_res.end_date
+       OR abs(NEW.total_clp - v_res.total_clp) > 1
+       OR public.normalize_rut(NEW.tenant_rut) IS DISTINCT FROM public.normalize_rut(v_res.tenant_rut) THEN
+      RAISE EXCEPTION 'El contrato no coincide con la reserva (fechas, total o RUT del arrendatario)';
+    END IF;
+  END IF;
   IF NEW.hash_algorithm = 'SHA-256' AND NEW.contract_hash !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'El hash del contrato debe ser un SHA-256 hexadecimal de 64 caracteres';
   END IF;
@@ -1675,7 +2250,7 @@ BEGIN
   IF public.is_trusted_context() THEN
     RETURN COALESCE(NEW, OLD);
   END IF;
-  RAISE EXCEPTION 'Los contratos firmados son inmutables';
+  RAISE EXCEPTION '% es inmutable: no admite %', TG_TABLE_NAME, TG_OP;
 END;
 $$;
 
@@ -1685,7 +2260,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+DECLARE
+  v_prev TEXT := public.begin_trusted();
 BEGIN
+  UPDATE public.reservations SET digital_contract_id = NEW.id WHERE id = NEW.reservation_id;
+  PERFORM public.end_trusted(v_prev);
   PERFORM public.write_audit('CONTRACT_SIGNED', 'security', COALESCE(auth.uid()::text, 'system'),
     jsonb_build_object('contractId', NEW.id, 'reservationId', NEW.reservation_id,
                        'hash', NEW.contract_hash, 'algorithm', NEW.hash_algorithm, 'signerIp', NEW.signer_ip));
@@ -1735,14 +2314,14 @@ AS $$
 DECLARE
   v_space TEXT := COALESCE(NEW.space_id, OLD.space_id);
   v_owner UUID;
+  v_prev TEXT := public.begin_trusted();
 BEGIN
-  PERFORM set_config('spotly.trusted', 'on', true);
   UPDATE public.spaces s
   SET rating = COALESCE((SELECT round(avg(rating)::numeric, 1) FROM public.reviews WHERE space_id = v_space), 0),
       reviews_count = (SELECT count(*) FROM public.reviews WHERE space_id = v_space)
   WHERE s.id = v_space
   RETURNING owner_id INTO v_owner;
-  PERFORM set_config('spotly.trusted', 'off', true);
+  PERFORM public.end_trusted(v_prev);
 
   IF TG_OP = 'INSERT' THEN
     PERFORM public.notify_user(v_owner, 'Nueva valoración',
@@ -1788,6 +2367,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+DECLARE
+  v_prev TEXT;
 BEGIN
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Solo un administrador puede suspender cuentas';
@@ -1803,9 +2384,9 @@ BEGIN
 
   IF p_suspend THEN
     -- Las publicaciones del usuario suspendido se pausan.
-    PERFORM set_config('spotly.trusted', 'on', true);
+    v_prev := public.begin_trusted();
     UPDATE public.spaces SET status = 'paused' WHERE owner_id = p_user_id AND status = 'active';
-    PERFORM set_config('spotly.trusted', 'off', true);
+    PERFORM public.end_trusted(v_prev);
   END IF;
 
   PERFORM public.write_audit(CASE WHEN p_suspend THEN 'ADMIN_USER_SUSPENDED' ELSE 'ADMIN_USER_REACTIVATED' END,
@@ -2018,6 +2599,49 @@ CREATE TRIGGER set_spaces_updated_at
 CREATE TRIGGER audit_spaces_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.spaces
   FOR EACH ROW EXECUTE FUNCTION public.audit_entity_changes();
+CREATE TRIGGER guard_spaces_delete
+  BEFORE DELETE ON public.spaces
+  FOR EACH ROW EXECUTE FUNCTION public.guard_space_delete();
+
+-- space_blocks
+CREATE TRIGGER guard_space_blocks_write
+  BEFORE INSERT OR UPDATE ON public.space_blocks
+  FOR EACH ROW EXECUTE FUNCTION public.guard_space_block();
+
+-- visit_requests
+CREATE TRIGGER guard_visit_requests_write
+  BEFORE INSERT OR UPDATE ON public.visit_requests
+  FOR EACH ROW EXECUTE FUNCTION public.guard_visit_write();
+CREATE TRIGGER visit_requests_events
+  AFTER INSERT ON public.visit_requests
+  FOR EACH ROW EXECUTE FUNCTION public.visit_events();
+
+-- space_views
+CREATE TRIGGER space_views_dedupe
+  BEFORE INSERT ON public.space_views
+  FOR EACH ROW EXECUTE FUNCTION public.dedupe_space_view();
+
+-- owner_payouts / payment_refunds / support_tickets
+CREATE TRIGGER set_owner_payouts_updated_at
+  BEFORE UPDATE ON public.owner_payouts
+  FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
+CREATE TRIGGER set_payment_refunds_updated_at
+  BEFORE UPDATE ON public.payment_refunds
+  FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
+CREATE TRIGGER guard_support_tickets_write
+  BEFORE INSERT OR UPDATE ON public.support_tickets
+  FOR EACH ROW EXECUTE FUNCTION public.guard_support_ticket();
+CREATE TRIGGER set_support_tickets_updated_at
+  BEFORE UPDATE ON public.support_tickets
+  FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
+
+-- user_consents (solo adición)
+CREATE TRIGGER user_consents_set_request_metadata
+  BEFORE INSERT ON public.user_consents
+  FOR EACH ROW EXECUTE FUNCTION public.consents_before_insert();
+CREATE TRIGGER user_consents_no_update_delete
+  BEFORE UPDATE OR DELETE ON public.user_consents
+  FOR EACH ROW EXECUTE FUNCTION public.contracts_immutable();
 
 -- reservations
 CREATE TRIGGER guard_reservations_insert
@@ -2053,6 +2677,9 @@ CREATE TRIGGER audit_logs_no_update_delete
   FOR EACH ROW EXECUTE FUNCTION public.audit_logs_append_only();
 
 -- disputes
+CREATE TRIGGER guard_disputes_write
+  BEFORE INSERT OR UPDATE ON public.disputes
+  FOR EACH ROW EXECUTE FUNCTION public.guard_dispute_write();
 CREATE TRIGGER audit_disputes_changes
   AFTER INSERT OR UPDATE ON public.disputes
   FOR EACH ROW EXECUTE FUNCTION public.audit_entity_changes();
@@ -2071,6 +2698,9 @@ CREATE TRIGGER set_wallet_cards_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
 
 -- reviews
+CREATE TRIGGER guard_reviews_insert
+  BEFORE INSERT ON public.reviews
+  FOR EACH ROW EXECUTE FUNCTION public.guard_review_insert();
 CREATE TRIGGER guard_reviews_update
   BEFORE UPDATE ON public.reviews
   FOR EACH ROW EXECUTE FUNCTION public.guard_review_update();
@@ -2103,6 +2733,11 @@ ALTER TABLE public.favorites         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_reports      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.space_views       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.space_blocks      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.owner_payouts     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_refunds   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_consents     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.support_tickets   ENABLE ROW LEVEL SECURITY;
 
 -- ---------- profiles ----------
 -- El alta la hace el disparador desde auth.users (no hay política de INSERT).
@@ -2186,12 +2821,11 @@ CREATE POLICY "Lectura de auditoría propia o admin"
 -- ---------- disputes ----------
 CREATE POLICY "Partes de disputa o admin pueden leerla"
   ON public.disputes FOR SELECT TO authenticated
-  USING (tenant_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
+  USING (tenant_id = (SELECT auth.uid()) OR owner_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 CREATE POLICY "Creación de disputas"
   ON public.disputes FOR INSERT TO authenticated
   WITH CHECK (
     (SELECT public.is_admin()) OR
-    tenant_id = (SELECT auth.uid()) OR
     EXISTS (
       SELECT 1 FROM public.reservations r
       WHERE r.id = reservation_id
@@ -2293,6 +2927,51 @@ CREATE POLICY "Registrar visita al detalle"
   );
 CREATE POLICY "Visitas visibles para admin"
   ON public.space_views FOR SELECT TO authenticated USING ((SELECT public.is_admin()));
+
+-- ---------- space_blocks (el calendario público usa get_space_occupancy) ----------
+CREATE POLICY "Propietario gestiona sus bloqueos"
+  ON public.space_blocks FOR ALL TO authenticated
+  USING (owner_id = (SELECT auth.uid()) OR (SELECT public.is_admin()))
+  WITH CHECK (owner_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
+
+-- ---------- owner_payouts (los escribe el sistema; los paga admin) ----------
+CREATE POLICY "Liquidaciones propias o admin"
+  ON public.owner_payouts FOR SELECT TO authenticated
+  USING (owner_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
+CREATE POLICY "Admin gestiona liquidaciones"
+  ON public.owner_payouts FOR UPDATE TO authenticated
+  USING ((SELECT public.is_admin())) WITH CHECK ((SELECT public.is_admin()));
+
+-- ---------- payment_refunds (los escribe solo el backend) ----------
+CREATE POLICY "Reembolsos visibles para las partes o admin"
+  ON public.payment_refunds FOR SELECT TO authenticated
+  USING (
+    (SELECT public.is_admin()) OR EXISTS (
+      SELECT 1 FROM public.reservations r
+      WHERE r.id = payment_refunds.reservation_id
+        AND (r.tenant_id = (SELECT auth.uid()) OR r.owner_id = (SELECT auth.uid()))
+    )
+  );
+
+-- ---------- user_consents ----------
+CREATE POLICY "Consentimientos propios o admin"
+  ON public.user_consents FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
+CREATE POLICY "Registrar consentimiento propio"
+  ON public.user_consents FOR INSERT TO authenticated
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
+-- ---------- support_tickets ----------
+CREATE POLICY "Tickets propios o admin"
+  ON public.support_tickets FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
+CREATE POLICY "Crear ticket propio"
+  ON public.support_tickets FOR INSERT TO authenticated
+  WITH CHECK (user_id = (SELECT auth.uid()));
+CREATE POLICY "Actualizar ticket propio o admin"
+  ON public.support_tickets FOR UPDATE TO authenticated
+  USING (user_id = (SELECT auth.uid()) OR (SELECT public.is_admin()))
+  WITH CHECK (user_id = (SELECT auth.uid()) OR (SELECT public.is_admin()));
 
 -- ==============================================================================
 -- 9. STORAGE: BUCKETS Y POLÍTICAS (carpeta por usuario)
@@ -2431,6 +3110,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.reviews TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.user_reports TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.discount_codes TO authenticated;
 GRANT SELECT ON public.space_views TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.space_blocks TO authenticated;
+GRANT SELECT ON public.owner_payouts TO authenticated;
+GRANT UPDATE (status, transfer_reference, paid_at) ON public.owner_payouts TO authenticated;  -- RLS: solo admin
+GRANT SELECT ON public.payment_refunds TO authenticated;
+GRANT SELECT ON public.user_consents TO authenticated;
+GRANT INSERT (user_id, document, version, accepted) ON public.user_consents TO authenticated;
+GRANT SELECT ON public.support_tickets TO authenticated;
+GRANT INSERT (user_id, reservation_id, subject, message) ON public.support_tickets TO authenticated;
+GRANT UPDATE (status, admin_reply) ON public.support_tickets TO authenticated;
 -- login_attempts: sin permisos para clientes.
 
 -- Backend (service_role): acceso completo; lo usan solo las funciones de /api.
@@ -2465,6 +3153,8 @@ GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticate
 GRANT EXECUTE ON FUNCTION public.get_spaces_private_details() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_kpis(INTEGER) TO authenticated;                     -- valida is_admin()
 GRANT EXECUTE ON FUNCTION public.admin_set_user_suspension(UUID, BOOLEAN, TEXT) TO authenticated; -- valida is_admin()
+GRANT EXECUTE ON FUNCTION public.admin_anonymize_user(UUID) TO authenticated;              -- valida is_admin()
+GRANT EXECUTE ON FUNCTION public.period_range(DATE, DATE, INTEGER, INTEGER) TO anon, authenticated;
 
 -- ==============================================================================
 -- 11. TIEMPO REAL (campana de notificaciones)
@@ -2478,6 +3168,19 @@ BEGIN
      ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
   END IF;
+END $$;
+
+-- ==============================================================================
+-- 11b. MANTENIMIENTO AUTOMÁTICO (pg_cron, si está disponible)
+-- ==============================================================================
+-- Cada 5 minutos libera retenciones de pago vencidas y purga datos caducados.
+-- Si pg_cron no está habilitado (Database → Extensions), se omite sin abortar.
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_cron;
+  PERFORM cron.schedule('spotly-maintenance', '*/5 * * * *', 'SELECT public.run_maintenance()');
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pg_cron no disponible (%): ejecuta SELECT public.run_maintenance() desde un job externo', SQLERRM;
 END $$;
 
 -- ==============================================================================
