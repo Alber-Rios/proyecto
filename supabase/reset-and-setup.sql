@@ -2526,6 +2526,9 @@ ANALYZE public.reservations;
 
 COMMIT;
 
+-- Recarga la caché de esquema de la API (PostgREST) para que vea las tablas nuevas al instante.
+NOTIFY pgrst, 'reload schema';
+
 -- ==============================================================================
 -- Verificación rápida (opcional, después de ejecutar):
 --   SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public';
