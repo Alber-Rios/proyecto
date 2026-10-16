@@ -38,14 +38,14 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
           onSelect(space);
         }
       }}
-      className="group bg-white rounded-2xl border border-stone-200 overflow-hidden hover:shadow-lg hover:border-stone-300 transition-shadow duration-300 flex flex-col cursor-pointer"
+      className="group h-full bg-white rounded-3xl border border-stone-200/80 overflow-hidden flex flex-col cursor-pointer transition-[transform,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1.5 hover:border-stone-300 hover:shadow-[0_30px_60px_-25px_rgba(12,10,9,0.35)]"
     >
       {/* Imagen Principal con Badges */}
-      <div className="relative aspect-4/3 overflow-hidden bg-slate-100">
+      <div className="shine relative aspect-4/3 overflow-hidden bg-gradient-to-br from-stone-100 to-stone-200">
         {space.images?.[0] ? <img
           src={space.images[0]}
           alt={space.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover scale-[1.01] group-hover:scale-[1.08] transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
           loading="lazy"
         /> : <div className="w-full h-full" aria-label="Este espacio no tiene imágenes" />}
 
@@ -151,7 +151,7 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
 
           <button
             type="button"
-            className="px-3.5 py-1.5 rounded-xl bg-slate-900 group-hover:bg-rose-600 text-white text-xs font-semibold transition"
+            className="px-4 py-2 rounded-full bg-stone-900 group-hover:bg-rose-600 text-white text-xs font-semibold transition-colors duration-300"
           >
             Reservar
           </button>

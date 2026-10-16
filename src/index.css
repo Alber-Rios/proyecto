@@ -61,3 +61,62 @@ div[data-temp-mail] {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ===== Efectos premium ===== */
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(6%, -4%, 0) scale(1.12); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes aurora-drift-alt {
+  0%   { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%  { transform: translate3d(-8%, 5%, 0) scale(0.95); }
+  100% { transform: translate3d(0, 0, 0) scale(1.05); }
+}
+.aurora-a { animation: aurora-drift 18s ease-in-out infinite; }
+.aurora-b { animation: aurora-drift-alt 22s ease-in-out infinite; }
+
+/* Grano sutil tipo película: quita el aspecto "plano digital" */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.09;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Destello que cruza botones y tarjetas al pasar el mouse */
+.shine { position: relative; overflow: hidden; isolation: isolate; }
+.shine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.35) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.shine:hover::before { transform: translateX(120%); }
+
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { animation: marquee 38s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+/* Texto con degradado dorado-rosa animado */
+@keyframes gradient-pan { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.text-luxe {
+  background: linear-gradient(90deg, #fda4af, #fcd34d, #fb7185, #fda4af);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-pan 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-a, .aurora-b, .marquee-track, .text-luxe { animation: none !important; }
+  .shine::before { display: none; }
+}

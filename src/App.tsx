@@ -5,6 +5,8 @@ import { HomePage } from './pages/HomePage.tsx';
 import { Space } from './types.ts';
 import { Building2 } from 'lucide-react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
+import { PageTransition, ScrollProgress } from './components/motion/Motion.tsx';
 import { CookieBanner } from './components/CookieBanner.tsx';
 
 // Las páginas se cargan bajo demanda para que la portada descargue solo lo que necesita.
@@ -103,6 +105,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-stone-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-rose-500 selection:text-white">
+      <ScrollProgress />
       {/* Header Principal */}
       <Header
         currentView={currentViewString as any}
@@ -114,7 +117,9 @@ function AppContent() {
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-hidden">
         <Suspense fallback={<div className="min-h-[100vh] py-24 text-center text-sm text-slate-500" role="status">Cargando…</div>}>
-        <Routes>
+        <AnimatePresence mode="wait" initial={false}>
+        <PageTransition key={location.pathname}>
+        <Routes location={location}>
           <Route path="/" element={
             <HomePage
               onOpenOwnerUpgrade={handleOpenOwnerUpgrade}
@@ -206,6 +211,8 @@ function AppContent() {
 
           <Route path="*" element={<NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} />} />
         </Routes>
+        </PageTransition>
+        </AnimatePresence>
         </Suspense>
       </main>
 

@@ -12,6 +12,9 @@ import { ReportDialog } from '../components/ReportDialog.tsx';
 import { recordSpaceView } from '../lib/dataAccess.ts';
 import { SpaceDetailBookingWidget } from '../components/SpaceDetailBookingWidget.tsx';
 import { getCategoryLabel } from '../utils/spaceCategories.ts';
+import { motion, AnimatePresence } from 'motion/react';
+import { Reveal, EASE_LUXE } from '../components/motion/Motion.tsx';
+import { ChevronLeft as GalleryPrev, ChevronRight as GalleryNext } from 'lucide-react';
 import {
   MapPin,
   Users,
@@ -281,8 +284,8 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
       </div>
 
       {/* 2. TÍTULO PRINCIPAL Y UBICACIÓN */}
-      <div className="space-y-1.5">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">
+      <Reveal className="space-y-2" y={18}>
+        <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl leading-[1.05] text-slate-900 tracking-tight">
           {displayTitle}
         </h1>
         <p className="text-slate-600 text-xs sm:text-sm flex items-center gap-1.5">
@@ -290,7 +293,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           <span className="font-semibold text-slate-800">{space.address || `${space.commune}, ${space.region}`}</span>
           {space.address && <span className="text-slate-500 hidden sm:inline">• {space.commune}, {space.region}</span>}
         </p>
-      </div>
+      </Reveal>
 
       {/* 3. ESTRUCTURA PRINCIPAL EN DOS COLUMNAS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -301,8 +304,48 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
         <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 lg:col-span-8 space-y-7">
           {/* A. GALERÍA DE FOTOGRAFÍAS */}
           <div className="space-y-3">
-            <div className="relative aspect-16/9 sm:aspect-21/10 rounded-3xl overflow-hidden bg-slate-950 border border-slate-200 shadow-md group">
-              {imagesList.length > 0 ? <img src={imagesList[activeImageIndex]} alt={space.title} className="w-full h-full object-cover transition duration-300 group-hover:scale-101" /> : <div className="w-full h-full" aria-label="Este espacio no tiene fotografías" />}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.985 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.9, ease: EASE_LUXE }}
+              className="relative aspect-16/9 sm:aspect-21/10 rounded-[2rem] overflow-hidden bg-stone-950 shadow-[0_40px_80px_-35px_rgba(12,10,9,0.55)] group"
+            >
+              {imagesList.length > 0 ? (
+                <AnimatePresence initial={false} mode="popLayout">
+                  <motion.img
+                    key={activeImageIndex}
+                    src={imagesList[activeImageIndex]}
+                    alt={space.title}
+                    initial={{ opacity: 0, scale: 1.06 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8, ease: EASE_LUXE }}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </AnimatePresence>
+              ) : <div className="w-full h-full" aria-label="Este espacio no tiene fotografías" />}
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20" />
+
+              {imagesList.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Foto anterior"
+                    onClick={() => setActiveImageIndex((i) => (i - 1 + imagesList.length) % imagesList.length)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-stone-900 shadow-lg backdrop-blur-md transition duration-300 hover:bg-white hover:scale-105 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
+                  >
+                    <GalleryPrev className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Foto siguiente"
+                    onClick={() => setActiveImageIndex((i) => (i + 1) % imagesList.length)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-stone-900 shadow-lg backdrop-blur-md transition duration-300 hover:bg-white hover:scale-105 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
+                  >
+                    <GalleryNext className="h-5 w-5" />
+                  </button>
+                </>
+              )}
 
               {/* Badges superiores flotantes */}
               <div className="absolute top-4 left-4 flex items-center gap-2">
@@ -320,23 +363,30 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               {imagesList.length > 0 && <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10">
                 Fotografía {activeImageIndex + 1} de {imagesList.length}
               </div>}
-            </div>
+            </motion.div>
 
             {/* Miniaturas de la galería */}
             {imagesList.length > 1 && (
-              <div className="flex items-center gap-3 overflow-x-auto pb-1">
+              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar p-1">
                 {imagesList.map((img, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setActiveImageIndex(idx)}
-                    className={`relative w-24 sm:w-28 h-16 sm:h-18 rounded-2xl overflow-hidden shrink-0 border-2 transition shadow-2xs cursor-pointer ${
-                      activeImageIndex === idx
-                        ? 'border-rose-600 ring-2 ring-rose-500/20 scale-102'
-                        : 'border-slate-200 opacity-70 hover:opacity-100'
+                    aria-label={`Ver foto ${idx + 1}`}
+                    aria-current={activeImageIndex === idx}
+                    className={`relative w-24 sm:w-28 h-16 sm:h-18 rounded-2xl overflow-hidden shrink-0 transition duration-500 cursor-pointer ${
+                      activeImageIndex === idx ? 'opacity-100' : 'opacity-60 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    {activeImageIndex === idx && (
+                      <motion.span
+                        layoutId="gallery-active-thumb"
+                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                        className="absolute inset-0 rounded-2xl ring-2 ring-inset ring-rose-500"
+                      />
+                    )}
                   </button>
                 ))}
               </div>

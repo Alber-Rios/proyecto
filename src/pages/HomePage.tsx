@@ -6,7 +6,10 @@ import { SpaceFilters } from '../components/SpaceFilters.tsx';
 const BookingModal = lazy(() => import('../components/BookingModal.tsx').then((m) => ({ default: m.BookingModal })));
 const ContractModal = lazy(() => import('../components/ContractModal.tsx').then((m) => ({ default: m.ContractModal })));
 
+import { motion, AnimatePresence } from 'motion/react';
+import { Reveal, Stagger, staggerChild, SplitWords, Spotlight, Magnetic, EASE_LUXE } from '../components/motion/Motion.tsx';
 import {
+  Sparkles,
   Building,
   ArrowRight,
   Compass,
@@ -132,39 +135,111 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="space-y-10 pb-16">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-stone-900 text-white px-6 py-12 sm:px-12 sm:py-16">
-        <div className="relative z-10 max-w-3xl space-y-5">
-          <h1 className="font-display text-4xl sm:text-6xl leading-[1.05] tracking-tight">
-            Un lugar para trabajar, crear o reunirte. <em className="text-rose-300">Por hora, día o mes.</em>
-          </h1>
-          <p className="text-stone-300 text-sm sm:text-base leading-relaxed max-w-2xl">
-            Explora espacios disponibles y revisa sus precios, ubicación, equipamiento y modalidades antes de solicitar una reserva.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
-            <button
-              type="button"
-              onClick={scrollToListings}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700"
-            >
-              <Search className="h-4 w-4" /> Buscar espacios
-            </button>
-            <button
-              type="button"
-              onClick={handlePublishSpace}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              <Building className="h-4 w-4" /> Publicar un espacio
-            </button>
+      <Spotlight className="grain overflow-hidden rounded-[2rem] bg-stone-950 text-white shadow-[0_40px_80px_-30px_rgba(12,10,9,0.6)]">
+        <section className="relative min-h-[30rem] sm:min-h-[34rem] flex items-center px-6 py-14 sm:px-14 sm:py-20">
+          {/* Aurora de fondo */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <div className="aurora-a absolute -top-1/3 -right-1/4 h-[36rem] w-[36rem] rounded-full bg-rose-600/35 blur-[110px]" />
+            <div className="aurora-b absolute -bottom-1/3 -left-1/4 h-[32rem] w-[32rem] rounded-full bg-amber-500/20 blur-[120px]" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
           </div>
+
+          <div className="relative z-10 max-w-3xl space-y-7">
+            <motion.span
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: EASE_LUXE }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium tracking-wide text-stone-200 backdrop-blur-md"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-300" /> Espacios para arrendar en Chile
+            </motion.span>
+            <h1 className="font-display text-[2.6rem] sm:text-7xl leading-[1.02] tracking-tight">
+              <SplitWords text="Un lugar para trabajar, crear o reunirte." />{' '}
+              <motion.em
+                className="text-luxe inline-block"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, ease: EASE_LUXE, delay: 0.55 }}
+              >
+                Por hora, día o mes.
+              </motion.em>
+            </h1>
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: EASE_LUXE, delay: 0.7 }}
+              className="text-stone-300 text-base sm:text-lg leading-relaxed max-w-2xl"
+            >
+              Explora espacios disponibles y revisa sus precios, ubicación, equipamiento y modalidades antes de solicitar una reserva.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: EASE_LUXE, delay: 0.85 }}
+              className="flex flex-col sm:flex-row gap-3 pt-1"
+            >
+              <Magnetic>
+                <button
+                  type="button"
+                  onClick={scrollToListings}
+                  className="shine group inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-stone-950 shadow-[0_10px_30px_-10px_rgba(255,255,255,0.5)] transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                >
+                  <Search className="h-4 w-4" /> Buscar espacios
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </button>
+              </Magnetic>
+              <Magnetic>
+                <button
+                  type="button"
+                  onClick={handlePublishSpace}
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition duration-300 hover:bg-white/15 hover:border-white/40 cursor-pointer"
+                >
+                  <Building className="h-4 w-4" /> Publicar un espacio
+                </button>
+              </Magnetic>
+            </motion.div>
+            {activeSpaces.length > 0 && (
+              <motion.dl
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1, delay: 1.1 }}
+                className="flex gap-10 pt-5 border-t border-white/10"
+              >
+                <div>
+                  <dt className="text-[11px] uppercase tracking-[0.2em] text-stone-400">Espacios</dt>
+                  <dd className="font-display text-3xl">{activeSpaces.length}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-[0.2em] text-stone-400">Comunas</dt>
+                  <dd className="font-display text-3xl">{new Set(activeSpaces.map((sp) => sp.commune)).size}</dd>
+                </div>
+              </motion.dl>
+            )}
+          </div>
+        </section>
+      </Spotlight>
+
+      {/* Cinta de tipos de espacio */}
+      <div aria-hidden="true" className="marquee relative overflow-hidden py-2 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+        <div className="marquee-track flex w-max font-display text-2xl sm:text-3xl text-stone-400">
+          {[0, 1].map((dup) => (
+            <div key={dup} className="flex">
+              {['Oficinas', 'Estudios', 'Salones de eventos', 'Bodegas', 'Salas de reuniones', 'Locales', 'Terrazas', 'Cowork'].map((t) => (
+                <span key={t} className="flex items-center gap-10 pr-10 whitespace-nowrap">
+                  {t} <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                </span>
+              ))}
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
 
       {/* Barra de Filtros */}
       <section id="espacios" className="scroll-mt-24 space-y-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <Reveal className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <h2 className="font-display text-3xl tracking-tight text-slate-900">Espacios disponibles</h2>
           <p className="text-sm text-slate-500">Filtra por ubicación, tipo y modalidad de arriendo.</p>
-        </div>
+        </Reveal>
         <SpaceFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -228,20 +303,30 @@ export const HomePage: React.FC<HomePageProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSpaces.map((space) => (
-            <SpaceCard key={space.id} space={space} onSelect={handleSelectSpace} />
-          ))}
-        </div>
+        <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AnimatePresence mode="popLayout">
+            {filteredSpaces.map((space) => (
+              <motion.div
+                key={space.id}
+                layout
+                variants={staggerChild}
+                exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
+                transition={{ layout: { duration: 0.6, ease: EASE_LUXE } }}
+              >
+                <SpaceCard space={space} onSelect={handleSelectSpace} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </Stagger>
       )}
 
       <section id="como-funciona" className="scroll-mt-24 space-y-5 pt-4">
-        <div className="max-w-2xl space-y-2">
+        <Reveal className="max-w-2xl space-y-2">
           <h2 className="font-display text-3xl sm:text-4xl tracking-tight text-slate-900">¿Cómo funciona Spotly?</h2>
           <p className="text-sm leading-relaxed text-slate-600">Elige si vienes a encontrar un espacio o a publicar uno. Cada paso queda visible desde tu cuenta.</p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        </Reveal>
+        <Stagger className="grid gap-4 md:grid-cols-2">
+          <motion.article variants={staggerChild} whileHover={{ y: -6 }} className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm transition-shadow duration-500 hover:shadow-[0_30px_60px_-25px_rgba(12,10,9,0.25)]">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
               <Search className="h-5 w-5" />
             </div>
@@ -254,8 +339,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             <button type="button" onClick={scrollToListings} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-rose-700 hover:text-rose-800">
               Explorar espacios <ArrowRight className="h-4 w-4" />
             </button>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          </motion.article>
+          <motion.article variants={staggerChild} whileHover={{ y: -6 }} className="rounded-3xl border border-stone-200 bg-white p-7 shadow-sm transition-shadow duration-500 hover:shadow-[0_30px_60px_-25px_rgba(12,10,9,0.25)]">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
               <ListPlus className="h-5 w-5" />
             </div>
@@ -268,12 +353,12 @@ export const HomePage: React.FC<HomePageProps> = ({
             <button type="button" onClick={handlePublishSpace} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-rose-700">
               Publicar un espacio <ArrowRight className="h-4 w-4" />
             </button>
-          </article>
-        </div>
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-950">
+          </motion.article>
+        </Stagger>
+        <Reveal className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-950">
           <CalendarCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
           <p>Antes de reservar, revisa las condiciones indicadas en cada publicación. La disponibilidad y los detalles pueden variar según el espacio.</p>
-        </div>
+        </Reveal>
       </section>
 
       <Suspense fallback={null}>

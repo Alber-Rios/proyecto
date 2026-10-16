@@ -53,6 +53,13 @@ export const Header: React.FC<HeaderProps> = ({
   } = useApp();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDemoSwitcher, setShowDemoSwitcher] = useState(false);
 
@@ -126,21 +133,30 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
+    <header
+      className={`sticky top-0 z-40 border-b transition-[background-color,box-shadow,border-color] duration-500 ${
+        isScrolled
+          ? 'bg-white/75 backdrop-blur-xl backdrop-saturate-150 border-stone-200/70 shadow-[0_10px_30px_-18px_rgba(12,10,9,0.25)]'
+          : 'bg-stone-50/90 backdrop-blur-md border-transparent'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-[4.25rem] gap-3">
+        <div className={`flex items-center justify-between gap-3 transition-[height] duration-500 ${isScrolled ? 'h-14 sm:h-[3.75rem]' : 'h-16 sm:h-[4.5rem]'}`}>
           {/* Logo & Navegación Principal en Tablet/PC */}
           <div className="flex items-center gap-6 lg:gap-8 min-w-0">
             <button
               id="brand-logo-btn"
               onClick={() => onNavigate('home')}
               aria-label="Spotly, ir al inicio"
-              className="flex items-baseline gap-1.5 text-left shrink-0 rounded-md"
+              className="group flex items-baseline gap-1.5 text-left shrink-0 rounded-md cursor-pointer"
             >
-              <span className="font-display text-2xl sm:text-[1.7rem] leading-none text-slate-900">
+              <span className="font-display text-2xl sm:text-[1.7rem] leading-none text-slate-900 transition-transform duration-500 group-hover:-translate-y-0.5">
                 Spotly
               </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-600" aria-hidden="true" />
+              <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-60 motion-safe:animate-ping [animation-duration:2.4s]" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-600" />
+              </span>
             </button>
 
             {/* Enlaces rápidos visibles en Tablet (md) y PC (lg) */}
