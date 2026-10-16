@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Eye,
   UserCheck,
-  Sparkles,
   Timer,
   Check,
   RotateCcw,
@@ -677,7 +676,6 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
       {/* Barra Informativa de Estado */}
       <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 text-slate-700 font-medium truncate">
-          <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
           <span className="truncate">{detectionMessage}</span>
         </div>
 

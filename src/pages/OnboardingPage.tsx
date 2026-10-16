@@ -21,7 +21,7 @@ import {
   Trash2,
   Check,
   Eye,
-  Sparkles,
+  Info,
   XCircle,
   RefreshCw,
 } from 'lucide-react';
@@ -550,7 +550,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
           <div className="space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-800 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5" />
+                <Info className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
@@ -725,7 +725,6 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
               <div className="space-y-3 p-6 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in zoom-in duration-300">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                   <span className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-indigo-600 animate-pulse" />
                     {extractionMessage}
                   </span>
                   <span>{extractionProgress}%</span>

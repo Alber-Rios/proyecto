@@ -17,7 +17,6 @@ import {
   Eye,
   FileCheck2,
   Info,
-  Sparkles,
   Minus,
   Plus,
   AlertTriangle,
@@ -472,7 +471,6 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
             <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold uppercase tracking-wider">
               <span>{availableModalities.length === 1 ? 'Modalidad de esta Publicación' : 'Modalidad de arriendo'}</span>
               <span className="text-emerald-700 font-semibold lowercase flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-emerald-600" />
                 {availableModalities.length === 1 ? 'Tarifa fijada' : 'Flexibilidad Spotly'}
               </span>
             </div>

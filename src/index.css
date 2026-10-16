@@ -101,9 +101,6 @@ div[data-temp-mail] {
 }
 .shine:hover::before { transform: translateX(120%); }
 
-@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.marquee-track { animation: marquee 38s linear infinite; }
-.marquee:hover .marquee-track { animation-play-state: paused; }
 
 /* Texto con degradado dorado-rosa animado */
 @keyframes gradient-pan { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
@@ -117,6 +114,6 @@ div[data-temp-mail] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora-a, .aurora-b, .marquee-track, .text-luxe { animation: none !important; }
+  .aurora-a, .aurora-b, .text-luxe { animation: none !important; }
   .shine::before { display: none; }
 }

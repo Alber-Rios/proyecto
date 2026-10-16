@@ -15,7 +15,7 @@ import {
   CheckCircle2,
   Building,
   Calendar,
-  Sparkles,
+  Info,
   ShieldCheck,
   Scale,
   MapPin,
@@ -252,7 +252,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-200 flex items-center justify-center text-amber-800 shrink-0">
-              <Sparkles className="w-5 h-5" />
+              <Info className="w-5 h-5" />
             </div>
             <div>
               <h4 className="text-sm font-bold text-amber-950">¿Tienes una oficina, estudio o local para arrendar?</h4>

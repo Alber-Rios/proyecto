@@ -9,7 +9,6 @@ const ContractModal = lazy(() => import('../components/ContractModal.tsx').then(
 import { motion, AnimatePresence } from 'motion/react';
 import { Reveal, Stagger, staggerChild, SplitWords, Spotlight, Magnetic, EASE_LUXE } from '../components/motion/Motion.tsx';
 import {
-  Sparkles,
   Building,
   ArrowRight,
   Compass,
@@ -145,14 +144,6 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
 
           <div className="relative z-10 max-w-3xl space-y-7">
-            <motion.span
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: EASE_LUXE }}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium tracking-wide text-stone-200 backdrop-blur-md"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-amber-300" /> Espacios para arrendar en Chile
-            </motion.span>
             <h1 className="font-display text-[2.6rem] sm:text-7xl leading-[1.02] tracking-tight">
               <SplitWords text="Un lugar para trabajar, crear o reunirte." />{' '}
               <motion.em
@@ -218,21 +209,6 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         </section>
       </Spotlight>
-
-      {/* Cinta de tipos de espacio */}
-      <div aria-hidden="true" className="marquee relative overflow-hidden py-2 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
-        <div className="marquee-track flex w-max font-display text-2xl sm:text-3xl text-stone-400">
-          {[0, 1].map((dup) => (
-            <div key={dup} className="flex">
-              {['Oficinas', 'Estudios', 'Salones de eventos', 'Bodegas', 'Salas de reuniones', 'Locales', 'Terrazas', 'Cowork'].map((t) => (
-                <span key={t} className="flex items-center gap-10 pr-10 whitespace-nowrap">
-                  {t} <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Barra de Filtros */}
       <section id="espacios" className="scroll-mt-24 space-y-4">

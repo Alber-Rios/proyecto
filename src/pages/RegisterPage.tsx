@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AuthLayout } from '../components/AuthLayout.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { validateRut, formatRut, capitalizeInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
@@ -12,11 +13,8 @@ import {
   Phone,
   Calendar,
   Building,
-  ShieldCheck,
-  Building2,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   ArrowRight,
 } from 'lucide-react';
 
@@ -131,78 +129,23 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-2 sm:py-4">
-      <div className="grid grid-cols-1 lg:grid-cols-12 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-        {/* Columna Izquierda: Información de Registro */}
-        <div className="lg:col-span-5 bg-slate-950 text-white p-5 sm:p-7 lg:p-8 flex flex-col justify-between relative overflow-hidden">
-          <div className="space-y-4 sm:space-y-5 relative z-10">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white shadow-lg shrink-0">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-lg sm:text-xl font-bold tracking-tight text-white block leading-tight">
-                  Spotly
-                </span>
-                <span className="text-[10px] text-slate-400 tracking-wider uppercase block">
-                  Espacios Chile
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2.5 pt-1 sm:pt-2">
-              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider">
-                Crea tu cuenta
-              </span>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug">
-                Encuentra o publica espacios
-              </h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Regístrate para explorar espacios disponibles, gestionar tus reservas o publicar un espacio como propietario.
-              </p>
-            </div>
-
-            <div className="space-y-2.5 pt-2 text-xs text-slate-300">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Explora por ubicación, categoría y modalidad</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Consulta tus solicitudes desde tu cuenta</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Elige si quieres arrendar o publicar</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-slate-400 pt-4 mt-4 relative z-10 border-t border-slate-800/80">
-            © 2026 Spotly · Espacios Chile
-          </div>
-
-        </div>
-
-        {/* Columna Derecha: Formulario de Registro */}
-        <div className="lg:col-span-7 p-5 sm:p-7 lg:p-8 flex flex-col justify-center">
-          <div className="max-w-lg w-full mx-auto space-y-4">
-            <div className="space-y-0.5">
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900">Crear cuenta en Spotly</h3>
-              <p className="text-xs text-slate-500">
-                Completa tus datos personales para acceder a la plataforma.
-              </p>
-            </div>
+    <AuthLayout
+      title="Encuentra o publica tu próximo espacio."
+      description="Regístrate para explorar espacios disponibles, gestionar tus reservas o publicar un espacio como propietario."
+      points={['Explora por ubicación, categoría y modalidad', 'Consulta tus solicitudes desde tu cuenta', 'Elige si quieres arrendar o publicar']}
+      formTitle="Crear cuenta"
+      formDescription="Completa tus datos para acceder a la plataforma."
+    >
 
             {error && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-2xl flex items-center gap-2 font-medium">
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2 font-medium">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-2 font-medium">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2 font-medium">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                 <span>{success}</span>
               </div>
@@ -211,7 +154,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
             <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
               {/* Selector de Rol Principal */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
                   ¿Cómo utilizarás la plataforma?
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -245,7 +188,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               {/* Nombres y fecha de nacimiento */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
                     Nombres
                   </label>
                   <input
@@ -255,12 +198,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     data-temp-mail-org="0"
                     value={firstNames}
                     onChange={(e) => setFirstNames(capitalizeInitial(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
                     Fecha de nacimiento
                   </label>
                   <input
@@ -269,7 +212,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     max={getAdultBirthDateLimit()}
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
                   />
                   {birthDate && !isAtLeast18(birthDate) && <p className="mt-1 text-[11px] text-rose-600">Debes tener 18 años o más.</p>}
                 </div>
@@ -277,12 +220,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Apellidos</label>
-                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium" />
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Apellidos</label>
+                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Género</label>
-                  <select value={gender} onChange={(e) => setGender(e.target.value as UserGender)} className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Género</label>
+                  <select value={gender} onChange={(e) => setGender(e.target.value as UserGender)} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium">
                     <option value="femenino">Femenino</option>
                     <option value="masculino">Masculino</option>
                     <option value="no_binario">No binario</option>
@@ -295,7 +238,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               {/* RUT y Teléfono */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
                     RUT chileno
                   </label>
                   <input
@@ -304,11 +247,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     autoComplete="off"
                     value={rut}
                     onChange={(e) => setRut(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
                     Teléfono móvil (+56)
                   </label>
                   <input
@@ -321,14 +264,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     placeholder="912345678"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').replace(/^56/, '').slice(0, 9))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
                   />
                 </div>
               </div>
 
               {/* Correo Electrónico */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
                   Correo electrónico
                 </label>
                 <input
@@ -343,14 +286,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   data-form-type="other"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
+                  className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
                 />
               </div>
 
               {/* Contraseña y Confirmar Contraseña */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
                     Contraseña
                   </label>
                   <input
@@ -359,11 +302,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     placeholder="Mínimo 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
                     Confirmar contraseña
                   </label>
                   <input
@@ -372,7 +315,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     placeholder="Repite tu contraseña"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
                   />
                 </div>
               </div>
@@ -394,14 +337,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="shine group w-full py-3.5 bg-stone-950 hover:bg-rose-600 text-white font-semibold text-sm rounded-full shadow-[0_14px_30px_-12px_rgba(12,10,9,0.55)] transition-[background-color,transform] duration-300 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>{loading ? 'Creando cuenta...' : 'Crear cuenta gratis'}</span>
               </button>
             </form>
 
-            <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-600">
+            <div className="pt-5 border-t border-stone-100 text-center text-sm text-stone-600">
               ¿Ya tienes una cuenta registrada?{' '}
               <button
                 type="button"
@@ -411,9 +354,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 Iniciar sesión aquí
               </button>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 };

@@ -23,7 +23,6 @@ import {
   ShieldCheck,
   Building2,
   Sun,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   ChevronLeft,
@@ -458,7 +457,6 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-amber-500" />
                   <span>Lo que ofrece este espacio</span>
                 </h2>
                 <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">

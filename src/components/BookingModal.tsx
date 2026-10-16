@@ -15,7 +15,7 @@ import {
   AlertCircle,
   MapPin,
   Clock,
-  Sparkles,
+  Info,
   Users,
   CheckCircle2,
   Building2,
@@ -892,7 +892,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   {/* Banner de Valor Gratuito */}
                   <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-start gap-3">
                     <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-5 h-5" />
+                      <Info className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-indigo-950">

@@ -14,7 +14,6 @@ import {
   Edit3,
   Save,
   Clock,
-  Sparkles,
   Building,
 } from 'lucide-react';
 
@@ -223,7 +222,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     onClick={onOpenOwnerUpgrade}
                     className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-rose-50 to-amber-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition flex items-center gap-1 cursor-pointer"
                   >
-                    <Sparkles className="w-3 h-3 text-amber-600" />
                     Habilitarme como Anfitrión
                   </button>
                 )}

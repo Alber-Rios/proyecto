@@ -23,7 +23,6 @@ import {
   TrendingUp,
   Calendar,
   AlertTriangle,
-  Sparkles,
   MapPin,
   Users,
   ShieldCheck,
@@ -126,7 +125,6 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
               onClick={() => onOpenAuth?.('register', 'Regístrate con rol de Propietario para comenzar a publicar.')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
               Registrarme como Propietario
             </button>
           </div>
@@ -180,7 +178,6 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
               onClick={onOpenOwnerUpgrade}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
               Aceptar términos y convertirme en propietario
             </button>
           </div>

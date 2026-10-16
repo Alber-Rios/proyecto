@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import {
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
   FileText,
@@ -70,7 +69,6 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-rose-950 p-5 sm:p-7 text-white relative shrink-0">
 
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-300 text-xs font-semibold mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
             Transición de rol arrendatario → propietario
           </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">

@@ -6,7 +6,6 @@ import { SPACE_CATEGORIES } from '../utils/spaceCategories.ts';
 import {
   Heart,
   Search,
-  Sparkles,
   Trash2,
   ArrowRight,
   SlidersHorizontal,
@@ -211,7 +210,6 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
                   <h3 className="text-base sm:text-lg font-bold text-slate-900">
                     Espacios destacados que podrían interesarte
                   </h3>

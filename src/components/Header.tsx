@@ -9,7 +9,6 @@ import {
   Bell,
   CheckCircle2,
   ChevronDown,
-  Sparkles,
   Search,
   FileText,
   Briefcase,
@@ -539,7 +538,6 @@ export const Header: React.FC<HeaderProps> = ({
                               >
                                 <div className="flex items-center gap-3 min-w-0">
                                   <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
-                                    <Sparkles className="w-4 h-4 text-amber-100" />
                                   </div>
                                   <div className="min-w-0">
                                     <span className="block text-xs sm:text-sm font-bold leading-snug truncate">

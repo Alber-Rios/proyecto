@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Scan,
-  Sparkles,
   FileCheck2,
   Info,
   Loader2,
@@ -715,7 +714,6 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       {/* Barra Informativa de Estado */}
       <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 text-slate-700 font-medium">
-          <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
           <span>{detectionMessage}</span>
         </div>
 
