@@ -120,9 +120,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   const handlePublishSpace = () => {
     if (!currentUser) {
       onOpenAuth?.('register', 'Crea tu cuenta para publicar y administrar un espacio.');
-    } else if (currentUser.role === 'owner' || currentUser.ownerTermsAccepted) {
-      onNavigate('owner');
     } else {
+      // Propietarios: abre el formulario de publicación; arrendatarios: alta como propietario.
       onOpenOwnerUpgrade();
     }
   };

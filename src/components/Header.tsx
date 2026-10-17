@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
           : 'bg-stone-50/90 backdrop-blur-md border-transparent'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className={`flex items-center justify-between gap-3 transition-[height] duration-500 ${isScrolled ? 'h-14 sm:h-[3.75rem]' : 'h-16 sm:h-[4.5rem]'}`}>
           {/* Logo & Navegación Principal en Tablet/PC */}
           <div className="flex items-center gap-6 lg:gap-8 min-w-0">

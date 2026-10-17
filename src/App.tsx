@@ -49,7 +49,8 @@ function AppContent() {
       return;
     }
     if (currentUser.role === 'owner' || currentUser.ownerTermsAccepted) {
-      navigate('/owner');
+      // "Publicar" lleva directo al formulario de publicación del panel.
+      navigate('/owner', { state: { openPublish: true } });
       return;
     }
     setIsOwnerUpgradeModalOpen(true);
@@ -115,7 +116,7 @@ function AppContent() {
       />
 
       {/* Contenido Principal */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-hidden">
+      <main className="flex-1 max-w-7xl 2xl:max-w-[1536px] w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-hidden">
         <Suspense fallback={<div className="min-h-[100vh] py-24 text-center text-sm text-slate-500" role="status">Cargando…</div>}>
         <AnimatePresence mode="wait" initial={false}>
         <PageTransition key={location.pathname}>
@@ -223,7 +224,7 @@ function AppContent() {
             isOpen={isOwnerUpgradeModalOpen}
             onClose={() => setIsOwnerUpgradeModalOpen(false)}
             onSuccessNavigate={() => {
-              navigate('/owner');
+              navigate('/owner', { state: { openPublish: true } });
             }}
           />
         )}
@@ -231,7 +232,7 @@ function AppContent() {
 
       {/* Footer Institucional Chileno */}
       <footer className="bg-slate-900 text-slate-400 text-sm mt-16 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+        <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="space-y-3">
               <div className="flex items-center gap-2">

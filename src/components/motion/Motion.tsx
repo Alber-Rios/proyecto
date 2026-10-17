@@ -24,7 +24,7 @@ export const Reveal: React.FC<{
     <motion.div
       className={className}
       initial={reduce ? false : { opacity: 0, y, filter: 'blur(6px)' }}
-      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none', transform: 'none' } }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.9, ease: EASE_LUXE, delay }}
     >
@@ -150,13 +150,18 @@ export const Magnetic: React.FC<{ children: React.ReactNode; strength?: number }
   );
 };
 
-/** Transición entre páginas: fundido + leve desplazamiento + desenfoque. */
+/**
+ * Transición entre páginas: fundido + leve desplazamiento + desenfoque.
+ * Al terminar se quitan filter y transform: si quedan (aunque sea blur(0px)),
+ * el contenedor pasa a ser el bloque contenedor de los elementos `position: fixed`
+ * y los modales dejan de centrarse en la ventana.
+ */
 export const PageTransition: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const reduce = useReducedMotion();
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 14, filter: 'blur(4px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none', transform: 'none' } }}
       exit={reduce ? undefined : { opacity: 0, y: -8, transition: { duration: 0.2, ease: 'easeIn' } }}
       transition={{ duration: 0.55, ease: EASE_LUXE }}
     >

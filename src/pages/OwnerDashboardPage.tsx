@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { OwnerRevenueReport } from '../components/OwnerRevenueReport.tsx';
 import { Space, Reservation, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
@@ -92,6 +94,31 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   const [contactModalTenant, setContactModalTenant] = useState<ContactTenant | null>(null);
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ date: string; dayNumber: number } | null>(null);
   const [ownerSelectedDate, setOwnerSelectedDate] = useState<string>(() => getTodayIso());
+  const location = useLocation();
+  const routerNavigate = useNavigate();
+
+  // Al llegar desde un botón "Publicar", se abre el formulario de inmediato.
+  useEffect(() => {
+    const state = location.state as { openPublish?: boolean } | null;
+    if (!state?.openPublish || !currentUser) return;
+    routerNavigate(location.pathname, { replace: true, state: null });
+    if (currentUser.verificationStatus !== 'verified') {
+      onNavigate('onboarding');
+      return;
+    }
+    setEditingSpace(null);
+    setIsPublishModalOpen(true);
+  }, [location.state, location.pathname, currentUser, routerNavigate, onNavigate]);
+
+  // Con el formulario abierto, la página de fondo no se desplaza.
+  useEffect(() => {
+    if (!isPublishModalOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isPublishModalOpen]);
 
   // CASO 1: Usuario No Registrado / No Autenticado
   if (!currentUser) {
@@ -1901,8 +1928,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
       )}
 
       {/* Modal para Publicar o Modificar Espacio */}
-      {isPublishModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      {isPublishModalOpen && createPortal(
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl border border-slate-200 animate-fadeIn my-auto max-h-[92dvh] flex flex-col">
             <div className="bg-slate-900 text-white p-5 sm:p-6 relative shrink-0">
               <button
@@ -1940,7 +1967,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
               onSubmit={handleSubmitSpace}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal para Bloqueo por Mantención */}
