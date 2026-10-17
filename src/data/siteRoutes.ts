@@ -7,7 +7,6 @@ export interface PublicRoute {
 
 export const PUBLIC_ROUTES: PublicRoute[] = [
   { path: '/', label: 'Inicio y catálogo de espacios', group: 'Explorar' },
-  { path: '/verificar-contrato', label: 'Verificar un contrato', group: 'Explorar' },
   { path: '/login', label: 'Iniciar sesión', group: 'Cuenta' },
   { path: '/register', label: 'Crear cuenta', group: 'Cuenta' },
   { path: '/forgot-password', label: 'Recuperar contraseña', group: 'Cuenta' },

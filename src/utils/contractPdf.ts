@@ -91,7 +91,7 @@ export async function downloadContractPdf(contract: DigitalContract): Promise<vo
   y += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text('Verifica la integridad de este documento en Spotly → Verificar contrato.', margin + 3, y);
+  doc.text('Huella SHA-256 del contenido íntegro de este documento.', margin + 3, y);
 
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i += 1) {

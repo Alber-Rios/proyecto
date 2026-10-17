@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
 import { AuditLogPanel, ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
+import { AdminSpaceDetailModal } from '../components/admin/AdminSpaceDetailModal.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceRateInfo } from '../utils/formatters.ts';
 import {
@@ -83,6 +84,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
   // Filtros de Espacios
   const [spaceSearch, setSpaceSearch] = useState('');
+  const [detailSpaceId, setDetailSpaceId] = useState<string | null>(null);
+  const detailSpace = detailSpaceId ? spaces.find((s) => s.id === detailSpaceId) ?? null : null;
   const [spaceStatusFilter, setSpaceStatusFilter] = useState<'all' | 'active' | 'paused' | 'pending_approval'>('all');
 
   // Filtros de Disputas
@@ -1108,11 +1111,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                     className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/50 transition"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <img
-                        src={sp.images[0]}
-                        alt={sp.title}
-                        className="w-16 h-14 rounded-xl object-cover shrink-0 bg-slate-100"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setDetailSpaceId(sp.id)}
+                        className="shrink-0 rounded-xl overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        aria-label={`Ver detalle de ${sp.title}`}
+                      >
+                        <img
+                          src={sp.images[0]}
+                          alt={sp.title}
+                          className="w-16 h-14 object-cover bg-slate-100"
+                        />
+                      </button>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-sm font-bold text-slate-900 truncate">
@@ -1144,6 +1154,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => setDetailSpaceId(sp.id)}
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Ver detalle
+                      </button>
                       <button
                         onClick={() =>
                           adminToggleSpaceStatus(
@@ -1521,6 +1538,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             </table>
           </div>
         </div>
+      )}
+
+      {/* Ficha completa de una publicación */}
+      {detailSpace && (
+        <AdminSpaceDetailModal
+          space={detailSpace}
+          reservations={reservations}
+          onClose={() => setDetailSpaceId(null)}
+          onToggleStatus={(id, status) => adminToggleSpaceStatus(id, status)}
+        />
       )}
 
       {/* Modal de Vista Ampliada de Imagen (Cédula / Biometría) */}

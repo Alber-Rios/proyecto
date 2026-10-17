@@ -189,7 +189,7 @@ function TermsContent() {
       </Section>
 
       <Section title="6. Contratos y firma">
-        <p>La firma manuscrita digitalizada que se captura en Spotly constituye una <strong>firma electrónica simple</strong> conforme a la Ley N° 19.799; no sustituye una firma electrónica avanzada. Cada contrato queda sellado con una huella SHA-256 calculada sobre su contenido íntegro, que puedes comprobar en “Verificar un contrato”. Revisa las condiciones y obtén asesoría independiente si lo necesitas antes de aceptar un contrato.</p>
+        <p>La firma manuscrita digitalizada que se captura en Spotly constituye una <strong>firma electrónica simple</strong> conforme a la Ley N° 19.799; no sustituye una firma electrónica avanzada. Cada contrato queda sellado con una huella SHA-256 calculada sobre su contenido íntegro, que permite comprobar que el documento no fue alterado. Revisa las condiciones y obtén asesoría independiente si lo necesitas antes de aceptar un contrato.</p>
       </Section>
 
       <Section title="7. Identidad y verificación">
