@@ -9,6 +9,7 @@ import { ContractModal } from '../components/ContractModal.tsx';
 import { PublishSpaceForm, SpaceFormData } from '../components/PublishSpaceForm.tsx';
 import { SpaceAvailabilityViewer } from '../components/SpaceAvailabilityViewer.tsx';
 import { SpaceBlockModal } from '../components/SpaceBlockModal.tsx';
+import { OwnerOverview } from '../components/dashboard/OwnerOverview.tsx';
 import { blocksOnDay, describeBlock } from '../utils/spaceBlocks.ts';
 import { ContactTenantModal, ContactTenant } from '../components/ContactTenantModal.tsx';
 import {
@@ -83,7 +84,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   // Bloqueos de disponibilidad guardados en la base (space_blocks).
   const maintenanceBlocks = spaceBlocks;
 
-  const [activeTab, setActiveTab] = useState<'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits'>('calendar');
+  const [activeTab, setActiveTab] = useState<'overview' | 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits'>('overview');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
@@ -594,126 +595,34 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
         </div>
       </div>
 
-      {/* Tarjetas de Métricas Reales (Calculadas dinámicamente de los espacios y reservas reales) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Espacios Publicados (Datos Reales) */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>ESPACIOS PUBLICADOS</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {financialMetrics.activeSpacesCount} de {mySpaces.length} activos ({financialMetrics.operationalPct}%)
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{mySpaces.length}</div>
-            <p className="text-[11px] text-slate-500 mt-1 truncate">
-              {mySpaces.map((s) => s.commune).filter((v, i, a) => a.indexOf(v) === i).join(' · ') || 'Sin recintos publicados'}
-            </p>
-            {financialMetrics.pendingSpacesCount > 0 && (
-              <p className="text-[10px] text-amber-700 font-semibold mt-0.5">
-                • {financialMetrics.pendingSpacesCount} en moderación del Administrador
-              </p>
-            )}
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button
-              onClick={() => setActiveTab('spaces')}
-              className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <span>Gestionar</span>
-              <span>→</span>
-            </button>
-          </div>
+      {dashboardNotice && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800" role="status">
+          <span>{dashboardNotice}</span>
+          <button type="button" onClick={() => setDashboardNotice(null)} className="p-1 rounded-lg hover:bg-emerald-100 cursor-pointer" aria-label="Cerrar aviso">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
-
-        {/* Card 2: Solicitudes Pendientes (Datos Reales) */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>SOLICITUDES POR APROBAR</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-              Hoy en adelante
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {pendingValidBookings.length}
-            </div>
-            <p className="text-[11px] text-amber-700 font-medium mt-1">
-              {selectedSpace
-                ? `${pendingValidBookings.filter((b) => b.spaceId === selectedSpace.id).length} en ${selectedSpace.title}`
-                : 'Reservas vigentes listas para revisión'}
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button
-              onClick={() => setActiveTab('bookings')}
-              className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <span>Revisar ahora</span>
-              <span>→</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: Ganancias Reales (CLP) */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>GANANCIA NETA REAL (CLP)</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {financialMetrics.confirmedCount} confirmadas
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {formatClp(financialMetrics.netPayout)}
-            </div>
-            <p className="text-[11px] text-emerald-800 font-semibold mt-1 truncate">
-              {selectedSpace && financialMetrics.bySpace[selectedSpace.id]
-                ? `${selectedSpace.title}: ${formatClp(financialMetrics.bySpace[selectedSpace.id].netPayout)}`
-                : `Bruto: ${formatClp(financialMetrics.grossIncome)}`}
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button
-              onClick={() => setActiveTab('finances')}
-              className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <span>Ver ganancias por lugar</span>
-              <span>→</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card 4: Tasa de Ocupación Real */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>TASA DE OCUPACIÓN REAL</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              • {financialMetrics.confirmedCount} Reservas
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {selectedSpace && financialMetrics.bySpace[selectedSpace.id]
-                ? `${financialMetrics.bySpace[selectedSpace.id].occupancyPct}%`
-                : `${financialMetrics.realOccupancyPct}%`}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1 truncate">
-              {selectedSpace && financialMetrics.bySpace[selectedSpace.id]
-                ? `${financialMetrics.bySpace[selectedSpace.id].confirmedCount} reservas en ${selectedSpace.title}`
-                : `${financialMetrics.totalBookedUnits} jornadas reservadas en total`}
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-500 text-[11px] font-medium">
-              Total cartera: {financialMetrics.realOccupancyPct}%
-            </span>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Pestañas del Dashboard */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'overview'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          Resumen
+          {pendingValidBookings.length > 0 && (
+            <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-extrabold">
+              {pendingValidBookings.length}
+            </span>
+          )}
+        </button>
+
         <button
           onClick={() => setActiveTab('calendar')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
@@ -776,6 +685,23 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
       </div>
 
       {/* Contenido según Pestaña */}
+      {activeTab === 'overview' && (
+        <OwnerOverview
+          todayIso={todayIso}
+          spaces={mySpaces}
+          bookings={myReceivedBookings}
+          pendingBookings={pendingValidBookings}
+          upcomingVisits={upcomingVisitRequests}
+          blocks={maintenanceBlocks}
+          onGoTab={(tab) => setActiveTab(tab)}
+          onOpenCalendar={(spaceId, dateIso) => {
+            setSelectedSpaceId(spaceId);
+            setOwnerSelectedDate(dateIso);
+            setActiveTab('calendar');
+          }}
+        />
+      )}
+
       {activeTab === 'spaces' && (
         <div className="space-y-4">
           {mySpaces.length === 0 ? (

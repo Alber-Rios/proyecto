@@ -1,3 +1,5 @@
+import { AdminOverview } from '../components/dashboard/AdminOverview.tsx';
+import { getTodayIso } from '../utils/formatters.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
 import { AuditLogPanel, ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
@@ -68,8 +70,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
-  >('kyc');
+    'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
+  >('overview');
 
   // Filtros de Usuarios y KYC
   const [userSearch, setUserSearch] = useState('');
@@ -273,10 +275,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1 tracking-tight">
-            Panel de control y verificación KYC
+            Panel de administración
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Haz clic en cualquiera de las tarjetas inferiores para cambiar de vista: Verificación KYC, Espacios Activos, Disputas en Arbitraje o Volumen Transaccionado.
+            Resumen de la operación, pendientes y módulos de control. Haz clic en una tarjeta o pestaña para ir al detalle.
           </p>
         </div>
       </div>
@@ -409,6 +411,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Módulos de administración">
         {(
           [
+            ['overview', 'Resumen'],
             ['audit', 'Auditoría'],
             ['reports', 'Reportes y cuentas'],
             ['kpi', 'KPI'],
@@ -433,6 +436,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         ))}
       </div>
 
+      {activeTab === 'overview' && (
+        <AdminOverview
+          todayIso={getTodayIso()}
+          users={allUsers}
+          spaces={spaces}
+          reservations={reservations}
+          disputes={disputes}
+          onGoTab={(tab) => setActiveTab(tab)}
+        />
+      )}
       {activeTab === 'audit' && <AuditLogPanel />}
       {activeTab === 'reports' && <ReportsPanel />}
       {activeTab === 'kpi' && <KpiDashboard />}
