@@ -11,6 +11,16 @@
 -- liquidaciones a propietarios, reembolsos, consentimientos, soporte, anonimización
 -- de cuentas y mantenimiento automático con pg_cron.
 --
+-- También incluye (octubre 2026):
+--   · Registro sin duplicados: RPC check_signup_availability(correo, rut) para el
+--     formulario + índice único de RUT normalizado (12.345.678-5 = 123456785).
+--   · Tiempo real con carga mínima: trigger broadcast_change que avisa
+--     { table, op } por canales privados (catalog, space:<id>, user:<uuid>, admin)
+--     y la política spotly_realtime_read que controla quién escucha cada canal.
+--   · Permisos de request_ip(), request_user_agent() e is_trusted_context() para
+--     los triggers de contratos, consentimientos y auditoría (firma de contratos).
+-- Se puede ejecutar varias veces; las cuentas con RUT repetido o vacío no lo rompen.
+--
 -- ATENCIÓN: es destructivo. Borra las tablas y funciones de Spotly en el esquema
 -- public. Conserva auth.users (las cuentas), los buckets y los archivos de Storage;
 -- los perfiles se recrean desde auth.users. Haz un respaldo antes de ejecutarlo.
