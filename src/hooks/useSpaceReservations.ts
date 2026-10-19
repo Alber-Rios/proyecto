@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { getSpaceOccupancyFromDb, OccupancySlot } from '../lib/dataAccess.ts';
 import { Reservation, Space } from '../types.ts';
+import { subscribeToChanges, createKeyedDebouncer, onVisibleAgain } from '../lib/realtime.ts';
 
 const slotKey = (r: { startDate: string; endDate: string; hourStart?: number; hourEnd?: number }) =>
   `${r.startDate}|${r.endDate}|${r.hourStart ?? ''}|${r.hourEnd ?? ''}`;
@@ -21,17 +22,22 @@ export function useSpaceReservations(space: Pick<Space, 'id' | 'title' | 'ownerI
 
   useEffect(() => {
     let active = true;
-    getSpaceOccupancyFromDb(space.id).then((slots) => {
-      if (active) setOccupancy(slots);
-    });
-    const interval = window.setInterval(() => {
+    const load = () =>
       getSpaceOccupancyFromDb(space.id).then((slots) => {
         if (active) setOccupancy(slots);
       });
-    }, 30000);
+    load();
+    // En vez de consultar cada 30 s, se recarga solo cuando la base avisa que
+    // cambió una reserva de este espacio (o al volver a la pestaña / reconectar).
+    const debouncer = createKeyedDebouncer(400);
+    const reload = () => debouncer.run('occupancy', load);
+    const stopChannel = subscribeToChanges(`space:${space.id}`, reload, reload);
+    const stopVisibility = onVisibleAgain(reload);
     return () => {
       active = false;
-      window.clearInterval(interval);
+      debouncer.cancelAll();
+      stopChannel();
+      stopVisibility();
     };
   }, [space.id, visible.length]);
 
@@ -47,7 +53,8 @@ export function useSpaceReservations(space: Pick<Space, 'id' | 'title' | 'ownerI
         spaceImage: '',
         spaceCategory: space.category,
         tenantId: '',
-        tenantName: 'Reservado',
+        // 'blocked' = bloqueo del propietario (mantención, uso propio, etc.)
+        tenantName: (slot.status as string) === 'blocked' ? 'No disponible' : 'Reservado',
         tenantEmail: '',
         tenantRut: '',
         ownerId: space.ownerId,
@@ -64,7 +71,7 @@ export function useSpaceReservations(space: Pick<Space, 'id' | 'title' | 'ownerI
         platformFeeClp: 0,
         securityDepositClp: 0,
         totalClp: 0,
-        intendedUse: 'Horario reservado',
+        intendedUse: (slot.status as string) === 'blocked' ? 'Bloqueado por el propietario' : 'Horario reservado',
         status: slot.status,
         createdAt: '',
       }));

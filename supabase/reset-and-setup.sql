@@ -11,6 +11,16 @@
 -- liquidaciones a propietarios, reembolsos, consentimientos, soporte, anonimización
 -- de cuentas y mantenimiento automático con pg_cron.
 --
+-- También incluye (octubre 2026):
+--   · Registro sin duplicados: RPC check_signup_availability(correo, rut) para el
+--     formulario + índice único de RUT normalizado (12.345.678-5 = 123456785).
+--   · Tiempo real con carga mínima: trigger broadcast_change que avisa
+--     { table, op } por canales privados (catalog, space:<id>, user:<uuid>, admin)
+--     y la política spotly_realtime_read que controla quién escucha cada canal.
+--   · Permisos de request_ip(), request_user_agent() e is_trusted_context() para
+--     los triggers de contratos, consentimientos y auditoría (firma de contratos).
+-- Se puede ejecutar varias veces; las cuentas con RUT repetido o vacío no lo rompen.
+--
 -- ATENCIÓN: es destructivo. Borra las tablas y funciones de Spotly en el esquema
 -- public. Conserva auth.users (las cuentas), los buckets y los archivos de Storage;
 -- los perfiles se recrean desde auth.users. Haz un respaldo antes de ejecutarlo.
@@ -220,7 +230,7 @@ CREATE TABLE public.profiles (
   first_names TEXT CHECK (first_names IS NULL OR length(first_names) <= 120),
   surnames TEXT CHECK (surnames IS NULL OR length(surnames) <= 120),
   email TEXT NOT NULL UNIQUE CHECK (length(email) <= 320),
-  rut TEXT UNIQUE CHECK (rut IS NULL OR length(rut) <= 15),
+  rut TEXT CHECK (rut IS NULL OR length(rut) <= 15),
   phone TEXT CHECK (phone IS NULL OR length(phone) <= 30),
   avatar_url TEXT CHECK (avatar_url IS NULL OR length(avatar_url) <= 2048),
   gender TEXT CHECK (gender IN ('masculino', 'femenino', 'no_binario', 'otro', 'prefiero_no_decir')),
@@ -273,7 +283,7 @@ CREATE TABLE public.spaces (
   security_deposit NUMERIC(12,0) NOT NULL DEFAULT 0 CHECK (security_deposit >= 0),
   images TEXT[] DEFAULT '{}'::TEXT[] CHECK (images IS NULL OR cardinality(images) <= 20),
   is_verified BOOLEAN NOT NULL DEFAULT false,
-  status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('active', 'pending_approval', 'paused')),
+  status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('active', 'pending_approval', 'paused', 'deleted')),
   rating NUMERIC(2,1) NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
   reviews_count INTEGER NOT NULL DEFAULT 0 CHECK (reviews_count >= 0),
   min_booking_days INTEGER DEFAULT 1 CHECK (min_booking_days IS NULL OR min_booking_days >= 1),
@@ -975,6 +985,31 @@ BEGIN
 END;
 $$;
 
+-- ---------- Disponibilidad de correo y RUT antes del registro ----------
+-- Supabase Auth, con la confirmación de correo activa, responde "éxito" al
+-- registrar un correo que ya existe (no revela si la cuenta existe) y el
+-- formulario mostraba "Cuenta creada". Esta función permite avisar antes de
+-- llamar a signUp. Solo devuelve dos booleanos, nunca datos de la cuenta.
+-- El índice único profiles_rut_unique y el UNIQUE de auth.users siguen siendo
+-- la garantía final si alguien se salta esta comprobación.
+CREATE FUNCTION public.check_signup_availability(p_email TEXT, p_rut TEXT)
+RETURNS TABLE (email_taken BOOLEAN, rut_taken BOOLEAN)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT
+    NULLIF(lower(trim(COALESCE(p_email, ''))), '') IS NOT NULL AND (
+      EXISTS (SELECT 1 FROM auth.users u WHERE lower(u.email) = left(lower(trim(p_email)), 320))
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE lower(p.email) = left(lower(trim(p_email)), 320))
+    ),
+    public.normalize_rut(left(p_rut, 20)) IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE public.normalize_rut(p.rut) = public.normalize_rut(left(p_rut, 20))
+    );
+$$;
+
 -- ---------- Guardas de perfil ----------
 -- Evita que un usuario se eleve a admin, altere su KYC o cambie su RUT una vez
 -- verificado. La transición tenant -> owner requiere aceptación de términos.
@@ -1310,6 +1345,11 @@ BEGIN
     IF OLD.status = 'pending_approval' AND NEW.status = 'active' THEN
       NEW.status := OLD.status;
     END IF;
+    -- Eliminar se hace solo con owner_delete_space() (valida reservas activas) y una
+    -- publicación eliminada no se puede reactivar.
+    IF OLD.status = 'deleted' OR NEW.status = 'deleted' THEN
+      NEW.status := OLD.status;
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -1497,6 +1537,12 @@ BEGIN
 
   IF NEW.start_date < public.chile_today() THEN
     RAISE EXCEPTION 'La fecha de la reserva debe ser desde el día actual hacia adelante';
+  END IF;
+  -- Arriendo por hora para hoy: la franja no puede haber comenzado (hora de Chile).
+  IF NEW.start_date = public.chile_today() AND NEW.hour_start IS NOT NULL
+     AND NEW.hour_start <= extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int THEN
+    RAISE EXCEPTION 'Esa hora ya pasó: elige una franja desde las %:00',
+      lpad((extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int + 1)::text, 2, '0');
   END IF;
   IF NEW.hour_start IS NOT NULL AND NEW.hour_end IS NOT NULL
      AND NEW.start_date = NEW.end_date AND NEW.hour_end <= NEW.hour_start THEN
@@ -1823,6 +1869,56 @@ AS $$
   JOIN public.spaces s ON s.id = b.space_id AND s.status = 'active'
   WHERE b.space_id = p_space_id
     AND b.end_date >= public.chile_today() - 1;
+$$;
+
+-- Eliminar una publicación (propietario o administración).
+--   · Con reservas pendientes/confirmadas que aún no terminan: no se permite.
+--   · Sin ninguna reserva en su historial: se borra.
+--   · Con historial (contratos y pagos que deben conservarse): se archiva con
+--     status = 'deleted'; deja de verse en el catálogo y en los paneles.
+-- Devuelve 'deleted' o 'archived'.
+CREATE FUNCTION public.owner_delete_space(p_space_id TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_space public.spaces;
+  v_prev TEXT;
+BEGIN
+  SELECT * INTO v_space FROM public.spaces WHERE id = p_space_id;
+  IF NOT FOUND OR v_space.status = 'deleted' THEN
+    RAISE EXCEPTION 'La publicación no existe o ya fue eliminada';
+  END IF;
+  IF NOT (public.is_admin() OR v_space.owner_id = auth.uid()) THEN
+    RAISE EXCEPTION 'Solo el propietario puede eliminar esta publicación';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.reservations r
+    WHERE r.space_id = p_space_id
+      AND r.status IN ('pending', 'confirmed')
+      AND r.end_date >= public.chile_today()
+  ) THEN
+    RAISE EXCEPTION 'Esta publicación tiene reservas activas o próximas: cancélalas o espera a que terminen antes de eliminarla';
+  END IF;
+
+  v_prev := public.begin_trusted();
+  IF EXISTS (SELECT 1 FROM public.reservations r WHERE r.space_id = p_space_id) THEN
+    UPDATE public.spaces SET status = 'deleted' WHERE id = p_space_id;
+    DELETE FROM public.space_blocks WHERE space_id = p_space_id;
+    PERFORM public.end_trusted(v_prev);
+    PERFORM public.write_audit('SPACE_ARCHIVED', 'warning', COALESCE(auth.uid()::text, 'sistema'),
+      jsonb_build_object('spaceId', p_space_id, 'title', v_space.title));
+    RETURN 'archived';
+  END IF;
+
+  DELETE FROM public.spaces WHERE id = p_space_id;
+  PERFORM public.end_trusted(v_prev);
+  PERFORM public.write_audit('SPACE_DELETED', 'warning', COALESCE(auth.uid()::text, 'sistema'),
+    jsonb_build_object('spaceId', p_space_id, 'title', v_space.title));
+  RETURN 'deleted';
+END;
 $$;
 
 -- Dirección exacta y RUT del propietario: solo para el propietario, administración
@@ -3147,8 +3243,17 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.chile_today() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.generate_id(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.normalize_rut(TEXT) TO anon, authenticated;
+-- Varios triggers (contratos, consentimientos, auditoría) corren con el rol del
+-- usuario y llaman a estas funciones auxiliares.
+-- Lo mismo para la auditoría y la guarda de inmutabilidad de contratos. Solo
+-- leen la propia sesión/petición: concederlas no da acceso a datos.
+GRANT EXECUTE ON FUNCTION public.request_ip() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.request_user_agent() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.is_trusted_context() TO anon, authenticated;
 -- RPC públicas de la aplicación.
+GRANT EXECUTE ON FUNCTION public.check_signup_availability(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_space_occupancy(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.owner_delete_space(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_spaces_private_details() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_kpis(INTEGER) TO authenticated;                     -- valida is_admin()
@@ -3157,8 +3262,10 @@ GRANT EXECUTE ON FUNCTION public.admin_anonymize_user(UUID) TO authenticated;   
 GRANT EXECUTE ON FUNCTION public.period_range(DATE, DATE, INTEGER, INTEGER) TO anon, authenticated;
 
 -- ==============================================================================
--- 11. TIEMPO REAL (campana de notificaciones)
+-- 11. TIEMPO REAL
 -- ==============================================================================
+-- a) Campana de notificaciones: postgres_changes sobre notifications (filtrado
+--    por user_id y protegido por RLS).
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
@@ -3167,6 +3274,95 @@ BEGIN
        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notifications'
      ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+  END IF;
+END $$;
+
+-- b) Avisos de cambio con carga mínima (Realtime Broadcast desde la base).
+--    En vez de publicar filas completas (que podrían saltarse los permisos por
+--    columna, p. ej. owner_rut y address), cada cambio envía solo
+--    { table, op } a los temas que corresponden; el navegador vuelve a consultar
+--    esa tabla con sus consultas normales (RLS + permisos por columna).
+--    Temas:  catalog        → cambios del catálogo de espacios (todos)
+--            space:<id>     → reservas y bloqueos de un espacio (calendario público)
+--            user:<uuid>    → lo que afecta a ese usuario (arrendatario o propietario)
+--            admin          → todo, solo para administradores
+CREATE FUNCTION public.broadcast_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_row JSONB;
+  v_tenant TEXT;
+  v_owner TEXT;
+  v_space TEXT;
+  v_topics TEXT[];
+  v_topic TEXT;
+BEGIN
+  IF to_regprocedure('realtime.send(jsonb,text,text,boolean)') IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  v_row := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  v_tenant := v_row->>'tenant_id';
+  v_owner := v_row->>'owner_id';
+  v_space := v_row->>'space_id';
+
+  -- contracts y payments no guardan ambos participantes: se toman de la reserva.
+  IF TG_TABLE_NAME IN ('contracts', 'payments') AND v_row ? 'reservation_id' THEN
+    SELECT COALESCE(v_tenant, r.tenant_id::text), COALESCE(v_owner, r.owner_id::text), COALESCE(v_space, r.space_id)
+      INTO v_tenant, v_owner, v_space
+    FROM public.reservations r
+    WHERE r.id = v_row->>'reservation_id';
+  END IF;
+
+  v_topics := CASE TG_TABLE_NAME
+    WHEN 'spaces' THEN ARRAY['catalog']
+    WHEN 'profiles' THEN ARRAY['user:' || (v_row->>'id'), 'admin']
+    WHEN 'reservations' THEN ARRAY['user:' || v_tenant, 'user:' || v_owner, 'space:' || v_space, 'admin']
+    WHEN 'space_blocks' THEN ARRAY['user:' || v_owner, 'space:' || v_space, 'admin']
+    ELSE ARRAY['user:' || v_tenant, 'user:' || v_owner, 'admin']
+  END;
+
+  FOREACH v_topic IN ARRAY COALESCE((SELECT array_agg(DISTINCT t) FROM unnest(v_topics) t WHERE t IS NOT NULL), '{}') LOOP
+    PERFORM realtime.send(jsonb_build_object('table', TG_TABLE_NAME, 'op', TG_OP), 'change', v_topic, true);
+  END LOOP;
+  RETURN NULL;
+EXCEPTION WHEN OTHERS THEN
+  -- Un aviso fallido nunca debe impedir guardar el dato.
+  RETURN NULL;
+END;
+$$;
+
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['spaces', 'reservations', 'contracts', 'payments', 'disputes', 'visit_requests', 'profiles', 'space_blocks'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS zz_broadcast_change ON public.%I', t);
+    EXECUTE format(
+      'CREATE TRIGGER zz_broadcast_change AFTER INSERT OR UPDATE OR DELETE ON public.%I '
+      'FOR EACH ROW EXECUTE FUNCTION public.broadcast_change()', t);
+  END LOOP;
+END $$;
+
+-- Quién puede escuchar cada tema (canales privados de Realtime).
+DO $$
+BEGIN
+  IF to_regclass('realtime.messages') IS NOT NULL THEN
+    DROP POLICY IF EXISTS spotly_realtime_read ON realtime.messages;
+    CREATE POLICY spotly_realtime_read ON realtime.messages
+      FOR SELECT TO anon, authenticated
+      USING (
+        realtime.messages.extension = 'broadcast'
+        AND (
+          (SELECT realtime.topic()) = 'catalog'
+          OR (SELECT realtime.topic()) LIKE 'space:%'
+          OR (SELECT realtime.topic()) = 'user:' || (SELECT auth.uid())::text
+          OR ((SELECT realtime.topic()) = 'admin' AND (SELECT public.is_admin()))
+        )
+      );
   END IF;
 END $$;
 

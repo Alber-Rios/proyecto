@@ -189,12 +189,56 @@ export function getSpaceRateInfo(space: {
 /**
  * Retorna la fecha actual en formato ISO YYYY-MM-DD según zona horaria local
  */
+// Fecha y hora oficiales de la plataforma: Chile continental (America/Santiago),
+// la misma zona que usa la base de datos (chile_today()). Así un usuario con el
+// reloj del equipo en otra zona no ve como disponibles horas que ya pasaron.
+const CHILE_TZ = 'America/Santiago';
+
+export interface ChileNow {
+  iso: string;
+  hour: number;
+  minute: number;
+}
+
+export function getChileNow(date: Date = new Date()): ChileNow {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: CHILE_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+    return {
+      iso: `${get('year')}-${get('month')}-${get('day')}`,
+      hour: Number(get('hour')) % 24,
+      minute: Number(get('minute')),
+    };
+  } catch {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return {
+      iso: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+    };
+  }
+}
+
 export function getTodayIso(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getChileNow().iso;
+}
+
+/**
+ * true si la franja que empieza a la hora `hour` del día `dateIso` ya comenzó o
+ * pasó (hora de Chile). A las 14:05 las franjas de 09:00 a 14:00 están perdidas.
+ */
+export function isHourSlotPast(dateIso: string, hour: number, now: ChileNow = getChileNow()): boolean {
+  if (dateIso < now.iso) return true;
+  if (dateIso > now.iso) return false;
+  return hour <= now.hour;
 }
 
 /**

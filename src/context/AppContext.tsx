@@ -14,6 +14,7 @@ import {
   DigitalContract,
   VisitRequest,
   PaymentRecord,
+  SpaceBlock,
 } from '../types.ts';
 import { saveAuditLog, getAuditLogs, buildAuditMetadata, fetchClientIp, SERVER_RECORDED_IP } from '../utils/auditLogger.ts';
 import { callApi, loginThroughServer, postToTransbank } from '../utils/api.ts';
@@ -56,7 +57,12 @@ import {
   getPaymentsFromDb,
   insertReportToDb,
   setUserSuspensionInDb,
+  getSpaceBlocksFromDb,
+  insertSpaceBlockToDb,
+  deleteSpaceBlockFromDb,
 } from '../lib/dataAccess.ts';
+import { subscribeToChanges, createKeyedDebouncer, onVisibleAgain } from '../lib/realtime.ts';
+import type { ChangeSignal, RealtimeTable } from '../lib/realtime.ts';
 
 interface AppContextType {
   currentUser: UserProfile | null;
@@ -135,7 +141,10 @@ interface AppContextType {
   // Owner actions
   createSpace: (spaceData: Omit<Space, 'id' | 'ownerId' | 'ownerName' | 'ownerRut' | 'ownerVerified' | 'rating' | 'reviewsCount' | 'createdAt'>) => void;
   updateSpace: (id: string, spaceData: Partial<Space>) => void;
-  deleteSpace: (id: string) => void;
+  deleteSpace: (id: string) => Promise<{ success: boolean; message: string }>;
+  spaceBlocks: SpaceBlock[];
+  addSpaceBlock: (block: Omit<SpaceBlock, 'id' | 'ownerId' | 'createdAt'>) => Promise<{ success: boolean; message?: string }>;
+  removeSpaceBlock: (id: string) => Promise<{ success: boolean; message?: string }>;
   updateReservationStatus: (reservationId: string, status: ReservationStatus) => Promise<void>;
   // Admin actions
   adminSetUserSuspension: (userId: string, suspend: boolean, reason: string) => Promise<void>;
@@ -161,6 +170,37 @@ interface AppContextType {
   clearFavorites: () => void;
 }
 
+// Convierte una fila de public.profiles al modelo de la aplicación.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const profileRowToUser = (profile: any): UserProfile => ({
+  id: profile.id,
+  fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
+  firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
+  surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
+  email: profile.email,
+  rut: profile.rut || '',
+  phone: profile.phone || '',
+  avatarUrl: profile.avatar_url,
+  gender: profile.gender,
+  birthDate: profile.birth_date,
+  role: profile.role,
+  ownerTermsAccepted: profile.owner_terms_accepted,
+  ownerApplicationDate: profile.owner_application_date,
+  verificationStatus: profile.verification_status,
+  kycRejectionReason: profile.kyc_rejection_reason,
+  kycData: profile.kyc_data,
+  commune: profile.commune,
+  city: profile.city,
+  isSuspended: Boolean(profile.is_suspended),
+  suspendedReason: profile.suspended_reason || undefined,
+  createdAt: profile.created_at,
+});
+
+const DUPLICATE_EMAIL_MESSAGE =
+  'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión o recupera tu contraseña.';
+const DUPLICATE_RUT_MESSAGE =
+  'Ya existe una cuenta registrada con este RUT. Si es tuyo, inicia sesión o contacta a soporte.';
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 
@@ -179,6 +219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [favoritesByUser, setFavoritesByUser] = useState<Record<string, string[]>>({});
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getAuditLogs());
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [spaceBlocks, setSpaceBlocks] = useState<SpaceBlock[]>([]);
   const [spacePrivateDetails, setSpacePrivateDetails] = useState<Record<string, { ownerRut: string; address: string }>>({});
 
   // Notificaciones: se persisten en Supabase (tabla notifications) y llegan en tiempo real.
@@ -195,6 +236,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDisputes([]);
       setVisitRequests([]);
       setPayments([]);
+      setSpaceBlocks([]);
       return;
     }
     const userId = currentUser.id;
@@ -205,6 +247,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     getFavoriteIdsFromDb(userId).then((ids) => {
       if (active) setFavoritesByUser((prev) => ({ ...prev, [userId]: ids }));
+    });
+    getSpaceBlocksFromDb().then((items) => {
+      if (active) setSpaceBlocks(items);
     });
     getPaymentsFromDb().then((items) => {
       if (active) setPayments(items);
@@ -239,6 +284,99 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supabase.removeChannel(channel);
     };
   }, [currentUser?.id]);
+
+  // Tiempo real con carga mínima: la base avisa qué tabla cambió (sin datos) y
+  // aquí se vuelve a consultar solo esa tabla, agrupando avisos seguidos.
+  // Temas: catalog (todos), user:<id> (lo propio) y admin (solo administradores).
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const userId = currentUser?.id;
+    const isAdminUser = currentUser?.role === 'admin';
+    let active = true;
+    const debouncer = createKeyedDebouncer(400);
+
+    const refresh = (table: RealtimeTable) =>
+      debouncer.run(table, async () => {
+        try {
+          switch (table) {
+            case 'spaces': {
+              const items = await getSpacesFromDb();
+              if (active) setSpaces(items);
+              if (userId) {
+                const details = await getSpacePrivateDetails();
+                if (active) setSpacePrivateDetails(details);
+              }
+              break;
+            }
+            case 'reservations': {
+              if (!userId) break;
+              const items = await getReservationsFromDb();
+              if (active) setReservations(items);
+              break;
+            }
+            case 'contracts': {
+              if (!userId) break;
+              const items = await getContractsFromDb();
+              if (active) setContracts(items);
+              break;
+            }
+            case 'space_blocks': {
+              if (!userId) break;
+              const items = await getSpaceBlocksFromDb();
+              if (active) setSpaceBlocks(items);
+              break;
+            }
+            case 'payments': {
+              if (!userId) break;
+              const items = await getPaymentsFromDb();
+              if (active) setPayments(items);
+              break;
+            }
+            case 'disputes': {
+              if (!userId) break;
+              const items = await getDisputesFromDb();
+              if (active) setDisputes(items);
+              break;
+            }
+            case 'visit_requests': {
+              if (!userId) break;
+              const items = await getVisitRequestsFromDb();
+              if (active) setVisitRequests(items);
+              break;
+            }
+            case 'profiles': {
+              if (!userId) break;
+              const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+              if (active && profile) setCurrentUser(profileRowToUser(profile));
+              if (isAdminUser) {
+                const users = await getProfilesFromDb();
+                if (active) setAllUsers(users);
+              }
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn(`No se pudo actualizar ${table} en tiempo real:`, err);
+        }
+      });
+
+    const ownTables: RealtimeTable[] = ['reservations', 'contracts', 'payments', 'disputes', 'visit_requests', 'profiles', 'space_blocks'];
+    const refreshAll = () => {
+      refresh('spaces');
+      if (userId) ownTables.forEach(refresh);
+    };
+    const onSignal = (signal: ChangeSignal) => refresh(signal.table);
+
+    const unsubscribers = [subscribeToChanges('catalog', onSignal, refreshAll), onVisibleAgain(refreshAll)];
+    if (userId) unsubscribers.push(subscribeToChanges(`user:${userId}`, onSignal, refreshAll));
+    if (isAdminUser) unsubscribers.push(subscribeToChanges('admin', onSignal, refreshAll));
+
+    return () => {
+      active = false;
+      debouncer.cancelAll();
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [currentUser?.id, currentUser?.role]);
 
   // Una cuenta suspendida no puede mantener la sesión abierta (RF-32).
   useEffect(() => {
@@ -288,29 +426,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .single();
 
           if (profile && isMounted) {
-            const loadedUser: UserProfile = {
-              id: profile.id,
-              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
-              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
-              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
-              email: profile.email,
-              rut: profile.rut || '',
-              phone: profile.phone || '',
-              avatarUrl: profile.avatar_url,
-              gender: profile.gender,
-              birthDate: profile.birth_date,
-              role: profile.role,
-              ownerTermsAccepted: profile.owner_terms_accepted,
-              ownerApplicationDate: profile.owner_application_date,
-              verificationStatus: profile.verification_status,
-              kycRejectionReason: profile.kyc_rejection_reason,
-              kycData: profile.kyc_data,
-              commune: profile.commune,
-              city: profile.city,
-              isSuspended: Boolean(profile.is_suspended),
-              suspendedReason: profile.suspended_reason || undefined,
-              createdAt: profile.created_at,
-            };
+            const loadedUser = profileRowToUser(profile);
             setCurrentUser(loadedUser);
           }
         }
@@ -379,29 +495,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .single();
 
           if (profile && isMounted) {
-            setCurrentUser({
-              id: profile.id,
-              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
-              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
-              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
-              email: profile.email,
-              rut: profile.rut || '',
-              phone: profile.phone || '',
-              avatarUrl: profile.avatar_url,
-              gender: profile.gender,
-              birthDate: profile.birth_date,
-              role: profile.role,
-              ownerTermsAccepted: profile.owner_terms_accepted,
-              ownerApplicationDate: profile.owner_application_date,
-              verificationStatus: profile.verification_status,
-              kycRejectionReason: profile.kyc_rejection_reason,
-              kycData: profile.kyc_data,
-              commune: profile.commune,
-              city: profile.city,
-              isSuspended: Boolean(profile.is_suspended),
-              suspendedReason: profile.suspended_reason || undefined,
-              createdAt: profile.created_at,
-            });
+            setCurrentUser(profileRowToUser(profile));
           }
         }
       }
@@ -612,29 +706,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!userData.password) {
         return { success: false, message: 'Debes ingresar una contraseña.' };
       }
+      const userPassword = userData.password;
 
-      // Verificar duplicados en profiles ANTES de crear la cuenta en Auth
-      const normalizedRut = cleanRut.toUpperCase();
-      const { data: existingProfiles } = await supabase
-        .from('profiles')
-        .select('id, email, rut')
-        .or(`email.eq.${cleanEmail},rut.eq.${normalizedRut}`)
-        .limit(1);
-
-      if (existingProfiles && existingProfiles.length > 0) {
-        const dup = existingProfiles[0];
-        if (dup.email?.toLowerCase() === cleanEmail && dup.rut && dup.rut.toUpperCase() === normalizedRut) {
-          return { success: false, message: 'Ya existe una cuenta registrada con este correo electrónico y RUT.' };
+      // Comprobación previa: con la confirmación de correo activa, Supabase Auth no
+      // devuelve error al repetir un correo, así que se consulta antes de crear la cuenta.
+      const { data: availability, error: availabilityError } = await supabase.rpc('check_signup_availability', {
+        p_email: cleanEmail,
+        p_rut: userData.rut,
+      });
+      if (availabilityError) {
+        console.warn('No se pudo verificar la disponibilidad de correo/RUT:', availabilityError.message);
+      } else {
+        const row = Array.isArray(availability) ? availability[0] : availability;
+        if (row?.email_taken) {
+          return { success: false, message: DUPLICATE_EMAIL_MESSAGE };
         }
-        if (dup.email?.toLowerCase() === cleanEmail) {
-          return { success: false, message: 'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión o recupera tu contraseña.' };
-        }
-        if (dup.rut && dup.rut.toUpperCase() === normalizedRut) {
-          return { success: false, message: 'Ya existe una cuenta registrada con este RUT.' };
+        if (row?.rut_taken) {
+          return { success: false, message: DUPLICATE_RUT_MESSAGE };
         }
       }
 
-      const userPassword = userData.password;
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: cleanEmail,
         password: userPassword,
@@ -655,16 +746,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (authError) {
         console.error('Error al registrar usuario en Supabase Auth:', authError.message);
-        const errMsg = authError.message.toLowerCase();
-        if (errMsg.includes('already registered') || errMsg.includes('already been registered') || errMsg.includes('user already exists')) {
-          return { success: false, message: 'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión o recupera tu contraseña.' };
-        }
+        const msg = authError.message.toLowerCase();
         return {
           success: false,
-          message: errMsg.includes('database error')
-            ? 'No se pudo crear la cuenta con los datos ingresados. Si ya tienes una cuenta, inicia sesión o recupera tu contraseña.'
-            : authError.message,
+          message: msg.includes('already registered') || msg.includes('already exists')
+            ? DUPLICATE_EMAIL_MESSAGE
+            : msg.includes('database error')
+              // El trigger handle_new_user falla por el índice único de RUT.
+              ? 'No se pudo crear la cuenta: el RUT o el correo ya están registrados en Spotly. Si ya tienes una cuenta, inicia sesión o recupera tu contraseña.'
+              : authError.message,
         };
+      }
+
+      // Correo ya registrado: Supabase devuelve un usuario "ficticio" sin identidades
+      // y sin error (para no revelar qué correos existen). No es una cuenta nueva.
+      if (authData.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0) {
+        return { success: false, message: DUPLICATE_EMAIL_MESSAGE };
       }
 
       if (authData.user && !authData.session) {
@@ -729,7 +826,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (existing) {
       return {
         success: false,
-        message: 'Ya existe una cuenta registrada con este correo electrónico o RUT.',
+        message: existing.email.toLowerCase() === cleanEmail ? DUPLICATE_EMAIL_MESSAGE : DUPLICATE_RUT_MESSAGE,
       };
     }
 
@@ -1250,22 +1347,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // RF-10: un espacio con reservas registradas se despublica (los contratos firmados
   // son inmutables y deben conservarse); uno sin historial se elimina.
-  const deleteSpace = (id: string) => {
-    const hasHistory = reservations.some((r) => r.spaceId === id);
-    if (hasHistory) {
-      updateSpace(id, { status: 'paused' });
-      addAuditRecord('SPACE_UNPUBLISHED', 'warning', { spaceId: id, reason: 'Tiene reservas y contratos asociados' });
-      alert('Este espacio tiene reservas y contratos asociados, por lo que se despublicó en lugar de eliminarse.');
-      return;
+  // Eliminación de una publicación por su propietario (o administración).
+  // La base decide: si nunca tuvo reservas se borra; si tiene historial (contratos,
+  // pagos) se archiva como "eliminada" para conservar los registros legales, y ya no
+  // aparece en el catálogo ni en el panel. Con reservas activas o próximas no se
+  // permite eliminar.
+  const deleteSpace = async (id: string): Promise<{ success: boolean; message: string }> => {
+    const today = getTodayIso();
+    const blocking = reservations.some(
+      (r) => r.spaceId === id && (r.status === 'pending' || r.status === 'confirmed') && r.endDate >= today
+    );
+    if (blocking) {
+      return {
+        success: false,
+        message: 'Esta publicación tiene reservas activas o próximas. Cancélalas o espera a que terminen antes de eliminarla.',
+      };
     }
 
+    if (!isSupabaseConfigured()) {
+      setSpaces((prev) => prev.filter((spc) => spc.id !== id));
+      setSpaceBlocks((prev) => prev.filter((b) => b.spaceId !== id));
+      addAuditRecord('SPACE_DELETED', 'warning', { spaceId: id });
+      return { success: true, message: 'Publicación eliminada.' };
+    }
+
+    const { data, error } = await supabase.rpc('owner_delete_space', { p_space_id: id });
+    if (error) {
+      return { success: false, message: error.message };
+    }
     setSpaces((prev) => prev.filter((spc) => spc.id !== id));
+    setSpaceBlocks((prev) => prev.filter((b) => b.spaceId !== id));
+    return {
+      success: true,
+      message:
+        data === 'archived'
+          ? 'Publicación eliminada. Como tuvo reservas, sus contratos y pagos quedan guardados en el historial.'
+          : 'Publicación eliminada.',
+    };
+  };
 
-    if (isSupabaseConfigured()) {
-      deleteSpaceFromDb(id).catch(console.warn);
+  // Bloqueos de disponibilidad (por horas, días o mes completo).
+  const addSpaceBlock = async (
+    block: Omit<SpaceBlock, 'id' | 'ownerId' | 'createdAt'>
+  ): Promise<{ success: boolean; message?: string }> => {
+    if (!currentUser) return { success: false, message: 'Debes iniciar sesión.' };
+    const today = getTodayIso();
+    if (block.startDate < today) {
+      return { success: false, message: 'Solo puedes bloquear desde hoy en adelante.' };
+    }
+    if (block.endDate < block.startDate) {
+      return { success: false, message: 'La fecha de término debe ser igual o posterior a la de inicio.' };
+    }
+    if (block.hourStart != null && block.hourEnd != null && block.hourEnd <= block.hourStart) {
+      return { success: false, message: 'La hora de término debe ser posterior a la de inicio.' };
     }
 
-    addAuditRecord('SPACE_DELETED', 'warning', { spaceId: id });
+    if (!isSupabaseConfigured()) {
+      const local: SpaceBlock = { ...block, id: `blk-${Date.now()}`, ownerId: currentUser.id };
+      setSpaceBlocks((prev) => [...prev, local]);
+      return { success: true };
+    }
+
+    const result = await insertSpaceBlockToDb(block);
+    if (!result.success || !result.data) {
+      return { success: false, message: result.error || 'No se pudo guardar el bloqueo.' };
+    }
+    setSpaceBlocks((prev) => [...prev.filter((b) => b.id !== result.data!.id), result.data!]);
+    return { success: true };
+  };
+
+  const removeSpaceBlock = async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const result = await deleteSpaceBlockFromDb(id);
+    if (!result.success) return { success: false, message: result.error };
+    setSpaceBlocks((prev) => prev.filter((b) => b.id !== id));
+    return { success: true };
   };
 
   // Cambio de estado por el propietario o administración (RF-20). La base valida la
@@ -1786,6 +1941,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createSpace,
         updateSpace,
         deleteSpace,
+        spaceBlocks,
+        addSpaceBlock,
+        removeSpaceBlock,
         updateReservationStatus,
         adminApproveKyc,
         adminRejectKyc,

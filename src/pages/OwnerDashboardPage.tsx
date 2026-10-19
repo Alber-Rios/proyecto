@@ -8,6 +8,9 @@ import { formatClp, formatRut, getSpaceRateInfo, getTodayIso } from '../utils/fo
 import { ContractModal } from '../components/ContractModal.tsx';
 import { PublishSpaceForm, SpaceFormData } from '../components/PublishSpaceForm.tsx';
 import { SpaceAvailabilityViewer } from '../components/SpaceAvailabilityViewer.tsx';
+import { SpaceBlockModal } from '../components/SpaceBlockModal.tsx';
+import { OwnerOverview } from '../components/dashboard/OwnerOverview.tsx';
+import { blocksOnDay, describeBlock } from '../utils/spaceBlocks.ts';
 import { ContactTenantModal, ContactTenant } from '../components/ContactTenantModal.tsx';
 import {
   downloadContractDocument,
@@ -74,9 +77,14 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     deleteSpace,
     updateReservationStatus,
     visitRequests,
+    spaceBlocks,
+    addSpaceBlock,
+    removeSpaceBlock,
   } = useApp();
+  // Bloqueos de disponibilidad guardados en la base (space_blocks).
+  const maintenanceBlocks = spaceBlocks;
 
-  const [activeTab, setActiveTab] = useState<'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits'>('calendar');
+  const [activeTab, setActiveTab] = useState<'overview' | 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits'>('overview');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
@@ -89,8 +97,10 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   const [bookingListStatusFilter, setBookingListStatusFilter] = useState<'pending_valid' | 'all' | 'confirmed' | 'past'>('pending_valid');
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
   const [maintenanceDate, setMaintenanceDate] = useState(() => getTodayIso());
-  const [maintenanceReason, setMaintenanceReason] = useState('');
-  const [maintenanceBlocks, setMaintenanceBlocks] = useState<{ id: string; spaceId: string; date: string; reason: string }[]>([]);
+  const [spaceToDelete, setSpaceToDelete] = useState<Space | null>(null);
+  const [isDeletingSpace, setIsDeletingSpace] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [dashboardNotice, setDashboardNotice] = useState<string | null>(null);
   const [contactModalTenant, setContactModalTenant] = useState<ContactTenant | null>(null);
   const [selectedDayInfo, setSelectedDayInfo] = useState<{ date: string; dayNumber: number } | null>(null);
   const [ownerSelectedDate, setOwnerSelectedDate] = useState<string>(() => getTodayIso());
@@ -474,9 +484,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     const visit = upcomingVisitRequests.find(
       (v) => v.spaceId === selectedSpace.id && v.visitDate === dateString
     );
-    const maintenance = maintenanceBlocks.find(
-      (m) => m.spaceId === selectedSpace.id && m.date === dateString
-    );
+    const maintenance = blocksOnDay(maintenanceBlocks, selectedSpace.id, dateString)[0] || null;
 
     return { booking, visit, maintenance };
   };
@@ -516,34 +524,25 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     setCurrentCalendarDate(new Date(2026, 8, 1)); // Septiembre 2026 (mes del mockup)
   };
 
-  const handleAddMaintenanceBlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSpace) return;
-    if (!maintenanceDate) {
-      alert('Por favor selecciona una fecha');
-      return;
-    }
-    if (maintenanceDate < todayIso) {
-      alert(`No puedes bloquear ni modificar fechas anteriores a hoy (${todayIso}). El historial hacia atrás es exclusivamente de solo lectura.`);
-      return;
-    }
-    const newBlock = {
-      id: `m-${Date.now()}`,
-      spaceId: selectedSpace.id,
-      date: maintenanceDate,
-      reason: maintenanceReason || 'Bloqueo por Mantención Programada',
-    };
-    setMaintenanceBlocks((prev) => [...prev, newBlock]);
-    setIsMaintenanceModalOpen(false);
+  const handleRemoveMaintenanceBlock = async (id: string) => {
+    const result = await removeSpaceBlock(id);
+    if (!result.success) alert(result.message || 'No se pudo quitar el bloqueo.');
   };
 
-  const handleRemoveMaintenanceBlock = (id: string) => {
-    const target = maintenanceBlocks.find((m) => m.id === id);
-    if (target && target.date < todayIso) {
-      alert(`No puedes modificar ni eliminar bloqueos de fechas pasadas (${target.date}). El historial es de solo lectura.`);
+  const handleConfirmDeleteSpace = async () => {
+    if (!spaceToDelete) return;
+    setIsDeletingSpace(true);
+    setDeleteError(null);
+    const result = await deleteSpace(spaceToDelete.id);
+    setIsDeletingSpace(false);
+    if (!result.success) {
+      setDeleteError(result.message);
       return;
     }
-    setMaintenanceBlocks((prev) => prev.filter((m) => m.id !== id));
+    if (selectedSpaceId === spaceToDelete.id) setSelectedSpaceId('');
+    setSpaceToDelete(null);
+    setDashboardNotice(result.message);
+    window.setTimeout(() => setDashboardNotice(null), 6000);
   };
 
   return (
@@ -596,126 +595,34 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
         </div>
       </div>
 
-      {/* Tarjetas de Métricas Reales (Calculadas dinámicamente de los espacios y reservas reales) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Espacios Publicados (Datos Reales) */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>ESPACIOS PUBLICADOS</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {financialMetrics.activeSpacesCount} de {mySpaces.length} activos ({financialMetrics.operationalPct}%)
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{mySpaces.length}</div>
-            <p className="text-[11px] text-slate-500 mt-1 truncate">
-              {mySpaces.map((s) => s.commune).filter((v, i, a) => a.indexOf(v) === i).join(' · ') || 'Sin recintos publicados'}
-            </p>
-            {financialMetrics.pendingSpacesCount > 0 && (
-              <p className="text-[10px] text-amber-700 font-semibold mt-0.5">
-                • {financialMetrics.pendingSpacesCount} en moderación del Administrador
-              </p>
-            )}
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button
-              onClick={() => setActiveTab('spaces')}
-              className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <span>Gestionar</span>
-              <span>→</span>
-            </button>
-          </div>
+      {dashboardNotice && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800" role="status">
+          <span>{dashboardNotice}</span>
+          <button type="button" onClick={() => setDashboardNotice(null)} className="p-1 rounded-lg hover:bg-emerald-100 cursor-pointer" aria-label="Cerrar aviso">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
-
-        {/* Card 2: Solicitudes Pendientes (Datos Reales) */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>SOLICITUDES POR APROBAR</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-              Hoy en adelante
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {pendingValidBookings.length}
-            </div>
-            <p className="text-[11px] text-amber-700 font-medium mt-1">
-              {selectedSpace
-                ? `${pendingValidBookings.filter((b) => b.spaceId === selectedSpace.id).length} en ${selectedSpace.title}`
-                : 'Reservas vigentes listas para revisión'}
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button
-              onClick={() => setActiveTab('bookings')}
-              className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <span>Revisar ahora</span>
-              <span>→</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: Ganancias Reales (CLP) */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>GANANCIA NETA REAL (CLP)</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {financialMetrics.confirmedCount} confirmadas
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {formatClp(financialMetrics.netPayout)}
-            </div>
-            <p className="text-[11px] text-emerald-800 font-semibold mt-1 truncate">
-              {selectedSpace && financialMetrics.bySpace[selectedSpace.id]
-                ? `${selectedSpace.title}: ${formatClp(financialMetrics.bySpace[selectedSpace.id].netPayout)}`
-                : `Bruto: ${formatClp(financialMetrics.grossIncome)}`}
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button
-              onClick={() => setActiveTab('finances')}
-              className="text-rose-600 hover:text-rose-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <span>Ver ganancias por lugar</span>
-              <span>→</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card 4: Tasa de Ocupación Real */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>TASA DE OCUPACIÓN REAL</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              • {financialMetrics.confirmedCount} Reservas
-            </span>
-          </div>
-          <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {selectedSpace && financialMetrics.bySpace[selectedSpace.id]
-                ? `${financialMetrics.bySpace[selectedSpace.id].occupancyPct}%`
-                : `${financialMetrics.realOccupancyPct}%`}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1 truncate">
-              {selectedSpace && financialMetrics.bySpace[selectedSpace.id]
-                ? `${financialMetrics.bySpace[selectedSpace.id].confirmedCount} reservas en ${selectedSpace.title}`
-                : `${financialMetrics.totalBookedUnits} jornadas reservadas en total`}
-            </p>
-          </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-500 text-[11px] font-medium">
-              Total cartera: {financialMetrics.realOccupancyPct}%
-            </span>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Pestañas del Dashboard */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'overview'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          Resumen
+          {pendingValidBookings.length > 0 && (
+            <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-extrabold">
+              {pendingValidBookings.length}
+            </span>
+          )}
+        </button>
+
         <button
           onClick={() => setActiveTab('calendar')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
@@ -778,6 +685,23 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
       </div>
 
       {/* Contenido según Pestaña */}
+      {activeTab === 'overview' && (
+        <OwnerOverview
+          todayIso={todayIso}
+          spaces={mySpaces}
+          bookings={myReceivedBookings}
+          pendingBookings={pendingValidBookings}
+          upcomingVisits={upcomingVisitRequests}
+          blocks={maintenanceBlocks}
+          onGoTab={(tab) => setActiveTab(tab)}
+          onOpenCalendar={(spaceId, dateIso) => {
+            setSelectedSpaceId(spaceId);
+            setOwnerSelectedDate(dateIso);
+            setActiveTab('calendar');
+          }}
+        />
+      )}
+
       {activeTab === 'spaces' && (
         <div className="space-y-4">
           {mySpaces.length === 0 ? (
@@ -894,13 +818,16 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                           {space.status === 'active' ? 'Pausar' : 'Activar'}
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
-                            if (confirm('¿Eliminar este espacio?')) deleteSpace(space.id);
+                            setDeleteError(null);
+                            setSpaceToDelete(space);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer shrink-0"
-                          title="Eliminar Espacio"
+                          className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                          title="Eliminar esta publicación"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3 shrink-0" />
+                          <span>Eliminar</span>
                         </button>
                       </div>
                     </div>
@@ -1369,7 +1296,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       className="flex-1 sm:flex-initial justify-center px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer whitespace-nowrap"
                     >
                       <Wrench className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>+ Bloquear Mantención</span>
+                      <span>Bloquear horas / días / mes</span>
                     </button>
                   )}
                   {selectedSpace && (
@@ -1971,131 +1898,86 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
         document.body
       )}
 
-      {/* Modal para Bloqueo por Mantención */}
-      {isMaintenanceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                  <Wrench className="w-4 h-4" />
+      {/* Bloqueos de disponibilidad: por horas, días o mes completo (space_blocks) */}
+      {isMaintenanceModalOpen && selectedSpace && (
+        <SpaceBlockModal
+          space={selectedSpace}
+          initialDate={maintenanceDate}
+          blocks={maintenanceBlocks}
+          onClose={() => setIsMaintenanceModalOpen(false)}
+          onAdd={addSpaceBlock}
+          onRemove={removeSpaceBlock}
+        />
+      )}
+
+      {/* Confirmación para eliminar una publicación */}
+      {spaceToDelete &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+            onClick={() => !isDeletingSpace && setSpaceToDelete(null)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100"
+              onClick={(e) => e.stopPropagation()}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-space-title"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Bloquear fecha por mantención</h3>
-                  <p className="text-[11px] text-slate-500">Recinto: {selectedSpace?.title}</p>
+                <div className="min-w-0">
+                  <h3 id="delete-space-title" className="text-sm font-bold text-slate-900">
+                    ¿Eliminar "{spaceToDelete.title}"?
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    La publicación dejará de aparecer en Spotly y en tu panel. Si tuvo reservas, sus contratos y pagos
+                    se conservan en el historial. No se puede eliminar si tiene reservas activas o próximas.
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsMaintenanceModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddMaintenanceBlock} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Fecha a Bloquear (Desde hoy {todayIso} en adelante)
-                </label>
-                <input
-                  type="date"
-                  min={todayIso}
-                  value={maintenanceDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val && val < todayIso) {
-                      alert(`Solo puedes bloquear fechas desde hoy (${todayIso}) hacia adelante.`);
-                      setMaintenanceDate(todayIso);
-                      return;
-                    }
-                    setMaintenanceDate(val);
-                  }}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-                  required
-                />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Las fechas anteriores a hoy pertenecen al historial y no pueden ser bloqueadas ni modificadas.
-                </p>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Motivo del bloqueo</label>
-                <input
-                  type="text"
-                  value={maintenanceReason}
-                  onChange={(e) => setMaintenanceReason(e.target.value)}
-                  placeholder="Ej: Sanitización, pintura o mantención técnica"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              {/* Lista de bloqueos actuales para este espacio */}
-              {maintenanceBlocks.filter((m) => m.spaceId === selectedSpace?.id).length > 0 && (
-                <div className="pt-2 border-t border-slate-100 space-y-2">
-                  <label className="font-bold text-slate-600 block text-[11px]">Bloqueos registrados en este recinto:</label>
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                    {maintenanceBlocks
-                      .filter((m) => m.spaceId === selectedSpace?.id)
-                      .map((block) => {
-                        const isPastBlock = block.date < todayIso;
-                        return (
-                          <div
-                            key={block.id}
-                            className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]"
-                          >
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-slate-800">{block.date}</span>
-                                {isPastBlock && (
-                                  <span className="px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 text-[9px] font-bold">
-                                    Histórico
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-slate-500 truncate max-w-[200px]">{block.reason}</p>
-                            </div>
-                            {isPastBlock ? (
-                              <span className="text-slate-400 font-semibold text-[10px] px-2 py-0.5 flex items-center gap-1">
-                                <Lock className="w-3 h-3" />
-                                Solo lectura
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveMaintenanceBlock(block.id)}
-                                className="text-rose-600 hover:text-rose-800 font-bold px-2 py-0.5 rounded cursor-pointer"
-                              >
-                                Desbloquear
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
+              {deleteError && (
+                <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-800" role="alert">
+                  {deleteError}
                 </div>
               )}
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setIsMaintenanceModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 cursor-pointer"
+                  disabled={isDeletingSpace}
+                  onClick={() => setSpaceToDelete(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
+                {spaceToDelete.status === 'active' && (
+                  <button
+                    type="button"
+                    disabled={isDeletingSpace}
+                    onClick={() => {
+                      updateSpace(spaceToDelete.id, { status: 'paused' });
+                      setSpaceToDelete(null);
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                  >
+                    Solo pausar
+                  </button>
+                )}
                 <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white font-bold cursor-pointer transition shadow-xs"
+                  type="button"
+                  disabled={isDeletingSpace}
+                  onClick={handleConfirmDeleteSpace}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  Confirmar bloqueo
+                  {isDeletingSpace ? 'Eliminando…' : 'Sí, eliminar'}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Modal para Contactar al Arrendatario */}
       {contactModalTenant && (
@@ -2238,7 +2120,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 if (maintenance) {
                   return (
                     <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 space-y-1.5">
-                      <span className="font-bold text-slate-900">Bloqueo por mantención</span>
+                      <span className="font-bold text-slate-900">Bloqueo: {describeBlock(maintenance)}</span>
                       <p className="text-slate-600">{maintenance.reason}</p>
                       {isSelectedModalDayPast ? (
                         <span className="text-slate-400 font-semibold text-[11px] flex items-center gap-1 pt-1">

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Space, VisitRequest } from '../types.ts';
-import { formatClp, getSpaceAvailableModalities, getTodayIso } from '../utils/formatters.ts';
+import { formatClp, getSpaceAvailableModalities, isHourSlotPast } from '../utils/formatters.ts';
+import { useChileNow } from '../hooks/useChileNow.ts';
 import { calculateBookingAmounts, monthlyRange, upcomingMonths } from '../utils/pricing.ts';
 import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import { useApp } from '../context/AppContext.tsx';
@@ -30,6 +31,17 @@ const formatIsoToDateDisplay = (isoStr: string) => {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
   return isoStr;
+};
+
+// Franjas que se ofrecen en el arriendo por hora (la última es 20:00 - 21:00) y
+// hora máxima de término.
+const SLOT_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const MAX_END_HOUR = 22;
+
+const addDaysIso = (iso: string, days: number) => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 interface SpaceDetailBookingWidgetProps {
@@ -118,8 +130,13 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
     return opts;
   }, [minHours]);
 
+  // Hora actual de Chile (se actualiza cada minuto): las franjas que ya pasaron
+  // dejan de ofrecerse sin recargar la página.
+  const chileNow = useChileNow();
+  const todayIso = chileNow.iso;
+
   // Próximos 6 meses disponibles para arriendo mensual.
-  const monthOptions = useMemo(() => upcomingMonths(getTodayIso(), 6), []);
+  const monthOptions = useMemo(() => upcomingMonths(todayIso, 6), [todayIso]);
 
   // El arriendo mensual se cobra en bloques de 30 días desde la fecha de inicio.
   useEffect(() => {
@@ -129,7 +146,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       onMonthChange(validMonth);
       return;
     }
-    const range = monthlyRange(validMonth, monthCount, getTodayIso());
+    const range = monthlyRange(validMonth, monthCount, todayIso);
     if (range.start !== startDate) onStartDateChange(range.start);
     if (range.end !== endDate) onEndDateChange(range.end);
   }, [activeModality, selectedMonth, monthCount]);
@@ -296,8 +313,6 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
     ];
   }, [space.category, space.title, activeModality, totalHours]);
 
-  const todayIso = useMemo(() => getTodayIso(), []);
-
   // Franjas horarias ocupadas en la fecha seleccionada (sincronizado con reservas y solicitudes del anfitrión)
   const occupiedHoursOnSelectedDate = useMemo(() => {
     const occupied = new Set<number>();
@@ -320,6 +335,56 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
     return occupied;
   }, [activeReservationsForSpace, startDate]);
 
+  // Franjas del día que ya comenzaron o pasaron (solo aplica a la fecha de hoy).
+  const pastHoursOnSelectedDate = useMemo(() => {
+    const past = new Set<number>();
+    for (const h of SLOT_HOURS) {
+      if (isHourSlotPast(startDate, h, chileNow)) past.add(h);
+    }
+    return past;
+  }, [startDate, chileNow]);
+
+  const isHourUnavailable = (h: number) => occupiedHoursOnSelectedDate.has(h) || pastHoursOnSelectedDate.has(h);
+
+  // Horas de inicio en las que cabe el bloque completo sin pisar horas ocupadas ni pasadas.
+  const validStartHours = useMemo(() => {
+    return SLOT_HOURS.filter((h) => {
+      if (h + totalHours > MAX_END_HOUR) return false;
+      for (let k = h; k < h + totalHours; k++) {
+        if (occupiedHoursOnSelectedDate.has(k) || pastHoursOnSelectedDate.has(k)) return false;
+      }
+      return true;
+    });
+  }, [totalHours, occupiedHoursOnSelectedDate, pastHoursOnSelectedDate]);
+
+  const visibleSlotHours = useMemo(
+    () => SLOT_HOURS.filter((h) => !pastHoursOnSelectedDate.has(h)),
+    [pastHoursOnSelectedDate]
+  );
+  const freeSlotCount = visibleSlotHours.filter((h) => !occupiedHoursOnSelectedDate.has(h)).length;
+
+  // Mantiene una selección válida: si la hora elegida ya pasó o quedó ocupada, salta
+  // a la primera disponible; si hoy ya no quedan horas, pasa al día siguiente.
+  useEffect(() => {
+    if (activeModality !== 'por_hora') return;
+    if (startDate < todayIso) {
+      onStartDateChange(todayIso);
+      onEndDateChange(todayIso);
+      return;
+    }
+    if (startDate === todayIso && SLOT_HOURS.every((h) => pastHoursOnSelectedDate.has(h))) {
+      const tomorrow = addDaysIso(todayIso, 1);
+      onStartDateChange(tomorrow);
+      onEndDateChange(tomorrow);
+      return;
+    }
+    if (validStartHours.length > 0 && !validStartHours.includes(hourStart)) {
+      const next = validStartHours.find((h) => h >= hourStart) ?? validStartHours[0];
+      onHourStartChange(next);
+      onHourEndChange(next + totalHours);
+    }
+  }, [activeModality, startDate, todayIso, validStartHours, hourStart, totalHours, pastHoursOnSelectedDate]);
+
   // Verificar si un mes está ocupado
   const isMonthOccupied = (monthKey: string) => {
     const range = monthlyRange(monthKey, monthCount, todayIso);
@@ -334,8 +399,9 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       );
     }
     if (activeModality === 'por_hora') {
+      if (!validStartHours.includes(hourStart)) return true;
       for (let h = hourStart; h < hourEnd; h++) {
-        if (occupiedHoursOnSelectedDate.has(h)) return true;
+        if (occupiedHoursOnSelectedDate.has(h) || pastHoursOnSelectedDate.has(h)) return true;
       }
       return false;
     }
@@ -343,7 +409,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       return activeReservationsForSpace.some((r) => startDate <= r.endDate && endDate >= r.startDate);
     }
     return false;
-  }, [activeModality, activeReservationsForSpace, startDate, endDate, hourStart, hourEnd, occupiedHoursOnSelectedDate, selectedMonth]);
+  }, [activeModality, activeReservationsForSpace, startDate, endDate, hourStart, hourEnd, occupiedHoursOnSelectedDate, pastHoursOnSelectedDate, validStartHours, selectedMonth]);
 
   // 14 días para disponibilidad diaria en tiempo real a partir del día de hoy
   const baseDate = useMemo(() => new Date(), []);
@@ -861,12 +927,17 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     onChange={(e) => {
                       const newStart = Number(e.target.value);
                       onHourStartChange(newStart);
-                      const newEnd = Math.min(22, newStart + totalHours);
+                      const newEnd = Math.min(MAX_END_HOUR, newStart + totalHours);
                       onHourEndChange(newEnd);
                     }}
                     className="w-full px-2.5 py-2 text-xs font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
                   >
-                    {[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map((h) => (
+                    {validStartHours.length === 0 && (
+                      <option value={hourStart} disabled>
+                        Sin horarios disponibles
+                      </option>
+                    )}
+                    {validStartHours.map((h) => (
                       <option key={h} value={h}>
                         {String(h).padStart(2, '0')}:00 {h < 12 ? 'AM' : 'PM'}
                       </option>
@@ -890,9 +961,16 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
               {/* Botones visuales de franjas horarias */}
               <div className="space-y-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 uppercase">
-                  <span>Franjas horarias del día (09:00 - 21:00)</span>
-                  <span className={occupiedHoursOnSelectedDate.size > 0 ? "text-rose-700 font-bold lowercase" : "text-emerald-700 font-semibold lowercase"}>
-                    {occupiedHoursOnSelectedDate.size > 0 ? `${occupiedHoursOnSelectedDate.size} hrs pedidas / ocupadas` : '100% disponible'}
+                  <span>
+                    Franjas horarias del día
+                    {startDate === todayIso && pastHoursOnSelectedDate.size > 0
+                      ? ` (desde las ${String(chileNow.hour + 1).padStart(2, '0')}:00)`
+                      : ' (09:00 - 21:00)'}
+                  </span>
+                  <span className={freeSlotCount === 0 ? 'text-rose-700 font-bold lowercase' : 'text-emerald-700 font-semibold lowercase'}>
+                    {freeSlotCount === 0
+                      ? 'sin horas libres'
+                      : `${freeSlotCount} ${freeSlotCount === 1 ? 'hora libre' : 'horas libres'}`}
                   </span>
                 </div>
 
@@ -911,9 +989,21 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   </span>
                 </div>
 
+                {startDate === todayIso && pastHoursOnSelectedDate.size > 0 && (
+                  <p className="text-[10px] text-slate-500 leading-snug">
+                    Las horas que ya pasaron hoy no se muestran porque no se pueden reservar.
+                  </p>
+                )}
+
+                {validStartHours.length === 0 && (
+                  <p className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 leading-snug">
+                    No hay {totalHours} {totalHours === 1 ? 'hora seguida libre' : 'horas seguidas libres'} este día. Elige menos horas u otra fecha.
+                  </p>
+                )}
+
                 <div className="flex flex-wrap gap-1">
-                  {[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((h) => {
-                    const isOccupied = occupiedHoursOnSelectedDate.has(h);
+                  {visibleSlotHours.map((h) => {
+                    const isOccupied = isHourUnavailable(h);
                     const isSelected = h >= hourStart && h < hourEnd;
                     return (
                       <button
@@ -921,8 +1011,12 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                         type="button"
                         onClick={() => {
                           if (isOccupied) return;
-                          onHourStartChange(h);
-                          onHourEndChange(Math.min(22, h + totalHours));
+                          // Si el bloque no cabe desde esta hora, se ajusta al inicio válido más cercano.
+                          const start = validStartHours.includes(h)
+                            ? h
+                            : [...validStartHours].reverse().find((v) => v <= h && v + totalHours > h) ?? h;
+                          onHourStartChange(start);
+                          onHourEndChange(Math.min(MAX_END_HOUR, start + totalHours));
                         }}
                         disabled={isOccupied}
                         title={isOccupied ? `Franja ${h}:00 pedida u ocupada` : `Franja ${h}:00 disponible`}

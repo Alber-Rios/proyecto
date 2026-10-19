@@ -29,6 +29,7 @@ const STATUS_LABEL: Record<Space['status'], string> = {
   active: 'Activo',
   paused: 'Pausado',
   pending_approval: 'Pendiente de aprobación',
+  deleted: 'Eliminado por el propietario',
 };
 
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
