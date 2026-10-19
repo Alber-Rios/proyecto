@@ -53,7 +53,8 @@ export function useSpaceReservations(space: Pick<Space, 'id' | 'title' | 'ownerI
         spaceImage: '',
         spaceCategory: space.category,
         tenantId: '',
-        tenantName: 'Reservado',
+        // 'blocked' = bloqueo del propietario (mantención, uso propio, etc.)
+        tenantName: (slot.status as string) === 'blocked' ? 'No disponible' : 'Reservado',
         tenantEmail: '',
         tenantRut: '',
         ownerId: space.ownerId,
@@ -70,7 +71,7 @@ export function useSpaceReservations(space: Pick<Space, 'id' | 'title' | 'ownerI
         platformFeeClp: 0,
         securityDepositClp: 0,
         totalClp: 0,
-        intendedUse: 'Horario reservado',
+        intendedUse: (slot.status as string) === 'blocked' ? 'Bloqueado por el propietario' : 'Horario reservado',
         status: slot.status,
         createdAt: '',
       }));

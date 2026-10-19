@@ -21,10 +21,13 @@ import {
   Layers,
   CalendarDays
 } from 'lucide-react';
-import { Space, Reservation } from '../types.ts';
+import { Space, Reservation, SpaceBlock } from '../types.ts';
 import { formatClp, formatRut, getSpaceAvailableModalities, getTodayIso, formatDateCl } from '../utils/formatters.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { useSpaceReservations } from '../hooks/useSpaceReservations.ts';
+import { useChileNow } from '../hooks/useChileNow.ts';
+import { blockCoversWholeDay, blockedHoursOnDay, blocksOnDay, describeBlock } from '../utils/spaceBlocks.ts';
+import { isHourSlotPast } from '../utils/formatters.ts';
 
 interface SpaceAvailabilityViewerProps {
   space: Space;
@@ -44,7 +47,7 @@ interface SpaceAvailabilityViewerProps {
   onContactTenant?: (tenant: { name: string; email: string; phone: string; spaceTitle: string }) => void;
   onApproveReservation?: (resId: string) => void;
   onBlockMaintenance?: (date: string) => void;
-  maintenanceBlocks?: { id: string; spaceId: string; date: string; reason: string }[];
+  maintenanceBlocks?: SpaceBlock[];
   onRemoveMaintenance?: (id: string) => void;
 }
 
@@ -69,7 +72,8 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
   maintenanceBlocks = [],
   onRemoveMaintenance,
 }) => {
-  const todayIso = useMemo(() => getTodayIso(), []);
+  const chileNow = useChileNow();
+  const todayIso = chileNow.iso;
   const availableModalities = useMemo(() => getSpaceAvailableModalities(space), [space]);
 
   const getTenantPhone = (r: Reservation): string => {
@@ -124,7 +128,17 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
   });
 
   // Reservas activas o históricas para este espacio específico
-  const spaceReservations = useSpaceReservations(space);
+  const allSpaceReservations = useSpaceReservations(space);
+  // En la vista del propietario los bloqueos llegan completos por maintenanceBlocks
+  // (con id para poder quitarlos); se omiten las copias públicas de la ocupación.
+  const spaceReservations = useMemo(
+    () => (isOwnerView ? allSpaceReservations.filter((r) => (r.status as string) !== 'blocked') : allSpaceReservations),
+    [allSpaceReservations, isOwnerView]
+  );
+  const spaceBlocksForThis = useMemo(
+    () => maintenanceBlocks.filter((b) => b.spaceId === space.id),
+    [maintenanceBlocks, space.id]
+  );
 
   // Lista de horas operativas (08:00 a 22:00)
   const OPERATING_HOURS = useMemo(() => {
@@ -213,6 +227,19 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
       }
     }
 
+    // Bloqueos del propietario (por horas o día completo) en esta fecha.
+    for (const b of spaceBlocksForThis) {
+      for (const h of blockedHoursOnDay(b, dateToCheck, OPERATING_HOURS)) {
+        if (occupiedMap.has(h)) continue;
+        occupiedMap.set(h, {
+          title: b.reason || 'Bloqueado por el propietario',
+          use: `Bloqueo: ${describeBlock(b)}`,
+          status: 'blocked',
+          id: b.id,
+        });
+      }
+    }
+
     const slots = OPERATING_HOURS.map((h) => {
       const nextH = h + 1;
       const isOccupied = occupiedMap.has(h);
@@ -231,7 +258,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
         isSelected,
         isStart,
         isEnd,
-        isPastSlot: isPastDate,
+        isPastSlot: isPastDate || isHourSlotPast(dateToCheck, h, chileNow),
       };
     });
 
@@ -258,7 +285,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
       uniqueBookings,
       dayEarningsClp,
     };
-  }, [activeModality, startDate, todayIso, spaceReservations, OPERATING_HOURS, selectedHourStart, selectedHourEnd, isOwnerView]);
+  }, [activeModality, startDate, todayIso, chileNow, spaceReservations, spaceBlocksForThis, OPERATING_HOURS, selectedHourStart, selectedHourEnd, isOwnerView]);
 
   // Cinta de días para por_hora y por_dia
   const daysStrip = useMemo(() => {
@@ -279,7 +306,8 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
 
       // Buscar reservas para este día
       const dayReservations = spaceReservations.filter((r) => iso >= r.startDate && iso <= r.endDate);
-      const dayMaintenance = maintenanceBlocks.find((m) => m.spaceId === space.id && m.date === iso);
+      const dayBlocks = blocksOnDay(spaceBlocksForThis, space.id, iso);
+      const dayMaintenance = dayBlocks.find((b) => blockCoversWholeDay(b, iso)) || null;
       const isDailyOrMonthlyOccupied =
         Boolean(dayMaintenance) ||
         dayReservations.some(
@@ -287,6 +315,9 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
         );
 
       let occupiedHours = 0;
+      for (const b of dayBlocks) {
+        if (b.hourStart != null) occupiedHours += blockedHoursOnDay(b, iso, OPERATING_HOURS).length;
+      }
       for (const r of dayReservations) {
         if (r.rentalModality === 'por_hora') {
           const startH = r.hourStart ?? 9;
@@ -317,7 +348,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
         dayMaintenance,
       };
     });
-  }, [todayIso, startDate, spaceReservations, maintenanceBlocks, space.id, OPERATING_HOURS.length, isOwnerView, stripOffsetDays]);
+  }, [todayIso, startDate, spaceReservations, spaceBlocksForThis, space.id, OPERATING_HOURS, isOwnerView, stripOffsetDays]);
 
   // Cuadrícula mensual para por_hora y por_dia
   const monthCalendarDays = useMemo(() => {
@@ -349,7 +380,8 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
       const isSelected = iso === (startDate || todayIso);
 
       const dayReservations = spaceReservations.filter((r) => iso >= r.startDate && iso <= r.endDate);
-      const dayMaintenance = maintenanceBlocks.find((m) => m.spaceId === space.id && m.date === iso);
+      const dayBlocks = blocksOnDay(spaceBlocksForThis, space.id, iso);
+      const dayMaintenance = dayBlocks.find((b) => blockCoversWholeDay(b, iso)) || null;
       const isDailyOrMonthlyOccupied =
         Boolean(dayMaintenance) ||
         dayReservations.some(
@@ -357,6 +389,9 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
         );
 
       let occupiedHours = 0;
+      for (const b of dayBlocks) {
+        if (b.hourStart != null) occupiedHours += blockedHoursOnDay(b, iso, OPERATING_HOURS).length;
+      }
       for (const r of dayReservations) {
         if (r.rentalModality === 'por_hora') {
           const startH = r.hourStart ?? 9;
@@ -387,7 +422,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
     }
 
     return days;
-  }, [currentYearMonth, todayIso, startDate, spaceReservations, maintenanceBlocks, space.id, OPERATING_HOURS.length]);
+  }, [currentYearMonth, todayIso, startDate, spaceReservations, spaceBlocksForThis, space.id, OPERATING_HOURS]);
 
   // -------------------------------------------------------------
   // CÁLCULOS PARA MODALIDAD 2: POR DÍA
@@ -399,9 +434,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
     const dayReservations = spaceReservations.filter(
       (r) => dateToCheck >= r.startDate && dateToCheck <= r.endDate
     );
-    const dayMaintenance = maintenanceBlocks.find(
-      (m) => m.spaceId === space.id && m.date === dateToCheck
-    ) || null;
+    const dayMaintenance = blocksOnDay(spaceBlocksForThis, space.id, dateToCheck)[0] || null;
     const isOccupied = dayReservations.length > 0 || Boolean(dayMaintenance);
     const primaryReservation = dayReservations[0] || null;
 
@@ -413,7 +446,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
       dayReservations,
       dayMaintenance,
     };
-  }, [activeModality, startDate, todayIso, spaceReservations, maintenanceBlocks, space.id]);
+  }, [activeModality, startDate, todayIso, spaceReservations, spaceBlocksForThis, space.id]);
 
   // Duración en días calculada
   const calculatedDaysCount = useMemo(() => {
@@ -1088,9 +1121,13 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                           : ''
                       } ${
                         isOccupied
-                          ? isOwnerView && dayScheduleData.isPastDate
+                          ? occInfo?.status === 'blocked'
+                            ? 'bg-amber-50/80 border-amber-200 text-slate-700'
+                            : isOwnerView && dayScheduleData.isPastDate
                             ? 'bg-rose-50/90 border-rose-300 text-slate-900 shadow-2xs'
                             : 'bg-rose-50/70 border-rose-200 text-slate-700 opacity-90'
+                          : slot.isPastSlot && !dayScheduleData.isPastDate
+                          ? 'bg-slate-50 border-slate-200 text-slate-400'
                           : isSelected
                           ? 'bg-slate-900 border-slate-900 text-white shadow-md ring-2 ring-rose-500/40'
                           : 'bg-white border-slate-200 text-slate-800'
@@ -1104,18 +1141,26 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
 
                         {isOccupied ? (
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 whitespace-nowrap ${
-                            occInfo?.status === 'pending'
+                            occInfo?.status === 'blocked'
+                              ? 'bg-amber-200 text-amber-900'
+                              : occInfo?.status === 'pending'
                               ? 'bg-amber-100 text-amber-800 border border-amber-300'
                               : 'bg-rose-100 text-rose-700'
                           }`}>
                             <Lock className="w-2.5 h-2.5 shrink-0" />
                             <span>
-                              {occInfo?.status === 'pending'
+                              {occInfo?.status === 'blocked'
+                                ? 'Bloqueada'
+                                : occInfo?.status === 'pending'
                                 ? 'Solicitud'
                                 : dayScheduleData.isPastDate
                                 ? 'Ocupado'
                                 : 'Reservada'}
                             </span>
+                          </span>
+                        ) : slot.isPastSlot && !dayScheduleData.isPastDate ? (
+                          <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-500 text-[10px] font-bold uppercase shrink-0 whitespace-nowrap">
+                            Pasada
                           </span>
                         ) : isSelected ? (
                           <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 whitespace-nowrap">
@@ -1132,7 +1177,24 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                       <div className="mt-2 text-[11px] space-y-1">
                         {isOccupied ? (
                           <div className="space-y-1">
-                            {isOwnerView && occInfo ? (
+                            {occInfo?.status === 'blocked' ? (
+                              <div className="p-2.5 rounded-xl bg-white/95 border border-amber-200 space-y-1 text-[10px] text-slate-700">
+                                <div className="font-extrabold text-amber-900 truncate">{occInfo.title}</div>
+                                <div className="text-slate-500 truncate">{occInfo.use}</div>
+                                {isOwnerView && onRemoveMaintenance && !dayScheduleData.isPastDate && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRemoveMaintenance(occInfo.id);
+                                    }}
+                                    className="mt-1 px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[9px] cursor-pointer"
+                                  >
+                                    Quitar bloqueo
+                                  </button>
+                                )}
+                              </div>
+                            ) : isOwnerView && occInfo ? (
                               <div className="p-2.5 rounded-xl bg-white/95 border border-rose-200 space-y-1 text-slate-800 text-[10px]">
                                 <div className="font-extrabold text-slate-900 flex items-center gap-1">
                                   <UserCheck className="w-3 h-3 text-rose-600 shrink-0" />
@@ -1225,8 +1287,12 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                           </div>
                         ) : (
                           <div className="text-slate-600">
-                            <span className="font-bold text-emerald-700 block">
-                              {dayScheduleData.isPastDate ? 'Sin arriendo registrado' : 'Disponible para reservar'}
+                            <span className={`font-bold block ${slot.isPastSlot && !dayScheduleData.isPastDate ? 'text-slate-400' : 'text-emerald-700'}`}>
+                              {dayScheduleData.isPastDate
+                                ? 'Sin arriendo registrado'
+                                : slot.isPastSlot
+                                ? 'Hora ya transcurrida'
+                                : 'Disponible para reservar'}
                             </span>
                             <span className="text-[10px] text-slate-500 block">
                               Tarifa: {formatClp(priceHour)}/hr
@@ -1580,7 +1646,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                       <span>Bloqueo por Mantención: {dayDetailsForSelectedDate.dayMaintenance.reason}</span>
                     </div>
                     <p className="text-[11px] text-amber-800">
-                      Fecha bloqueada: {dayDetailsForSelectedDate.dayMaintenance.date}
+                      Bloqueo: {describeBlock(dayDetailsForSelectedDate.dayMaintenance)}
                     </p>
                   </div>
                   {!dayDetailsForSelectedDate.isPastDate && onRemoveMaintenance ? (

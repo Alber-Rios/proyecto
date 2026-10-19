@@ -127,7 +127,7 @@ export interface Space {
   securityDeposit?: number;
   images: string[];
   isVerified: boolean;
-  status: 'active' | 'pending_approval' | 'paused';
+  status: 'active' | 'pending_approval' | 'paused' | 'deleted';
   rating: number;
   reviewsCount: number;
   minBookingDays?: number;
@@ -385,4 +385,18 @@ export interface KpiSnapshot {
   kpi07_created: number;
   kpi08_avg_rating: number | null;
   kpi08_reviews: number;
+}
+
+// Bloqueo de disponibilidad definido por el propietario (tabla space_blocks).
+// Sin horas = días completos (startDate..endDate); con horas = franja horaria.
+export interface SpaceBlock {
+  id: string;
+  spaceId: string;
+  ownerId?: string;
+  startDate: string;
+  endDate: string;
+  hourStart?: number;
+  hourEnd?: number;
+  reason: string;
+  createdAt?: string;
 }

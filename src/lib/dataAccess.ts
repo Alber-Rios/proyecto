@@ -9,6 +9,7 @@ import {
   PaymentRecord,
   DiscountCode,
   KpiSnapshot,
+  SpaceBlock,
 } from '../types.ts';
 
 // 1. OCUPACIÓN PÚBLICA DE UN ESPACIO (calendario sin datos personales, RF-14)
@@ -376,4 +377,61 @@ export async function getKpisFromDb(days = 30): Promise<KpiSnapshot> {
   const { data, error } = await supabase.rpc('admin_kpis', { p_days: days });
   if (error) throw new Error(error.message);
   return data as KpiSnapshot;
+}
+
+// BLOQUEOS DE DISPONIBILIDAD DEL PROPIETARIO (space_blocks, RF-14)
+// RLS: el propietario ve y gestiona solo los suyos; administración ve todos.
+// La base rechaza bloqueos que choquen con reservas activas.
+const mapSpaceBlockRow = (row: any): SpaceBlock => ({
+  id: row.id,
+  spaceId: row.space_id,
+  ownerId: row.owner_id,
+  startDate: row.start_date,
+  endDate: row.end_date,
+  hourStart: row.hour_start ?? undefined,
+  hourEnd: row.hour_end ?? undefined,
+  reason: row.reason || '',
+  createdAt: row.created_at,
+});
+
+export async function getSpaceBlocksFromDb(): Promise<SpaceBlock[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabase
+    .from('space_blocks')
+    .select('id, space_id, owner_id, start_date, end_date, hour_start, hour_end, reason, created_at')
+    .order('start_date', { ascending: true });
+  if (error) {
+    console.warn('No se pudieron cargar los bloqueos:', error.message);
+    return [];
+  }
+  return (data || []).map(mapSpaceBlockRow);
+}
+
+export async function insertSpaceBlockToDb(
+  block: Omit<SpaceBlock, 'id' | 'ownerId' | 'createdAt'>
+): Promise<{ success: boolean; data?: SpaceBlock; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  const { data, error } = await supabase
+    .from('space_blocks')
+    .insert([
+      {
+        space_id: block.spaceId,
+        start_date: block.startDate,
+        end_date: block.endDate,
+        hour_start: block.hourStart ?? null,
+        hour_end: block.hourEnd ?? null,
+        reason: block.reason || null,
+      },
+    ])
+    .select('id, space_id, owner_id, start_date, end_date, hour_start, hour_end, reason, created_at')
+    .single();
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: mapSpaceBlockRow(data) };
+}
+
+export async function deleteSpaceBlockFromDb(id: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  const { error } = await supabase.from('space_blocks').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
 }

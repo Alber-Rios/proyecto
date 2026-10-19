@@ -14,6 +14,7 @@ import {
   DigitalContract,
   VisitRequest,
   PaymentRecord,
+  SpaceBlock,
 } from '../types.ts';
 import { saveAuditLog, getAuditLogs, buildAuditMetadata, fetchClientIp, SERVER_RECORDED_IP } from '../utils/auditLogger.ts';
 import { callApi, loginThroughServer, postToTransbank } from '../utils/api.ts';
@@ -56,6 +57,9 @@ import {
   getPaymentsFromDb,
   insertReportToDb,
   setUserSuspensionInDb,
+  getSpaceBlocksFromDb,
+  insertSpaceBlockToDb,
+  deleteSpaceBlockFromDb,
 } from '../lib/dataAccess.ts';
 import { subscribeToChanges, createKeyedDebouncer, onVisibleAgain } from '../lib/realtime.ts';
 import type { ChangeSignal, RealtimeTable } from '../lib/realtime.ts';
@@ -137,7 +141,10 @@ interface AppContextType {
   // Owner actions
   createSpace: (spaceData: Omit<Space, 'id' | 'ownerId' | 'ownerName' | 'ownerRut' | 'ownerVerified' | 'rating' | 'reviewsCount' | 'createdAt'>) => void;
   updateSpace: (id: string, spaceData: Partial<Space>) => void;
-  deleteSpace: (id: string) => void;
+  deleteSpace: (id: string) => Promise<{ success: boolean; message: string }>;
+  spaceBlocks: SpaceBlock[];
+  addSpaceBlock: (block: Omit<SpaceBlock, 'id' | 'ownerId' | 'createdAt'>) => Promise<{ success: boolean; message?: string }>;
+  removeSpaceBlock: (id: string) => Promise<{ success: boolean; message?: string }>;
   updateReservationStatus: (reservationId: string, status: ReservationStatus) => Promise<void>;
   // Admin actions
   adminSetUserSuspension: (userId: string, suspend: boolean, reason: string) => Promise<void>;
@@ -212,6 +219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [favoritesByUser, setFavoritesByUser] = useState<Record<string, string[]>>({});
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getAuditLogs());
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [spaceBlocks, setSpaceBlocks] = useState<SpaceBlock[]>([]);
   const [spacePrivateDetails, setSpacePrivateDetails] = useState<Record<string, { ownerRut: string; address: string }>>({});
 
   // Notificaciones: se persisten en Supabase (tabla notifications) y llegan en tiempo real.
@@ -228,6 +236,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDisputes([]);
       setVisitRequests([]);
       setPayments([]);
+      setSpaceBlocks([]);
       return;
     }
     const userId = currentUser.id;
@@ -238,6 +247,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     getFavoriteIdsFromDb(userId).then((ids) => {
       if (active) setFavoritesByUser((prev) => ({ ...prev, [userId]: ids }));
+    });
+    getSpaceBlocksFromDb().then((items) => {
+      if (active) setSpaceBlocks(items);
     });
     getPaymentsFromDb().then((items) => {
       if (active) setPayments(items);
@@ -308,6 +320,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (active) setContracts(items);
               break;
             }
+            case 'space_blocks': {
+              if (!userId) break;
+              const items = await getSpaceBlocksFromDb();
+              if (active) setSpaceBlocks(items);
+              break;
+            }
             case 'payments': {
               if (!userId) break;
               const items = await getPaymentsFromDb();
@@ -342,7 +360,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
 
-    const ownTables: RealtimeTable[] = ['reservations', 'contracts', 'payments', 'disputes', 'visit_requests', 'profiles'];
+    const ownTables: RealtimeTable[] = ['reservations', 'contracts', 'payments', 'disputes', 'visit_requests', 'profiles', 'space_blocks'];
     const refreshAll = () => {
       refresh('spaces');
       if (userId) ownTables.forEach(refresh);
@@ -1329,22 +1347,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // RF-10: un espacio con reservas registradas se despublica (los contratos firmados
   // son inmutables y deben conservarse); uno sin historial se elimina.
-  const deleteSpace = (id: string) => {
-    const hasHistory = reservations.some((r) => r.spaceId === id);
-    if (hasHistory) {
-      updateSpace(id, { status: 'paused' });
-      addAuditRecord('SPACE_UNPUBLISHED', 'warning', { spaceId: id, reason: 'Tiene reservas y contratos asociados' });
-      alert('Este espacio tiene reservas y contratos asociados, por lo que se despublicó en lugar de eliminarse.');
-      return;
+  // Eliminación de una publicación por su propietario (o administración).
+  // La base decide: si nunca tuvo reservas se borra; si tiene historial (contratos,
+  // pagos) se archiva como "eliminada" para conservar los registros legales, y ya no
+  // aparece en el catálogo ni en el panel. Con reservas activas o próximas no se
+  // permite eliminar.
+  const deleteSpace = async (id: string): Promise<{ success: boolean; message: string }> => {
+    const today = getTodayIso();
+    const blocking = reservations.some(
+      (r) => r.spaceId === id && (r.status === 'pending' || r.status === 'confirmed') && r.endDate >= today
+    );
+    if (blocking) {
+      return {
+        success: false,
+        message: 'Esta publicación tiene reservas activas o próximas. Cancélalas o espera a que terminen antes de eliminarla.',
+      };
     }
 
+    if (!isSupabaseConfigured()) {
+      setSpaces((prev) => prev.filter((spc) => spc.id !== id));
+      setSpaceBlocks((prev) => prev.filter((b) => b.spaceId !== id));
+      addAuditRecord('SPACE_DELETED', 'warning', { spaceId: id });
+      return { success: true, message: 'Publicación eliminada.' };
+    }
+
+    const { data, error } = await supabase.rpc('owner_delete_space', { p_space_id: id });
+    if (error) {
+      return { success: false, message: error.message };
+    }
     setSpaces((prev) => prev.filter((spc) => spc.id !== id));
+    setSpaceBlocks((prev) => prev.filter((b) => b.spaceId !== id));
+    return {
+      success: true,
+      message:
+        data === 'archived'
+          ? 'Publicación eliminada. Como tuvo reservas, sus contratos y pagos quedan guardados en el historial.'
+          : 'Publicación eliminada.',
+    };
+  };
 
-    if (isSupabaseConfigured()) {
-      deleteSpaceFromDb(id).catch(console.warn);
+  // Bloqueos de disponibilidad (por horas, días o mes completo).
+  const addSpaceBlock = async (
+    block: Omit<SpaceBlock, 'id' | 'ownerId' | 'createdAt'>
+  ): Promise<{ success: boolean; message?: string }> => {
+    if (!currentUser) return { success: false, message: 'Debes iniciar sesión.' };
+    const today = getTodayIso();
+    if (block.startDate < today) {
+      return { success: false, message: 'Solo puedes bloquear desde hoy en adelante.' };
+    }
+    if (block.endDate < block.startDate) {
+      return { success: false, message: 'La fecha de término debe ser igual o posterior a la de inicio.' };
+    }
+    if (block.hourStart != null && block.hourEnd != null && block.hourEnd <= block.hourStart) {
+      return { success: false, message: 'La hora de término debe ser posterior a la de inicio.' };
     }
 
-    addAuditRecord('SPACE_DELETED', 'warning', { spaceId: id });
+    if (!isSupabaseConfigured()) {
+      const local: SpaceBlock = { ...block, id: `blk-${Date.now()}`, ownerId: currentUser.id };
+      setSpaceBlocks((prev) => [...prev, local]);
+      return { success: true };
+    }
+
+    const result = await insertSpaceBlockToDb(block);
+    if (!result.success || !result.data) {
+      return { success: false, message: result.error || 'No se pudo guardar el bloqueo.' };
+    }
+    setSpaceBlocks((prev) => [...prev.filter((b) => b.id !== result.data!.id), result.data!]);
+    return { success: true };
+  };
+
+  const removeSpaceBlock = async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const result = await deleteSpaceBlockFromDb(id);
+    if (!result.success) return { success: false, message: result.error };
+    setSpaceBlocks((prev) => prev.filter((b) => b.id !== id));
+    return { success: true };
   };
 
   // Cambio de estado por el propietario o administración (RF-20). La base valida la
@@ -1865,6 +1941,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createSpace,
         updateSpace,
         deleteSpace,
+        spaceBlocks,
+        addSpaceBlock,
+        removeSpaceBlock,
         updateReservationStatus,
         adminApproveKyc,
         adminRejectKyc,

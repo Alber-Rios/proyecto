@@ -283,7 +283,7 @@ CREATE TABLE public.spaces (
   security_deposit NUMERIC(12,0) NOT NULL DEFAULT 0 CHECK (security_deposit >= 0),
   images TEXT[] DEFAULT '{}'::TEXT[] CHECK (images IS NULL OR cardinality(images) <= 20),
   is_verified BOOLEAN NOT NULL DEFAULT false,
-  status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('active', 'pending_approval', 'paused')),
+  status TEXT NOT NULL DEFAULT 'pending_approval' CHECK (status IN ('active', 'pending_approval', 'paused', 'deleted')),
   rating NUMERIC(2,1) NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
   reviews_count INTEGER NOT NULL DEFAULT 0 CHECK (reviews_count >= 0),
   min_booking_days INTEGER DEFAULT 1 CHECK (min_booking_days IS NULL OR min_booking_days >= 1),
@@ -1345,6 +1345,11 @@ BEGIN
     IF OLD.status = 'pending_approval' AND NEW.status = 'active' THEN
       NEW.status := OLD.status;
     END IF;
+    -- Eliminar se hace solo con owner_delete_space() (valida reservas activas) y una
+    -- publicación eliminada no se puede reactivar.
+    IF OLD.status = 'deleted' OR NEW.status = 'deleted' THEN
+      NEW.status := OLD.status;
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -1532,6 +1537,12 @@ BEGIN
 
   IF NEW.start_date < public.chile_today() THEN
     RAISE EXCEPTION 'La fecha de la reserva debe ser desde el día actual hacia adelante';
+  END IF;
+  -- Arriendo por hora para hoy: la franja no puede haber comenzado (hora de Chile).
+  IF NEW.start_date = public.chile_today() AND NEW.hour_start IS NOT NULL
+     AND NEW.hour_start <= extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int THEN
+    RAISE EXCEPTION 'Esa hora ya pasó: elige una franja desde las %:00',
+      lpad((extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int + 1)::text, 2, '0');
   END IF;
   IF NEW.hour_start IS NOT NULL AND NEW.hour_end IS NOT NULL
      AND NEW.start_date = NEW.end_date AND NEW.hour_end <= NEW.hour_start THEN
@@ -1858,6 +1869,56 @@ AS $$
   JOIN public.spaces s ON s.id = b.space_id AND s.status = 'active'
   WHERE b.space_id = p_space_id
     AND b.end_date >= public.chile_today() - 1;
+$$;
+
+-- Eliminar una publicación (propietario o administración).
+--   · Con reservas pendientes/confirmadas que aún no terminan: no se permite.
+--   · Sin ninguna reserva en su historial: se borra.
+--   · Con historial (contratos y pagos que deben conservarse): se archiva con
+--     status = 'deleted'; deja de verse en el catálogo y en los paneles.
+-- Devuelve 'deleted' o 'archived'.
+CREATE FUNCTION public.owner_delete_space(p_space_id TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_space public.spaces;
+  v_prev TEXT;
+BEGIN
+  SELECT * INTO v_space FROM public.spaces WHERE id = p_space_id;
+  IF NOT FOUND OR v_space.status = 'deleted' THEN
+    RAISE EXCEPTION 'La publicación no existe o ya fue eliminada';
+  END IF;
+  IF NOT (public.is_admin() OR v_space.owner_id = auth.uid()) THEN
+    RAISE EXCEPTION 'Solo el propietario puede eliminar esta publicación';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.reservations r
+    WHERE r.space_id = p_space_id
+      AND r.status IN ('pending', 'confirmed')
+      AND r.end_date >= public.chile_today()
+  ) THEN
+    RAISE EXCEPTION 'Esta publicación tiene reservas activas o próximas: cancélalas o espera a que terminen antes de eliminarla';
+  END IF;
+
+  v_prev := public.begin_trusted();
+  IF EXISTS (SELECT 1 FROM public.reservations r WHERE r.space_id = p_space_id) THEN
+    UPDATE public.spaces SET status = 'deleted' WHERE id = p_space_id;
+    DELETE FROM public.space_blocks WHERE space_id = p_space_id;
+    PERFORM public.end_trusted(v_prev);
+    PERFORM public.write_audit('SPACE_ARCHIVED', 'warning', COALESCE(auth.uid()::text, 'sistema'),
+      jsonb_build_object('spaceId', p_space_id, 'title', v_space.title));
+    RETURN 'archived';
+  END IF;
+
+  DELETE FROM public.spaces WHERE id = p_space_id;
+  PERFORM public.end_trusted(v_prev);
+  PERFORM public.write_audit('SPACE_DELETED', 'warning', COALESCE(auth.uid()::text, 'sistema'),
+    jsonb_build_object('spaceId', p_space_id, 'title', v_space.title));
+  RETURN 'deleted';
+END;
 $$;
 
 -- Dirección exacta y RUT del propietario: solo para el propietario, administración
@@ -3192,6 +3253,7 @@ GRANT EXECUTE ON FUNCTION public.is_trusted_context() TO anon, authenticated;
 -- RPC públicas de la aplicación.
 GRANT EXECUTE ON FUNCTION public.check_signup_availability(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_space_occupancy(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.owner_delete_space(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_spaces_private_details() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_kpis(INTEGER) TO authenticated;                     -- valida is_admin()
@@ -3221,7 +3283,7 @@ END $$;
 --    { table, op } a los temas que corresponden; el navegador vuelve a consultar
 --    esa tabla con sus consultas normales (RLS + permisos por columna).
 --    Temas:  catalog        → cambios del catálogo de espacios (todos)
---            space:<id>     → reservas de un espacio (calendario público)
+--            space:<id>     → reservas y bloqueos de un espacio (calendario público)
 --            user:<uuid>    → lo que afecta a ese usuario (arrendatario o propietario)
 --            admin          → todo, solo para administradores
 CREATE FUNCTION public.broadcast_change()
@@ -3259,6 +3321,7 @@ BEGIN
     WHEN 'spaces' THEN ARRAY['catalog']
     WHEN 'profiles' THEN ARRAY['user:' || (v_row->>'id'), 'admin']
     WHEN 'reservations' THEN ARRAY['user:' || v_tenant, 'user:' || v_owner, 'space:' || v_space, 'admin']
+    WHEN 'space_blocks' THEN ARRAY['user:' || v_owner, 'space:' || v_space, 'admin']
     ELSE ARRAY['user:' || v_tenant, 'user:' || v_owner, 'admin']
   END;
 
@@ -3276,7 +3339,7 @@ DO $$
 DECLARE
   t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['spaces', 'reservations', 'contracts', 'payments', 'disputes', 'visit_requests', 'profiles'] LOOP
+  FOREACH t IN ARRAY ARRAY['spaces', 'reservations', 'contracts', 'payments', 'disputes', 'visit_requests', 'profiles', 'space_blocks'] LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS zz_broadcast_change ON public.%I', t);
     EXECUTE format(
       'CREATE TRIGGER zz_broadcast_change AFTER INSERT OR UPDATE OR DELETE ON public.%I '

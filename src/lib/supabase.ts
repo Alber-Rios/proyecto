@@ -79,6 +79,8 @@ export async function getSpacesFromDb(): Promise<Space[]> {
   const { data, error } = await supabase
     .from('spaces')
     .select(SPACE_PUBLIC_COLUMNS)
+    // Las publicaciones eliminadas (archivadas por tener historial) no se muestran.
+    .neq('status', 'deleted')
     .order('created_at', { ascending: false });
 
   if (error) {

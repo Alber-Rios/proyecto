@@ -16,7 +16,8 @@ export type RealtimeTable =
   | 'payments'
   | 'disputes'
   | 'visit_requests'
-  | 'profiles';
+  | 'profiles'
+  | 'space_blocks';
 
 export interface ChangeSignal {
   table: RealtimeTable;
