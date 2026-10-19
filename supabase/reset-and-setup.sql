@@ -3172,9 +3172,13 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.chile_today() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.generate_id(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.normalize_rut(TEXT) TO anon, authenticated;
--- Los triggers de contratos y consentimientos corren con el rol del usuario y
--- registran su IP; request_ip() solo lee las cabeceras de la propia petición.
+-- Varios triggers (contratos, consentimientos, auditoría) corren con el rol del
+-- usuario y llaman a estas funciones auxiliares.
+-- Lo mismo para la auditoría y la guarda de inmutabilidad de contratos. Solo
+-- leen la propia sesión/petición: concederlas no da acceso a datos.
 GRANT EXECUTE ON FUNCTION public.request_ip() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.request_user_agent() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.is_trusted_context() TO anon, authenticated;
 -- RPC públicas de la aplicación.
 GRANT EXECUTE ON FUNCTION public.check_signup_availability(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_space_occupancy(TEXT) TO anon, authenticated;
