@@ -1,0 +1,11 @@
+-- ==============================================================================
+-- SPOTLY · PARCHE: "permission denied for function request_ip" al firmar contrato
+-- ==============================================================================
+-- Los triggers contracts_before_insert y consents_before_insert se ejecutan con
+-- el rol del usuario (authenticated) y llaman a public.request_ip() para guardar
+-- la IP de firma, pero esa función había quedado sin permiso de ejecución.
+-- request_ip() solo lee las cabeceras de la propia petición: es seguro concederlo.
+--
+-- NO es destructivo. Supabase → SQL Editor → New query → pegar → Run.
+-- ==============================================================================
+GRANT EXECUTE ON FUNCTION public.request_ip() TO anon, authenticated;

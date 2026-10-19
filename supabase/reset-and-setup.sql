@@ -3172,6 +3172,9 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.chile_today() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.generate_id(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.normalize_rut(TEXT) TO anon, authenticated;
+-- Los triggers de contratos y consentimientos corren con el rol del usuario y
+-- registran su IP; request_ip() solo lee las cabeceras de la propia petición.
+GRANT EXECUTE ON FUNCTION public.request_ip() TO anon, authenticated;
 -- RPC públicas de la aplicación.
 GRANT EXECUTE ON FUNCTION public.check_signup_availability(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_space_occupancy(TEXT) TO anon, authenticated;
