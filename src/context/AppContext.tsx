@@ -161,6 +161,11 @@ interface AppContextType {
   clearFavorites: () => void;
 }
 
+const DUPLICATE_EMAIL_MESSAGE =
+  'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión o recupera tu contraseña.';
+const DUPLICATE_RUT_MESSAGE =
+  'Ya existe una cuenta registrada con este RUT. Si es tuyo, inicia sesión o contacta a soporte.';
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 
@@ -613,6 +618,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, message: 'Debes ingresar una contraseña.' };
       }
       const userPassword = userData.password;
+
+      // Comprobación previa: con la confirmación de correo activa, Supabase Auth no
+      // devuelve error al repetir un correo, así que se consulta antes de crear la cuenta.
+      const { data: availability, error: availabilityError } = await supabase.rpc('check_signup_availability', {
+        p_email: cleanEmail,
+        p_rut: userData.rut,
+      });
+      if (availabilityError) {
+        console.warn('No se pudo verificar la disponibilidad de correo/RUT:', availabilityError.message);
+      } else {
+        const row = Array.isArray(availability) ? availability[0] : availability;
+        if (row?.email_taken) {
+          return { success: false, message: DUPLICATE_EMAIL_MESSAGE };
+        }
+        if (row?.rut_taken) {
+          return { success: false, message: DUPLICATE_RUT_MESSAGE };
+        }
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: cleanEmail,
         password: userPassword,
@@ -633,12 +657,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (authError) {
         console.error('Error al registrar usuario en Supabase Auth:', authError.message);
+        const msg = authError.message.toLowerCase();
         return {
           success: false,
-          message: authError.message.toLowerCase().includes('database error')
-            ? 'No se pudo crear la cuenta con los datos ingresados. Si ya tienes una cuenta, inicia sesión o recupera tu contraseña.'
-            : authError.message,
+          message: msg.includes('already registered') || msg.includes('already exists')
+            ? DUPLICATE_EMAIL_MESSAGE
+            : msg.includes('database error')
+              // El trigger handle_new_user falla por el índice único de RUT.
+              ? 'No se pudo crear la cuenta: el RUT o el correo ya están registrados en Spotly. Si ya tienes una cuenta, inicia sesión o recupera tu contraseña.'
+              : authError.message,
         };
+      }
+
+      // Correo ya registrado: Supabase devuelve un usuario "ficticio" sin identidades
+      // y sin error (para no revelar qué correos existen). No es una cuenta nueva.
+      if (authData.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0) {
+        return { success: false, message: DUPLICATE_EMAIL_MESSAGE };
       }
 
       if (authData.user && !authData.session) {
@@ -703,7 +737,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (existing) {
       return {
         success: false,
-        message: 'Ya existe una cuenta registrada con este correo electrónico o RUT.',
+        message: existing.email.toLowerCase() === cleanEmail ? DUPLICATE_EMAIL_MESSAGE : DUPLICATE_RUT_MESSAGE,
       };
     }
 

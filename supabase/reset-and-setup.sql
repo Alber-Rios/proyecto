@@ -975,6 +975,31 @@ BEGIN
 END;
 $$;
 
+-- ---------- Disponibilidad de correo y RUT antes del registro ----------
+-- Supabase Auth, con la confirmación de correo activa, responde "éxito" al
+-- registrar un correo que ya existe (no revela si la cuenta existe) y el
+-- formulario mostraba "Cuenta creada". Esta función permite avisar antes de
+-- llamar a signUp. Solo devuelve dos booleanos, nunca datos de la cuenta.
+-- El índice único profiles_rut_unique y el UNIQUE de auth.users siguen siendo
+-- la garantía final si alguien se salta esta comprobación.
+CREATE FUNCTION public.check_signup_availability(p_email TEXT, p_rut TEXT)
+RETURNS TABLE (email_taken BOOLEAN, rut_taken BOOLEAN)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT
+    NULLIF(lower(trim(COALESCE(p_email, ''))), '') IS NOT NULL AND (
+      EXISTS (SELECT 1 FROM auth.users u WHERE lower(u.email) = left(lower(trim(p_email)), 320))
+      OR EXISTS (SELECT 1 FROM public.profiles p WHERE lower(p.email) = left(lower(trim(p_email)), 320))
+    ),
+    public.normalize_rut(left(p_rut, 20)) IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE public.normalize_rut(p.rut) = public.normalize_rut(left(p_rut, 20))
+    );
+$$;
+
 -- ---------- Guardas de perfil ----------
 -- Evita que un usuario se eleve a admin, altere su KYC o cambie su RUT una vez
 -- verificado. La transición tenant -> owner requiere aceptación de términos.
@@ -3148,6 +3173,7 @@ GRANT EXECUTE ON FUNCTION public.chile_today() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.generate_id(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.normalize_rut(TEXT) TO anon, authenticated;
 -- RPC públicas de la aplicación.
+GRANT EXECUTE ON FUNCTION public.check_signup_availability(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_space_occupancy(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_spaces_private_details() TO authenticated;
