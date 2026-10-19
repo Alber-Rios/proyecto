@@ -57,6 +57,8 @@ import {
   insertReportToDb,
   setUserSuspensionInDb,
 } from '../lib/dataAccess.ts';
+import { subscribeToChanges, createKeyedDebouncer, onVisibleAgain } from '../lib/realtime.ts';
+import type { ChangeSignal, RealtimeTable } from '../lib/realtime.ts';
 
 interface AppContextType {
   currentUser: UserProfile | null;
@@ -161,6 +163,32 @@ interface AppContextType {
   clearFavorites: () => void;
 }
 
+// Convierte una fila de public.profiles al modelo de la aplicación.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const profileRowToUser = (profile: any): UserProfile => ({
+  id: profile.id,
+  fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
+  firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
+  surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
+  email: profile.email,
+  rut: profile.rut || '',
+  phone: profile.phone || '',
+  avatarUrl: profile.avatar_url,
+  gender: profile.gender,
+  birthDate: profile.birth_date,
+  role: profile.role,
+  ownerTermsAccepted: profile.owner_terms_accepted,
+  ownerApplicationDate: profile.owner_application_date,
+  verificationStatus: profile.verification_status,
+  kycRejectionReason: profile.kyc_rejection_reason,
+  kycData: profile.kyc_data,
+  commune: profile.commune,
+  city: profile.city,
+  isSuspended: Boolean(profile.is_suspended),
+  suspendedReason: profile.suspended_reason || undefined,
+  createdAt: profile.created_at,
+});
+
 const DUPLICATE_EMAIL_MESSAGE =
   'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión o recupera tu contraseña.';
 const DUPLICATE_RUT_MESSAGE =
@@ -245,6 +273,93 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [currentUser?.id]);
 
+  // Tiempo real con carga mínima: la base avisa qué tabla cambió (sin datos) y
+  // aquí se vuelve a consultar solo esa tabla, agrupando avisos seguidos.
+  // Temas: catalog (todos), user:<id> (lo propio) y admin (solo administradores).
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const userId = currentUser?.id;
+    const isAdminUser = currentUser?.role === 'admin';
+    let active = true;
+    const debouncer = createKeyedDebouncer(400);
+
+    const refresh = (table: RealtimeTable) =>
+      debouncer.run(table, async () => {
+        try {
+          switch (table) {
+            case 'spaces': {
+              const items = await getSpacesFromDb();
+              if (active) setSpaces(items);
+              if (userId) {
+                const details = await getSpacePrivateDetails();
+                if (active) setSpacePrivateDetails(details);
+              }
+              break;
+            }
+            case 'reservations': {
+              if (!userId) break;
+              const items = await getReservationsFromDb();
+              if (active) setReservations(items);
+              break;
+            }
+            case 'contracts': {
+              if (!userId) break;
+              const items = await getContractsFromDb();
+              if (active) setContracts(items);
+              break;
+            }
+            case 'payments': {
+              if (!userId) break;
+              const items = await getPaymentsFromDb();
+              if (active) setPayments(items);
+              break;
+            }
+            case 'disputes': {
+              if (!userId) break;
+              const items = await getDisputesFromDb();
+              if (active) setDisputes(items);
+              break;
+            }
+            case 'visit_requests': {
+              if (!userId) break;
+              const items = await getVisitRequestsFromDb();
+              if (active) setVisitRequests(items);
+              break;
+            }
+            case 'profiles': {
+              if (!userId) break;
+              const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+              if (active && profile) setCurrentUser(profileRowToUser(profile));
+              if (isAdminUser) {
+                const users = await getProfilesFromDb();
+                if (active) setAllUsers(users);
+              }
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn(`No se pudo actualizar ${table} en tiempo real:`, err);
+        }
+      });
+
+    const ownTables: RealtimeTable[] = ['reservations', 'contracts', 'payments', 'disputes', 'visit_requests', 'profiles'];
+    const refreshAll = () => {
+      refresh('spaces');
+      if (userId) ownTables.forEach(refresh);
+    };
+    const onSignal = (signal: ChangeSignal) => refresh(signal.table);
+
+    const unsubscribers = [subscribeToChanges('catalog', onSignal, refreshAll), onVisibleAgain(refreshAll)];
+    if (userId) unsubscribers.push(subscribeToChanges(`user:${userId}`, onSignal, refreshAll));
+    if (isAdminUser) unsubscribers.push(subscribeToChanges('admin', onSignal, refreshAll));
+
+    return () => {
+      active = false;
+      debouncer.cancelAll();
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [currentUser?.id, currentUser?.role]);
+
   // Una cuenta suspendida no puede mantener la sesión abierta (RF-32).
   useEffect(() => {
     if (currentUser?.isSuspended) {
@@ -293,29 +408,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .single();
 
           if (profile && isMounted) {
-            const loadedUser: UserProfile = {
-              id: profile.id,
-              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
-              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
-              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
-              email: profile.email,
-              rut: profile.rut || '',
-              phone: profile.phone || '',
-              avatarUrl: profile.avatar_url,
-              gender: profile.gender,
-              birthDate: profile.birth_date,
-              role: profile.role,
-              ownerTermsAccepted: profile.owner_terms_accepted,
-              ownerApplicationDate: profile.owner_application_date,
-              verificationStatus: profile.verification_status,
-              kycRejectionReason: profile.kyc_rejection_reason,
-              kycData: profile.kyc_data,
-              commune: profile.commune,
-              city: profile.city,
-              isSuspended: Boolean(profile.is_suspended),
-              suspendedReason: profile.suspended_reason || undefined,
-              createdAt: profile.created_at,
-            };
+            const loadedUser = profileRowToUser(profile);
             setCurrentUser(loadedUser);
           }
         }
@@ -384,29 +477,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .single();
 
           if (profile && isMounted) {
-            setCurrentUser({
-              id: profile.id,
-              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
-              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
-              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
-              email: profile.email,
-              rut: profile.rut || '',
-              phone: profile.phone || '',
-              avatarUrl: profile.avatar_url,
-              gender: profile.gender,
-              birthDate: profile.birth_date,
-              role: profile.role,
-              ownerTermsAccepted: profile.owner_terms_accepted,
-              ownerApplicationDate: profile.owner_application_date,
-              verificationStatus: profile.verification_status,
-              kycRejectionReason: profile.kyc_rejection_reason,
-              kycData: profile.kyc_data,
-              commune: profile.commune,
-              city: profile.city,
-              isSuspended: Boolean(profile.is_suspended),
-              suspendedReason: profile.suspended_reason || undefined,
-              createdAt: profile.created_at,
-            });
+            setCurrentUser(profileRowToUser(profile));
           }
         }
       }
