@@ -220,7 +220,7 @@ CREATE TABLE public.profiles (
   first_names TEXT CHECK (first_names IS NULL OR length(first_names) <= 120),
   surnames TEXT CHECK (surnames IS NULL OR length(surnames) <= 120),
   email TEXT NOT NULL UNIQUE CHECK (length(email) <= 320),
-  rut TEXT CHECK (rut IS NULL OR length(rut) <= 15),
+  rut TEXT UNIQUE CHECK (rut IS NULL OR length(rut) <= 15),
   phone TEXT CHECK (phone IS NULL OR length(phone) <= 30),
   avatar_url TEXT CHECK (avatar_url IS NULL OR length(avatar_url) <= 2048),
   gender TEXT CHECK (gender IN ('masculino', 'femenino', 'no_binario', 'otro', 'prefiero_no_decir')),

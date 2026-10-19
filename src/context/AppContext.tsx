@@ -612,6 +612,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!userData.password) {
         return { success: false, message: 'Debes ingresar una contraseña.' };
       }
+
+      // Verificar duplicados en profiles ANTES de crear la cuenta en Auth
+      const normalizedRut = cleanRut.toUpperCase();
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('id, email, rut')
+        .or(`email.eq.${cleanEmail},rut.eq.${normalizedRut}`)
+        .limit(1);
+
+      if (existingProfiles && existingProfiles.length > 0) {
+        const dup = existingProfiles[0];
+        if (dup.email?.toLowerCase() === cleanEmail && dup.rut && dup.rut.toUpperCase() === normalizedRut) {
+          return { success: false, message: 'Ya existe una cuenta registrada con este correo electrónico y RUT.' };
+        }
+        if (dup.email?.toLowerCase() === cleanEmail) {
+          return { success: false, message: 'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión o recupera tu contraseña.' };
+        }
+        if (dup.rut && dup.rut.toUpperCase() === normalizedRut) {
+          return { success: false, message: 'Ya existe una cuenta registrada con este RUT.' };
+        }
+      }
+
       const userPassword = userData.password;
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -633,9 +655,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (authError) {
         console.error('Error al registrar usuario en Supabase Auth:', authError.message);
+        const errMsg = authError.message.toLowerCase();
+        if (errMsg.includes('already registered') || errMsg.includes('already been registered') || errMsg.includes('user already exists')) {
+          return { success: false, message: 'Ya existe una cuenta registrada con este correo electrónico. Inicia sesión o recupera tu contraseña.' };
+        }
         return {
           success: false,
-          message: authError.message.toLowerCase().includes('database error')
+          message: errMsg.includes('database error')
             ? 'No se pudo crear la cuenta con los datos ingresados. Si ya tienes una cuenta, inicia sesión o recupera tu contraseña.'
             : authError.message,
         };
