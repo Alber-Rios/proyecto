@@ -52,7 +52,7 @@ function DraftNotice() {
       <div className="flex gap-3">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
         <div className="space-y-2 text-sm text-amber-950">
-          <p className="font-bold">Borrador para completar antes de operar públicamente</p>
+          <p className="font-semibold">Borrador para completar antes de operar públicamente</p>
           <p>
             Falta identificar al responsable legal de Spotly y completar su RUT, domicilio y correo de contacto. También deben definirse los plazos de conservación de datos, los proveedores y regiones de alojamiento, y las reglas finales de cancelación y reembolso. No publiques estos textos como versión definitiva sin completar y revisar esos datos.
           </p>
@@ -65,7 +65,7 @@ function DraftNotice() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3 border-b border-slate-200 py-6 last:border-0">
-      <h2 className="text-lg font-bold tracking-tight text-slate-900">{title}</h2>
+      <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
       <div className="space-y-3 text-sm leading-7 text-slate-700">{children}</div>
     </section>
   );
@@ -78,12 +78,12 @@ export function LegalPage({ document }: { document: LegalDocument }) {
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
       <header className="border-b border-slate-200 pb-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-700">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
             <FileText className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-700">Información legal · Spotly Chile</p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">{page.title}</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Información legal · Spotly Chile</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{page.title}</h1>
           </div>
         </div>
         <p className="mt-5 max-w-3xl text-sm leading-relaxed text-slate-600">{page.intro}</p>
@@ -96,7 +96,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
             key={item.id}
             to={item.href}
             aria-current={document === item.id ? 'page' : undefined}
-            className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition ${document === item.id ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'}`}
+            className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition ${document === item.id ? 'border-brand-200 bg-brand-50 text-brand-800' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'}`}
           >
             {item.label}
           </Link>
@@ -113,7 +113,7 @@ export function LegalPage({ document }: { document: LegalDocument }) {
       </article>
 
       <footer className="mt-7 rounded-2xl bg-slate-100 p-4 text-xs leading-relaxed text-slate-600">
-        <p className="font-bold text-slate-800">Normas de referencia</p>
+        <p className="font-semibold text-slate-800">Normas de referencia</p>
         <ul className="mt-2 flex flex-col gap-2">
           {lawLinks.map((law) => (
             <li key={law.href}>
@@ -144,7 +144,7 @@ function NoticeContent() {
         <p>Spotly es una plataforma que conecta a personas que buscan un espacio con propietarios que los publican para arriendo por hora, día o mes. Spotly no es dueño de los espacios publicados; cada propietario responde por la veracidad de su publicación y por el estado del espacio.</p>
       </Section>
       <Section title="3. Condiciones de uso">
-        <p>El uso del sitio implica aceptar los <Link to="/terminos" className="text-rose-700 underline">términos y condiciones</Link>. El tratamiento de datos personales se rige por la <Link to="/privacidad" className="text-rose-700 underline">política de privacidad</Link> y el uso de cookies por la <Link to="/cookies" className="text-rose-700 underline">política de cookies</Link>.</p>
+        <p>El uso del sitio implica aceptar los <Link to="/terminos" className="text-brand-700 underline">términos y condiciones</Link>. El tratamiento de datos personales se rige por la <Link to="/privacidad" className="text-brand-700 underline">política de privacidad</Link> y el uso de cookies por la <Link to="/cookies" className="text-brand-700 underline">política de cookies</Link>.</p>
       </Section>
       <Section title="4. Propiedad intelectual">
         <p>El diseño, los textos y el código de Spotly pertenecen a su titular. Las fotos y descripciones de cada espacio pertenecen a quien las publicó, que declara tener derecho a usarlas. No se permite copiar o reutilizar este contenido sin autorización.</p>

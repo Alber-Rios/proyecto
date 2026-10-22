@@ -2,6 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.tsx';
+import '@fontsource-variable/onest';
 import './index.css';
 
 const AppRouter = window.location.pathname.startsWith('/spotly/') ? HashRouter : BrowserRouter;

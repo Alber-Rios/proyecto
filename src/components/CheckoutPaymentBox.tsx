@@ -120,7 +120,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
         <div
           role="status"
           className={`p-3 rounded-xl border text-xs font-semibold ${
-            notice.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
+            notice.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-brand-50 border-brand-200 text-brand-800'
           }`}
         >
           {notice.text}
@@ -133,16 +133,16 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
           <span className="text-slate-600">
             {formatClp(basePrice)} × {units} {unitLabel}
           </span>
-          <span className="font-bold text-slate-900">{formatClp(subtotalClp)}</span>
+          <span className="font-semibold text-slate-900">{formatClp(subtotalClp)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-slate-600">Comisión de servicio Spotly (5 %)</span>
-          <span className="font-bold text-slate-900">{formatClp(platformFeeClp)}</span>
+          <span className="font-semibold text-slate-900">{formatClp(platformFeeClp)}</span>
         </div>
         {depositClp > 0 && (
           <div className="flex justify-between">
             <span className="text-slate-600">Garantía mensual (reembolsable)</span>
-            <span className="font-bold text-slate-900">{formatClp(depositClp)}</span>
+            <span className="font-semibold text-slate-900">{formatClp(depositClp)}</span>
           </div>
         )}
         {discount && (
@@ -150,18 +150,18 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
             <span className="flex items-center gap-1">
               <Tag className="w-3.5 h-3.5" /> Descuento {discount.code}
             </span>
-            <span className="font-bold">−{formatClp(discountClp)}</span>
+            <span className="font-semibold">−{formatClp(discountClp)}</span>
           </div>
         )}
         <div className="flex justify-between border-t border-slate-200 pt-2 text-sm">
-          <span className="font-bold text-slate-900">Total a pagar</span>
-          <span className="font-bold text-rose-600">{formatClp(total)}</span>
+          <span className="font-semibold text-slate-900">Total a pagar</span>
+          <span className="font-semibold text-brand-600">{formatClp(total)}</span>
         </div>
       </div>
 
       {/* Código de descuento */}
       <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-        <label htmlFor="discount-code" className="text-xs font-extrabold text-slate-900 block">
+        <label htmlFor="discount-code" className="text-xs font-semibold text-slate-900 block">
           ¿Tienes un código de descuento?
         </label>
         <div className="flex gap-2">
@@ -171,7 +171,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
             onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
             placeholder="Ej: SPOTLY10"
             disabled={Boolean(discount) || validating}
-            className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold uppercase text-slate-900 bg-white focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+            className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold uppercase text-slate-900 bg-white focus:ring-2 focus:ring-brand-500 focus:outline-hidden"
           />
           {discount ? (
             <button
@@ -181,7 +181,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
                 setCodeInput('');
                 setCodeMessage(null);
               }}
-              className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 flex items-center gap-1 cursor-pointer"
+              className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 flex items-center gap-1 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" /> Quitar
             </button>
@@ -190,21 +190,21 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
               type="button"
               onClick={handleApplyCode}
               disabled={validating || !codeInput.trim()}
-              className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold disabled:opacity-50 flex items-center gap-1 cursor-pointer"
             >
               {validating && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Aplicar
             </button>
           )}
         </div>
         {codeMessage && (
-          <p className={`text-[11px] font-semibold ${discount ? 'text-emerald-700' : 'text-rose-600'}`}>{codeMessage}</p>
+          <p className={`text-[12.5px] font-semibold ${discount ? 'text-emerald-700' : 'text-brand-600'}`}>{codeMessage}</p>
         )}
       </div>
 
       {/* Medio de pago */}
       <fieldset className="space-y-2">
-        <legend className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5 mb-2">
-          <Wallet className="w-4 h-4 text-rose-600" /> ¿Cómo quieres pagar?
+        <legend className="text-xs font-semibold text-slate-900 flex items-center gap-1.5 mb-2">
+          <Wallet className="w-4 h-4 text-brand-600" /> ¿Cómo quieres pagar?
         </legend>
 
         {walletCards.map((card) => (
@@ -220,17 +220,17 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
               value={card.id}
               checked={choice === card.id}
               onChange={() => setChoice(card.id)}
-              className="accent-rose-600"
+              className="accent-brand-600"
             />
             <CreditCard className="w-5 h-5 text-slate-700 shrink-0" />
             <span className="flex-1 min-w-0">
-              <span className="block text-xs font-bold text-slate-900">
+              <span className="block text-xs font-semibold text-slate-900">
                 {card.cardType} terminada en {card.last4}
               </span>
-              <span className="block text-[11px] text-slate-500">Tarjeta de tu billetera · pago inmediato</span>
+              <span className="block text-[12.5px] text-slate-500">Tarjeta de tu billetera · pago inmediato</span>
             </span>
             {card.isDefault && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="text-[11.5px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 Predeterminada
               </span>
             )}
@@ -248,12 +248,12 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
             value="webpay"
             checked={choice === 'webpay'}
             onChange={() => setChoice('webpay')}
-            className="accent-rose-600"
+            className="accent-brand-600"
           />
           <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
           <span className="flex-1 min-w-0">
-            <span className="block text-xs font-bold text-slate-900">Otra tarjeta con Webpay Plus</span>
-            <span className="block text-[11px] text-slate-500">Débito, crédito o prepago en el formulario de Transbank</span>
+            <span className="block text-xs font-semibold text-slate-900">Otra tarjeta con Webpay Plus</span>
+            <span className="block text-[12.5px] text-slate-500">Débito, crédito o prepago en el formulario de Transbank</span>
           </span>
         </label>
 
@@ -261,19 +261,19 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
           type="button"
           onClick={handleAddCard}
           disabled={addingCard || paying || disabled || walletCards.length >= 5}
-          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-rose-500 text-xs font-bold text-slate-700 hover:text-rose-600 disabled:opacity-50 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-500 text-xs font-semibold text-slate-700 hover:text-brand-600 disabled:opacity-50 cursor-pointer"
         >
           {addingCard ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           {walletCards.length === 0 ? 'Agregar una tarjeta a mi billetera' : 'Agregar otra tarjeta'}
         </button>
         {walletCards.length === 0 && (
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[12.5px] text-slate-500">
             Al agregarla te llevamos a Transbank y luego vuelves aquí con tu reserva lista para pagar.
           </p>
         )}
       </fieldset>
 
-      <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-[11px] text-indigo-900 flex gap-2">
+      <div className="p-3 rounded-xl bg-brand-50 border border-brand-200 text-[12.5px] text-brand-900 flex gap-2">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
           Ambiente de pruebas de Transbank (no se realizan cargos reales). Tarjeta VISA <strong>4051 8856 0044 6623</strong>, CVV{' '}
@@ -283,7 +283,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
       </div>
 
       {payError && (
-        <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700">
+        <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
           {payError}
         </div>
       )}
@@ -294,7 +294,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
             type="button"
             onClick={onCancel}
             disabled={paying}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer"
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition cursor-pointer"
           >
             Volver al contrato
           </button>
@@ -303,7 +303,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
           type="button"
           onClick={handlePay}
           disabled={paying || addingCard || disabled}
-          className="ml-auto px-6 py-3 rounded-xl font-bold text-xs text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 transition flex items-center gap-2 shadow-lg cursor-pointer"
+          className="ml-auto px-6 py-3 rounded-xl font-semibold text-xs text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition flex items-center gap-2 shadow-lg cursor-pointer"
         >
           {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
           <span>

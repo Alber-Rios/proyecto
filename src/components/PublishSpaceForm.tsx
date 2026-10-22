@@ -134,8 +134,8 @@ function parseSchedule(raw?: string) {
 }
 
 const inputClass =
-  'w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden bg-white';
-const labelClass = 'block text-xs font-bold text-slate-700 mb-1';
+  'w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-hidden bg-white';
+const labelClass = 'block text-xs font-semibold text-slate-700 mb-1';
 
 export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace, onCancel, onSubmit }) => {
   const initial = editingSpace;
@@ -308,13 +308,13 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
             return (
               <li key={label} className="flex items-center gap-2 flex-1 min-w-0">
                 <span
-                  className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${
-                    done ? 'bg-emerald-600 text-white' : active ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500'
+                  className={`w-6 h-6 rounded-full text-[12.5px] font-semibold flex items-center justify-center shrink-0 ${
+                    done ? 'bg-emerald-600 text-white' : active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'
                   }`}
                 >
                   {done ? <Check className="w-3.5 h-3.5" /> : n}
                 </span>
-                <span className={`text-xs font-bold truncate ${active ? 'text-slate-900' : 'text-slate-500 hidden sm:inline'}`}>{label}</span>
+                <span className={`text-xs font-semibold truncate ${active ? 'text-slate-900' : 'text-slate-500 hidden sm:inline'}`}>{label}</span>
                 {i < 2 && <span className="hidden sm:block flex-1 h-px bg-slate-200" />}
               </li>
             );
@@ -332,7 +332,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   const items = SPACE_CATEGORIES.filter((c) => c.group === group.id);
                   return (
                     <div key={group.id}>
-                      <p className="text-[11px] font-semibold text-slate-500 mb-1.5">{group.label}</p>
+                      <p className="text-[12.5px] font-semibold text-slate-500 mb-1.5">{group.label}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {items.map((c) => {
                           const Icon = c.icon;
@@ -349,7 +349,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                                   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
                               }`}
                             >
-                              <Icon className={`w-4 h-4 shrink-0 ${selected ? 'text-rose-400' : 'text-slate-500'}`} />
+                              <Icon className={`w-4 h-4 shrink-0 ${selected ? 'text-brand-400' : 'text-slate-500'}`} />
                               <span className="leading-tight">{c.label}</span>
                             </button>
                           );
@@ -359,7 +359,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   );
                 })}
               </div>
-              <p className="text-[11px] text-slate-500 mt-2">Ejemplo: {categoryInfo.hint.toLowerCase()}.</p>
+              <p className="text-[12.5px] text-slate-500 mt-2">Ejemplo: {categoryInfo.hint.toLowerCase()}.</p>
             </div>
 
             <div>
@@ -420,7 +420,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 placeholder="Ej: Av. Irarrázaval 1234, depto 501"
                 className={inputClass}
               />
-              <p className="text-[11px] text-slate-500 mt-1">Solo la verán quienes reserven o agenden una visita.</p>
+              <p className="text-[12.5px] text-slate-500 mt-1">Solo la verán quienes reserven o agenden una visita.</p>
             </div>
 
             <div>
@@ -438,7 +438,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                       key={opt.id}
                       onClick={() => setEnvironment(opt.id)}
                       aria-pressed={selected}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                         selected ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
                       }`}
                     >
@@ -486,7 +486,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
 
               <ModalityRow label="Por mes" enabled={byMonth} onToggle={setByMonth} price={monthPrice} onPrice={setMonthPrice} unit="mes">
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
                     ¿Pides garantía para arriendos mensuales?
                   </p>
@@ -495,7 +495,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                       type="button"
                       onClick={() => setRequireDeposit(false)}
                       aria-pressed={!requireDeposit}
-                      className={`py-2 rounded-lg border text-xs font-bold cursor-pointer ${
+                      className={`py-2 rounded-lg border text-xs font-semibold cursor-pointer ${
                         !requireDeposit ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200'
                       }`}
                     >
@@ -508,7 +508,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                         if (!deposit && monthPrice) setDeposit(monthPrice);
                       }}
                       aria-pressed={requireDeposit}
-                      className={`py-2 rounded-lg border text-xs font-bold cursor-pointer ${
+                      className={`py-2 rounded-lg border text-xs font-semibold cursor-pointer ${
                         requireDeposit ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200'
                       }`}
                     >
@@ -518,7 +518,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   {requireDeposit && (
                     <div className="space-y-1">
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">$</span>
                         <input
                           inputMode="numeric"
                           aria-label="Monto de la garantía"
@@ -528,7 +528,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                           className={`${inputClass} pl-7`}
                         />
                       </div>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[12.5px] text-slate-500">
                         Se cobra una sola vez al inicio y se devuelve al terminar el arriendo.
                         {monthPrice ? ` Lo habitual es un mes (${formatClp(Number(monthPrice))}).` : ''}
                       </p>
@@ -536,14 +536,14 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   )}
                 </div>
               </ModalityRow>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[12.5px] text-slate-500">
                 Spotly cobra al arrendatario una comisión de servicio de 5 % sobre el arriendo. Los arriendos por hora y por día no llevan garantía.
               </p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-              <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-rose-600" /> Horario disponible
+              <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-brand-600" /> Horario disponible
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <select value={days} onChange={(e) => setDays(e.target.value)} aria-label="Días disponibles" className={inputClass}>
@@ -587,11 +587,11 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 type="checkbox"
                 checked={instantBooking}
                 onChange={(e) => setInstantBooking(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-rose-600"
+                className="mt-0.5 w-4 h-4 accent-brand-600"
               />
               <span>
-                <span className="block text-xs font-bold text-slate-900">Reserva inmediata</span>
-                <span className="block text-[11px] text-slate-500">
+                <span className="block text-xs font-semibold text-slate-900">Reserva inmediata</span>
+                <span className="block text-[12.5px] text-slate-500">
                   La reserva se confirma sola al aprobarse el pago. Si la desmarcas, tendrás que aceptar cada solicitud.
                 </span>
               </span>
@@ -603,13 +603,13 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
           <>
             <div className="space-y-2.5">
               <p className={`${labelClass} flex items-center gap-1.5`}>
-                <Camera className="w-4 h-4 text-rose-600" /> Fotos ({images.length}/{MAX_IMAGES})
+                <Camera className="w-4 h-4 text-brand-600" /> Fotos ({images.length}/{MAX_IMAGES})
               </p>
               <label
                 className={`flex items-center justify-center gap-2 p-4 bg-white border-2 border-dashed rounded-xl text-sm font-semibold transition ${
                   images.length >= MAX_IMAGES
                     ? 'border-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'border-slate-300 hover:border-rose-500 text-slate-700 hover:text-rose-600 cursor-pointer'
+                    : 'border-slate-300 hover:border-brand-500 text-slate-700 hover:text-brand-600 cursor-pointer'
                 }`}
               >
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -629,12 +629,12 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                     <div key={idx} className="relative rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-100">
                       <img src={src} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
                       {idx === 0 && (
-                        <span className="absolute top-1 left-1 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Portada</span>
+                        <span className="absolute top-1 left-1 bg-brand-600 text-white text-[10.5px] font-semibold px-1.5 py-0.5 rounded">Portada</span>
                       )}
                       <button
                         type="button"
                         onClick={() => setImages((prev) => prev.filter((_, i) => i !== idx))}
-                        className="absolute top-1 right-1 bg-black/70 hover:bg-rose-600 text-white p-1 rounded-md cursor-pointer"
+                        className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white p-1 rounded-md cursor-pointer"
                         aria-label={`Quitar foto ${idx + 1}`}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -692,7 +692,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               <button
                 type="button"
                 onClick={() => setShowExtras((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 text-xs font-bold text-slate-800 cursor-pointer"
+                className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-slate-800 cursor-pointer"
                 aria-expanded={showExtras}
               >
                 <span>
@@ -703,7 +703,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               {showExtras && (
                 <div className="px-4 pb-4 space-y-3">
                   <ChipGroup items={AMENITIES} selected={amenities} onToggle={(v) => toggle(amenities, v, setAmenities)} />
-                  <p className="text-[11px] font-semibold text-slate-500">Reglas</p>
+                  <p className="text-[12.5px] font-semibold text-slate-500">Reglas</p>
                   <ChipGroup items={RULES} selected={rules} onToggle={(v) => toggle(rules, v, setRules)} />
                 </div>
               )}
@@ -712,7 +712,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
         )}
 
         {error && (
-          <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700">
+          <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
             {error}
           </div>
         )}
@@ -726,7 +726,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
             if (step === 1) onCancel();
             else setStep((s) => (s - 1) as 1 | 2 | 3);
           }}
-          className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
+          className="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
         >
           {step === 1 ? 'Cancelar' : (
             <>
@@ -739,7 +739,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
             key="siguiente"
             type="button"
             onClick={goNext}
-            className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
           >
             Continuar <ArrowRight className="w-4 h-4" />
           </button>
@@ -749,7 +749,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
             key="publicar"
             type="submit"
             disabled={uploading}
-            className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
           >
             {editingSpace ? <Check className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
             {editingSpace ? 'Guardar cambios' : 'Publicar espacio'}
@@ -772,19 +772,19 @@ const ModalityRow: React.FC<{
   <div className={`rounded-2xl border transition ${enabled ? 'border-slate-900 bg-white' : 'border-slate-200 bg-slate-50'}`}>
     <div className="flex items-center gap-3 p-3">
       <label className="flex items-center gap-2 cursor-pointer min-w-[100px]">
-        <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} className="w-4 h-4 accent-rose-600" />
-        <span className="text-sm font-bold text-slate-900">{label}</span>
+        <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} className="w-4 h-4 accent-brand-600" />
+        <span className="text-sm font-semibold text-slate-900">{label}</span>
       </label>
       {enabled && (
         <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-500">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">$</span>
           <input
             inputMode="numeric"
             aria-label={`Precio ${label.toLowerCase()}`}
             value={thousands(price)}
             onChange={(e) => onPrice(digits(e.target.value))}
             placeholder="Precio"
-            className="w-full pl-7 pr-16 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+            className="w-full pl-7 pr-16 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-hidden"
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">/ {unit}</span>
         </div>
@@ -805,7 +805,7 @@ const ChipGroup: React.FC<{ items: string[]; selected: string[]; onToggle: (v: s
           onClick={() => onToggle(item)}
           aria-pressed={on}
           className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
-            on ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            on ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
           {on ? <Check className="w-3.5 h-3.5" /> : <PlusCircle className="w-3.5 h-3.5 text-slate-400" />}

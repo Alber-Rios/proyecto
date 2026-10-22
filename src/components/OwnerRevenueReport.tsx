@@ -33,8 +33,8 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
     <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-rose-600" /> Ingresos netos por mes
+          <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-brand-600" /> Ingresos netos por mes
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Reservas confirmadas o finalizadas con pago aprobado, descontada la comisión de la plataforma.
@@ -56,7 +56,7 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
           <button
             onClick={handleExport}
             disabled={rows.length === 0}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-40"
+            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-40"
           >
             <Download className="w-3.5 h-3.5" /> Exportar CSV
           </button>
@@ -93,7 +93,7 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
         </svg>
       </div>
 
-      <p className="text-[11px] text-slate-500">
+      <p className="text-[12.5px] text-slate-500">
         {rows.length} {rows.length === 1 ? 'reserva incluida' : 'reservas incluidas'} en el reporte exportable · Total neto{' '}
         <strong className="text-slate-900">{formatClp(rows.reduce((sum, r) => sum + r.net, 0))}</strong>
       </p>

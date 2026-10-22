@@ -64,8 +64,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
 
             {/* Mensajes de Alerta */}
             {error && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2 font-medium">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
                 <span>{error}</span>
               </div>
             )}
@@ -96,7 +96,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                     data-form-type="other"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium !bg-none"
                   />
                 </div>
               </div>
@@ -109,7 +109,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                   <button
                     type="button"
                     onClick={() => onNavigate('forgot-password')}
-                    className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                    className="text-[12.5px] font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer"
                   >
                     ¿Olvidaste tu contraseña?
                   </button>
@@ -122,7 +122,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-3 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
+                    className="w-full pl-10 pr-10 py-3 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium"
                   />
                   <button
                     type="button"
@@ -140,7 +140,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
+                    className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 border-slate-300"
                   />
                   <span>Recordar mi sesión</span>
                 </label>
@@ -149,7 +149,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="shine group w-full py-3.5 bg-stone-950 hover:bg-rose-600 text-white font-semibold text-sm rounded-full shadow-[0_14px_30px_-12px_rgba(12,10,9,0.55)] transition-[background-color,transform] duration-300 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="group w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-[15px] rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <LogIn className="w-4 h-4" />
                 <span>{loading ? 'Iniciando sesión...' : 'Ingresar a mi cuenta'}</span>
@@ -161,7 +161,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={() => onNavigate('register')}
-                className="font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer"
               >
                 Crear cuenta gratis
               </button>

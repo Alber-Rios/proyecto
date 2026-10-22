@@ -129,11 +129,11 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
   };
 
   const tabClass = (active: boolean) =>
-    `flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+    `flex-1 py-2 px-2 rounded-lg text-[12.5px] font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
       active ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
     }`;
   const inputClass =
-    'w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none bg-white';
+    'w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white';
 
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" onClick={onClose}>
@@ -150,10 +150,10 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
               <Wrench className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h3 id="space-block-title" className="text-sm font-bold text-slate-900">
+              <h3 id="space-block-title" className="text-sm font-semibold text-slate-900">
                 Bloquear disponibilidad
               </h3>
-              <p className="text-[11px] text-slate-500 truncate">{space.title}</p>
+              <p className="text-[12.5px] text-slate-500 truncate">{space.title}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer" aria-label="Cerrar">
@@ -177,7 +177,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
           {mode === 'hours' && (
             <div className="space-y-3">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Día</label>
+                <label className="font-semibold text-slate-700 block mb-1">Día</label>
                 <input
                   type="date"
                   min={todayIso}
@@ -189,7 +189,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
               </div>
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Desde</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Desde</label>
                   <select
                     value={effectiveStart ?? ''}
                     onChange={(e) => {
@@ -209,7 +209,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Hasta</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Hasta</label>
                   <select
                     value={effectiveEnd}
                     onChange={(e) => setHourEnd(Number(e.target.value))}
@@ -227,7 +227,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
                 </div>
               </div>
               {date === todayIso && (
-                <p className="text-[10px] text-slate-500">Hoy solo puedes bloquear horas que aún no comienzan.</p>
+                <p className="text-[11.5px] text-slate-500">Hoy solo puedes bloquear horas que aún no comienzan.</p>
               )}
             </div>
           )}
@@ -235,7 +235,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
           {mode === 'days' && (
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Desde</label>
+                <label className="font-semibold text-slate-700 block mb-1">Desde</label>
                 <input
                   type="date"
                   min={todayIso}
@@ -251,7 +251,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
                 />
               </div>
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Hasta</label>
+                <label className="font-semibold text-slate-700 block mb-1">Hasta</label>
                 <input
                   type="date"
                   min={rangeStart}
@@ -266,7 +266,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
 
           {mode === 'month' && (
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Mes</label>
+              <label className="font-semibold text-slate-700 block mb-1">Mes</label>
               <select value={monthKey} onChange={(e) => setMonthKey(e.target.value)} className={inputClass}>
                 {monthOptions.map((m) => (
                   <option key={m.key} value={m.key}>
@@ -275,20 +275,20 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
                 ))}
               </select>
               {monthKey === todayIso.slice(0, 7) && (
-                <p className="text-[10px] text-slate-500 mt-1">El mes actual se bloquea desde hoy hasta fin de mes.</p>
+                <p className="text-[11.5px] text-slate-500 mt-1">El mes actual se bloquea desde hoy hasta fin de mes.</p>
               )}
             </div>
           )}
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Motivo</label>
+            <label className="font-semibold text-slate-700 block mb-1">Motivo</label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {REASONS.map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setReason(r)}
-                  className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold cursor-pointer transition ${
+                  className={`px-2.5 py-1 rounded-lg border text-[11.5px] font-semibold cursor-pointer transition ${
                     reason === r ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -307,17 +307,17 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
           </div>
 
           {preview && (
-            <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+            <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-[12.5px] text-amber-900">
               Se bloqueará: <strong>{preview}</strong>. Nadie podrá reservar en ese período.
             </div>
           )}
           {error && (
-            <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-800" role="alert">
+            <div className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-[12.5px] font-semibold text-red-800" role="alert">
               {error}
             </div>
           )}
           {success && (
-            <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800" role="status">
+            <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[12.5px] font-semibold text-emerald-800" role="status">
               {success}
             </div>
           )}
@@ -333,7 +333,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
             <button
               type="submit"
               disabled={saving || (mode === 'hours' && effectiveStart === undefined)}
-              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white font-bold cursor-pointer transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-black text-white font-semibold cursor-pointer transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
               Bloquear
@@ -342,22 +342,22 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
         </form>
 
         <div className="pt-3 border-t border-slate-100 space-y-2">
-          <h4 className="text-[11px] font-bold text-slate-600">Bloqueos vigentes de este espacio ({upcomingBlocks.length})</h4>
+          <h4 className="text-[12.5px] font-semibold text-slate-600">Bloqueos vigentes de este espacio ({upcomingBlocks.length})</h4>
           {upcomingBlocks.length === 0 ? (
-            <p className="text-[11px] text-slate-400">No hay bloqueos programados.</p>
+            <p className="text-[12.5px] text-slate-400">No hay bloqueos programados.</p>
           ) : (
             <ul className="space-y-1.5 max-h-48 overflow-y-auto">
               {upcomingBlocks.map((b) => (
-                <li key={b.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
+                <li key={b.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-[12.5px]">
                   <div className="min-w-0">
-                    <div className="font-bold text-slate-800">{describeBlock(b)}</div>
+                    <div className="font-semibold text-slate-800">{describeBlock(b)}</div>
                     {b.reason && <div className="text-slate-500 truncate">{b.reason}</div>}
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRemove(b.id)}
                     disabled={removingId === b.id}
-                    className="shrink-0 px-2 py-1 rounded-lg text-rose-700 hover:bg-rose-50 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    className="shrink-0 px-2 py-1 rounded-lg text-red-700 hover:bg-red-50 font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     {removingId === b.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                     Quitar

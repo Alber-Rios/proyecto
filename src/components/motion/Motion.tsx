@@ -10,7 +10,7 @@ import {
 } from 'motion/react';
 
 // Curva "expo out": arranca rápido y se asienta suave, la sensación de producto caro.
-export const EASE_LUXE = [0.16, 1, 0.3, 1] as const;
+export const EASE_LUXE = [0.23, 1, 0.32, 1] as const;
 
 /** Aparece al entrar en pantalla (una sola vez). */
 export const Reveal: React.FC<{
@@ -89,7 +89,7 @@ export const ScrollProgress: React.FC = () => {
     <motion.div
       aria-hidden="true"
       style={{ scaleX }}
-      className="fixed inset-x-0 top-0 z-[60] h-[2px] origin-left bg-gradient-to-r from-rose-500 via-amber-400 to-rose-500"
+      className="fixed inset-x-0 top-0 z-[60] h-[2px] origin-left bg-brand-600"
     />
   );
 };
@@ -98,7 +98,7 @@ export const ScrollProgress: React.FC = () => {
 export const Spotlight: React.FC<{ children: React.ReactNode; className?: string; color?: string }> = ({
   children,
   className,
-  color = 'rgba(244,63,94,0.18)',
+  color = 'oklch(0.6 0.22 265 / 0.12)',
 }) => {
   const x = useMotionValue(-400);
   const y = useMotionValue(-400);
@@ -151,19 +151,21 @@ export const Magnetic: React.FC<{ children: React.ReactNode; strength?: number }
 };
 
 /**
- * Transición entre páginas: fundido + leve desplazamiento + desenfoque.
- * Al terminar se quitan filter y transform: si quedan (aunque sea blur(0px)),
- * el contenedor pasa a ser el bloque contenedor de los elementos `position: fixed`
- * y los modales dejan de centrarse en la ventana.
+ * Contenedor de cada página. Si el navegador soporta View Transitions, la
+ * animación entre pantallas la hace el navegador (ver src/lib/viewTransition.ts)
+ * y este componente no anima nada; si no, la página entra con un fundido corto.
+ * Al terminar no deja transform ni filter, para que los modales `fixed` sigan
+ * centrados en la ventana.
  */
 export const PageTransition: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const reduce = useReducedMotion();
+  const native = typeof document !== 'undefined' && 'startViewTransition' in document;
+  if (reduce || native) return <div>{children}</div>;
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 14, filter: 'blur(4px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none', transform: 'none' } }}
-      exit={reduce ? undefined : { opacity: 0, y: -8, transition: { duration: 0.2, ease: 'easeIn' } }}
-      transition={{ duration: 0.55, ease: EASE_LUXE }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0, transitionEnd: { transform: 'none' } }}
+      transition={{ duration: 0.26, ease: [0.23, 1, 0.32, 1] }}
     >
       {children}
     </motion.div>

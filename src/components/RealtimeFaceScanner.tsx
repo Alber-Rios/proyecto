@@ -421,18 +421,18 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
       {/* Encabezado */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-800 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-brand-100 text-brand-800 flex items-center justify-center shrink-0">
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">{title}</h3>
+            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
             <p className="text-xs text-slate-500">{subtitle}</p>
           </div>
         </div>
         {onCancel && (
           <button
             onClick={onCancel}
-            className="text-xs font-bold text-slate-500 hover:text-slate-800 transition cursor-pointer"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition cursor-pointer"
           >
             Volver
           </button>
@@ -440,7 +440,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
       </div>
 
       {cameraError && (
-        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center justify-between gap-2">
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{cameraError}</span>
@@ -464,7 +464,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleConfirmCapturedFace}
-                        className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                        className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
                         Aceptar y continuar a antecedentes
@@ -472,7 +472,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleRetry}
-                        className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         Repetir
@@ -481,10 +481,10 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                   </div>
                 ) : (
                   // Caso ADVERTENCIA: Rostro no identificado claramente
-                  <div className="bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-rose-500/60 text-left shadow-2xl space-y-2.5">
+                  <div className="bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-red-500/60 text-left shadow-2xl space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
-                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span className="text-xs font-semibold text-red-400 flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
                         Rostro no identificado claramente
                       </span>
                     </div>
@@ -493,7 +493,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleRetry}
-                        className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                        className="flex-1 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <RotateCcw className="w-4 h-4" />
                         Volver a capturar selfie
@@ -501,7 +501,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleConfirmCapturedFace}
-                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[10px] font-medium transition cursor-pointer"
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[11.5px] font-medium transition cursor-pointer"
                       >
                         Aceptar de todos modos
                       </button>
@@ -548,14 +548,14 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
             {/* OVERLAY DEL TEMPORIZADOR GIGANTE SI ESTÁ ACTIVO */}
             {countdown !== null && (
               <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs flex flex-col items-center justify-center z-30 animate-in fade-in">
-                <div className="w-24 h-24 rounded-full bg-indigo-600 text-white font-bold text-4xl flex items-center justify-center shadow-2xl border-4 border-white animate-pulse">
+                <div className="w-24 h-24 rounded-full bg-brand-600 text-white font-semibold text-4xl flex items-center justify-center shadow-2xl border-4 border-white animate-pulse">
                   {countdown}
                 </div>
-                <p className="text-xs font-bold text-white mt-3">Mira a la cámara...</p>
+                <p className="text-xs font-semibold text-white mt-3">Mira a la cámara...</p>
                 <button
                   type="button"
                   onClick={cancelCountdown}
-                  className="mt-2 text-[11px] text-slate-300 hover:text-white underline cursor-pointer"
+                  className="mt-2 text-[12.5px] text-slate-300 hover:text-white underline cursor-pointer"
                 >
                   Cancelar temporizador
                 </button>
@@ -565,7 +565,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
             {/* BARRA SUPERIOR: ESTADO A LA IZQUIERDA Y BOTÓN CERRAR A LA DERECHA */}
             <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none z-10">
               <div
-                className={`px-3 py-1.5 backdrop-blur-md rounded-full text-xs font-bold border flex items-center gap-2 shadow-lg transition-all duration-300 ${
+                className={`px-3 py-1.5 backdrop-blur-md rounded-full text-xs font-semibold border flex items-center gap-2 shadow-lg transition-all duration-300 ${
                   isFaceDetected
                     ? 'bg-emerald-950/90 border-emerald-400 text-emerald-300 ring-2 ring-emerald-500/50'
                     : 'bg-slate-900/90 border-white/20 text-slate-200'
@@ -585,7 +585,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 <button
                   type="button"
                   onClick={stopCamera}
-                  className="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-[10px] font-bold border border-white/20 shadow-md cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-[11.5px] font-semibold border border-white/20 shadow-md cursor-pointer flex items-center gap-1"
                 >
                   <X className="w-3 h-3" />
                   <span className="hidden sm:inline">Cerrar</span>
@@ -612,10 +612,10 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                   type="button"
                   onClick={() => startCountdownCapture(5)}
                   disabled={countdown !== null}
-                  className="px-3.5 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-white border border-white/25 text-xs font-bold shadow-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-white border border-white/25 text-xs font-semibold shadow-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   title="Te da 5 segundos para prepararte y mirar al lente"
                 >
-                  <Timer className="w-4 h-4 text-indigo-400" />
+                  <Timer className="w-4 h-4 text-brand-400" />
                   <span>5 Segundos</span>
                 </button>
 
@@ -623,10 +623,10 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 <button
                   type="button"
                   onClick={() => executeCaptureAndVerify()}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-extrabold text-xs shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-xs shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     isFaceDetected
                       ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 ring-4 ring-emerald-400/40 scale-102'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      : 'bg-brand-600 hover:bg-brand-500 text-white'
                   }`}
                 >
                   <Camera className="w-4 h-4" />
@@ -638,12 +638,12 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
         ) : (
           /* VISTA 3: INICIAR CÁMARA */
           <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-slate-900 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-indigo-950/60 border-2 border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-16 h-16 rounded-full bg-brand-950/60 border-2 border-brand-500/40 text-brand-400 flex items-center justify-center mx-auto shadow-inner">
               <Eye className="w-8 h-8" />
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-bold text-white">Reconocimiento facial biométrico</p>
+              <p className="text-sm font-semibold text-white">Reconocimiento facial biométrico</p>
               <p className="text-xs text-slate-400 max-w-xs mx-auto">
                 Tómate una selfie de frente. Tendrás 5 segundos o captura manual para mirar al lente con tranquilidad.
               </p>
@@ -654,7 +654,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 type="button"
                 onClick={startCamera}
                 disabled={isStartingCamera}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
+                className="px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl text-xs font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-brand-600/30 cursor-pointer disabled:opacity-50"
               >
                 {isStartingCamera ? (
                   <>
@@ -683,7 +683,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
           <button
             type="button"
             onClick={() => setAutoCaptureEnabled(!autoCaptureEnabled)}
-            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer shrink-0 ${
+            className={`text-[11.5px] font-semibold px-2.5 py-1 rounded-lg border transition cursor-pointer shrink-0 ${
               autoCaptureEnabled
                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'

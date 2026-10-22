@@ -1,42 +1,99 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAutoCarousel } from '../hooks/useAutoCarousel.ts';
+import { useTodayAvailability, type TodayAvailability } from '../hooks/useTodayAvailability.ts';
 import { Space } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, getSpaceRateInfo } from '../utils/formatters.ts';
 import { getCategoryLabel } from '../utils/spaceCategories.ts';
-import {
-  MapPin,
-  Star,
-  Users,
-  Maximize2,
-  ShieldCheck,
-  Sun,
-  Building2,
-  Heart,
-} from 'lucide-react';
+import { Star, Heart, Zap, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SpaceCardProps {
   space: Space;
   onSelect: (space: Space) => void;
 }
 
+const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
+
+/** Tira de horas de hoy: verde libre, gris ocupado, tenue ya pasó. */
+export const TodayStrip: React.FC<{ a: TodayAvailability }> = ({ a }) => {
+  if (a.loading) {
+    return <div className="h-[22px] rounded-md bg-slate-100 animate-pulse" aria-hidden="true" />;
+  }
+  if (!a.hourly) {
+    return (
+      <p className="flex items-center gap-1.5 text-[13px] text-slate-600">
+        <span className={`h-1.5 w-1.5 rounded-full ${a.freeToday ? 'bg-emerald-500' : 'bg-slate-300'}`} aria-hidden="true" />
+        {a.freeToday ? 'Disponible desde hoy' : 'Ocupado hoy · revisa otras fechas'}
+      </p>
+    );
+  }
+  if (a.closedToday) {
+    return (
+      <p className="flex items-center gap-1.5 text-[13px] text-slate-500">
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" aria-hidden="true" />
+        Cerrado por hoy · reserva para otro día
+      </p>
+    );
+  }
+  const freeCount = a.hours.filter((h) => h.state === 'free').length;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2 text-[12.5px]">
+        {a.freeNow ? (
+          <span className="flex items-center gap-1.5 font-medium text-emerald-700">
+            <span className="live-dot" aria-hidden="true" /> Libre ahora
+          </span>
+        ) : a.nextFreeHour != null ? (
+          <span className="font-medium text-slate-700">Libre desde las {hh(a.nextFreeHour)}</span>
+        ) : (
+          <span className="font-medium text-slate-500">Sin horas libres hoy</span>
+        )}
+        <span className="text-slate-500 tabular">
+          {freeCount} {freeCount === 1 ? 'hora libre' : 'horas libres'} hoy
+        </span>
+      </div>
+      <div
+        className="flex h-[6px] gap-[2px]"
+        role="img"
+        aria-label={`Hoy: ${freeCount} horas libres entre ${hh(a.hours[0].hour)} y ${hh(a.hours[a.hours.length - 1].hour + 1)}`}
+      >
+        {a.hours.map((h, i) => (
+          <span
+            key={h.hour}
+            title={`${hh(h.hour)} · ${h.state === 'free' ? 'libre' : h.state === 'busy' ? 'ocupado' : 'ya pasó'}`}
+            style={{ animationDelay: `${i * 18}ms` }}
+            className={`flex-1 rounded-full animate-slot-in origin-bottom ${
+              h.state === 'free' ? 'bg-emerald-500' : h.state === 'busy' ? 'bg-slate-300' : 'bg-slate-100'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
   const { currentUser, isSpaceFavorite, toggleFavoriteSpace } = useApp();
   const isFavorite = isSpaceFavorite(space.id);
-  // Las fotos rotan solas mientras el cursor (o el foco) está sobre la tarjeta.
   const images = space.images || [];
   const [hovering, setHovering] = useState(false);
-  const { index: photoIndex, go: goToPhoto } = useAutoCarousel(images.length, 2200, !hovering);
+  // Las fotos rotan solas mientras el cursor (o el foco) está sobre la tarjeta.
+  const { index: photoIndex, direction, go: goToPhoto } = useAutoCarousel(images.length, 2400, !hovering);
+  const { ref, availability } = useTodayAvailability<HTMLDivElement>(space);
+  const rate = getSpaceRateInfo(space);
+  const unit = rate.unitLabel.replace(' • Flexible', '').replace('/ ', '');
+
+  const select = () => onSelect(space);
 
   return (
     <div
+      ref={ref}
       id={`space-card-${space.id}`}
       role="link"
       tabIndex={0}
       aria-label={`Ver ${space.title}`}
-      onClick={() => onSelect(space)}
+      onClick={select}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => {
         setHovering(false);
@@ -48,148 +105,149 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onSelect(space);
+          select();
         }
       }}
-      className="group h-full bg-white rounded-3xl border border-stone-200/80 overflow-hidden flex flex-col cursor-pointer transition-[transform,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1.5 hover:border-stone-300 hover:shadow-[0_30px_60px_-25px_rgba(12,10,9,0.35)]"
+      className="group relative flex h-full flex-col gap-3 rounded-[1.4rem] cursor-pointer outline-offset-4"
     >
-      {/* Imagen Principal con Badges */}
-      <div className="shine relative aspect-4/3 overflow-hidden bg-gradient-to-br from-stone-100 to-stone-200">
+      {/* Foto */}
+      <div
+        className="relative aspect-[20/19] overflow-hidden rounded-[1.25rem] bg-slate-100"
+        style={{ viewTransitionName: `space-photo-${space.id}`, viewTransitionClass: 'space-photo' } as React.CSSProperties}
+      >
         {images.length > 0 ? (
-          <AnimatePresence initial={false}>
+          <AnimatePresence initial={false} custom={direction}>
             <motion.img
               key={photoIndex}
               src={images[photoIndex]}
               alt={space.title}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="absolute inset-0 w-full h-full object-cover scale-[1.01] group-hover:scale-[1.08] transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+              custom={direction}
+              variants={{
+                enter: (d: number) => ({ x: d >= 0 ? '100%' : '-100%' }),
+                center: { x: 0 },
+                exit: (d: number) => ({ x: d >= 0 ? '-30%' : '30%', opacity: 0.6 }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: 'spring', duration: 0.55, bounce: 0 }}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[var(--ease-out)] group-hover:scale-[1.03]"
               loading="lazy"
+              draggable={false}
             />
           </AnimatePresence>
         ) : (
-          <div className="w-full h-full" aria-label="Este espacio no tiene imágenes" />
+          <div className="h-full w-full" aria-label="Este espacio no tiene imágenes" />
         )}
 
+        {/* Flechas (solo puntero fino) */}
         {images.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1" aria-hidden>
-            {images.slice(0, 6).map((_, idx) => (
-              <span
-                key={idx}
-                className={`h-1.5 rounded-full transition-all duration-300 ${idx === photoIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/55'}`}
-              />
-            ))}
-          </div>
+          <>
+            <button
+              type="button"
+              aria-label="Foto anterior"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPhoto((photoIndex - 1 + images.length) % images.length);
+              }}
+              className="absolute left-2.5 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100 hover:bg-white [@media(pointer:fine)]:flex cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Foto siguiente"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPhoto((photoIndex + 1) % images.length);
+              }}
+              className="absolute right-2.5 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100 hover:bg-white [@media(pointer:fine)]:flex cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1" aria-hidden="true">
+              {images.slice(0, 5).map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`h-1.5 rounded-full transition-all duration-300 ease-[var(--ease-out)] ${
+                    idx === photoIndex ? 'w-1.5 bg-white scale-125' : 'w-1.5 bg-white/60'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
         )}
 
-        {/* Botón Favorito (Corazón) - Solo para usuarios registrados */}
+        {/* Sello superior */}
+        <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
+          {space.instantBooking !== false ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11.5px] font-semibold text-slate-900 shadow-sm">
+              <Zap className="h-3 w-3 fill-brand-600 text-brand-600" /> Reserva inmediata
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11.5px] font-semibold text-slate-900 shadow-sm">
+              Con aprobación
+            </span>
+          )}
+        </div>
+
+        {/* Favorito */}
         {currentUser && (
-          <button
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.85 }}
             onClick={(e) => {
               e.stopPropagation();
               toggleFavoriteSpace(space.id);
             }}
             aria-label={isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
-            title={isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
-            className={`absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-xs transition transform active:scale-90 cursor-pointer shadow-sm ${
-              isFavorite
-                ? 'bg-white text-rose-600 ring-1 ring-rose-200'
-                : 'bg-slate-900/45 hover:bg-white text-white hover:text-rose-600'
-            }`}
+            aria-pressed={isFavorite}
+            className="absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full cursor-pointer"
           >
-            <Heart
-              className={`w-4 h-4 transition-transform ${
-                isFavorite ? 'fill-rose-500 text-rose-500 scale-110' : ''
-              }`}
-            />
-          </button>
-        )}
-
-        {/* Categoría & Entorno Badges */}
-        <div className="absolute top-3 left-3 flex flex-col items-start gap-1">
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/95 backdrop-blur-xs text-slate-800 shadow-xs">
-            {getCategoryLabel(space.category)}
-          </span>
-          {space.spaceEnvironment === 'abierto' ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/95 text-white shadow-xs">
-              <Sun className="w-3 h-3" /> Al aire libre
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/90 text-white shadow-xs">
-              <Building2 className="w-3 h-3" /> Interior
-            </span>
-          )}
-          {space.isVerified && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/95 text-white shadow-xs">
-              <ShieldCheck className="w-3 h-3" /> Verificado
-            </span>
-          )}
-        </div>
-
-        {/* Rating */}
-        {space.rating > 0 && (
-          <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg text-xs font-bold bg-slate-900/80 backdrop-blur-xs text-white flex items-center gap-1 shadow-sm">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>{space.rating.toFixed(1)}</span>
-            <span className="text-[10px] text-slate-300">({space.reviewsCount})</span>
-          </div>
+            <motion.span
+              key={String(isFavorite)}
+              initial={{ scale: isFavorite ? 0.6 : 1 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', duration: 0.4, bounce: 0.45 }}
+            >
+              <Heart
+                className={`h-6 w-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] ${
+                  isFavorite ? 'fill-brand-600 text-white' : 'fill-slate-900/35 text-white'
+                }`}
+                strokeWidth={2}
+              />
+            </motion.span>
+          </motion.button>
         )}
       </div>
 
-      {/* Contenido */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
-        <div>
-          <div className="flex items-center gap-1 text-xs text-slate-500 font-medium mb-1">
-            <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-            <span className="truncate">{space.commune}, {space.region}</span>
-          </div>
-
-          <h3 className="font-bold text-slate-900 text-base leading-snug group-hover:text-rose-600 transition line-clamp-1">
-            {space.title}
-          </h3>
-
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-            {space.description}
-          </p>
+      {/* Datos */}
+      <div className="flex flex-1 flex-col gap-1 px-0.5">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="line-clamp-1 text-[15px] font-semibold leading-snug text-slate-950">{space.title}</h3>
+          {space.rating > 0 && (
+            <span className="flex shrink-0 items-center gap-1 text-[13.5px] text-slate-900 tabular">
+              <Star className="h-3.5 w-3.5 fill-slate-900 text-slate-900" />
+              {space.rating.toFixed(1).replace('.', ',')}
+              <span className="text-slate-500">({space.reviewsCount})</span>
+            </span>
+          )}
         </div>
-
-        {/* Capacidad y Superficie */}
-        <div className="flex items-center gap-4 text-xs text-slate-600 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-1">
-            <Users className="w-3.5 h-3.5 text-slate-400" />
-            <span>Hasta {space.capacity} personas</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
-            <span>{space.surfaceM2} m²</span>
-          </div>
-        </div>
-
-        {/* Precio en CLP dinámico según modalidad */}
-        <div className="pt-2 flex items-center justify-between">
-          <div>
-            {(() => {
-              const rate = getSpaceRateInfo(space);
-              return (
-                <div>
-                  <span className="text-base font-extrabold text-slate-900">
-                    {formatClp(rate.amount)}
-                  </span>
-                  <span className="text-xs text-slate-500 font-medium"> {rate.unitLabel}</span>
-                </div>
-              );
-            })()}
-          </div>
-
-          <button
-            type="button"
-            className="px-4 py-2 rounded-full bg-stone-900 group-hover:bg-rose-600 text-white text-xs font-semibold transition-colors duration-300"
-          >
-            Reservar
-          </button>
+        <p className="flex items-center gap-1 text-[13.5px] text-slate-500">
+          <span className="truncate">
+            {getCategoryLabel(space.category)} · {space.commune}
+          </span>
+          {space.isVerified && <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-label="Espacio verificado" />}
+        </p>
+        <p className="text-[13.5px] text-slate-500 tabular">
+          Hasta {space.capacity} {space.capacity === 1 ? 'persona' : 'personas'} · {space.surfaceM2} m²
+        </p>
+        <p className="mt-0.5 text-[15px] text-slate-950 tabular">
+          <span className="font-semibold">{formatClp(rate.amount)}</span>
+          <span className="text-slate-600"> {unit === 'hr' ? 'por hora' : unit === 'día' ? 'por día' : 'al mes'}</span>
+        </p>
+        <div className="mt-2 border-t border-slate-100 pt-2.5">
+          <TodayStrip a={availability} />
         </div>
       </div>
     </div>

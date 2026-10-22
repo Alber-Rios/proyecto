@@ -65,7 +65,7 @@ export const AuditLogPanel: React.FC = () => {
     <div className={cardClass}>
       <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Registro de auditoría</h2>
+          <h2 className="text-base font-semibold text-slate-900">Registro de auditoría</h2>
           <p className="text-xs text-slate-500">
             Eventos críticos con usuario, acción, entidad, IP y fecha. La bitácora es de solo adición: no admite edición ni borrado.
           </p>
@@ -115,11 +115,11 @@ export const AuditLogPanel: React.FC = () => {
                   <td className="px-4 py-2 whitespace-nowrap text-slate-600">{new Date(log.timestamp).toLocaleString('es-CL')}</td>
                   <td className="px-4 py-2">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      className={`px-2 py-0.5 rounded-full text-[11.5px] font-semibold ${
                         log.severity === 'critical'
-                          ? 'bg-rose-100 text-rose-800'
+                          ? 'bg-red-100 text-red-800'
                           : log.severity === 'security'
-                          ? 'bg-indigo-100 text-indigo-800'
+                          ? 'bg-red-100 text-red-800'
                           : log.severity === 'warning'
                           ? 'bg-amber-100 text-amber-800'
                           : 'bg-slate-100 text-slate-700'
@@ -130,10 +130,10 @@ export const AuditLogPanel: React.FC = () => {
                   </td>
                   <td className="px-4 py-2 text-slate-700">
                     {log.userEmail}
-                    <span className="block text-[10px] text-slate-400">{log.userRole}</span>
+                    <span className="block text-[11.5px] text-slate-400">{log.userRole}</span>
                   </td>
-                  <td className="px-4 py-2 font-mono text-[11px] text-slate-600">{log.ip}</td>
-                  <td className="px-4 py-2 font-mono text-[10px] text-slate-500 max-w-md break-all">{JSON.stringify(log.details)}</td>
+                  <td className="px-4 py-2 font-mono text-[12.5px] text-slate-600">{log.ip}</td>
+                  <td className="px-4 py-2 font-mono text-[11.5px] text-slate-500 max-w-md break-all">{JSON.stringify(log.details)}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
@@ -203,7 +203,7 @@ export const ReportsPanel: React.FC = () => {
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
       <div className={cardClass}>
         <div className="p-5 border-b border-slate-100">
-          <h2 className="text-base font-bold text-slate-900">Reportes recibidos</h2>
+          <h2 className="text-base font-semibold text-slate-900">Reportes recibidos</h2>
           <p className="text-xs text-slate-500">Denuncias de publicaciones y usuarios enviadas por la comunidad.</p>
         </div>
         <ul className="divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
@@ -213,10 +213,10 @@ export const ReportsPanel: React.FC = () => {
             return (
               <li key={report.id} className="p-4 space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-bold text-slate-900">
+                  <span className="font-semibold text-slate-900">
                     {report.targetType === 'space' ? 'Publicación' : 'Usuario'}: {report.targetLabel}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">{report.status}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11.5px] font-semibold">{report.status}</span>
                 </div>
                 <p className="text-slate-500">
                   {report.category} · {report.reporterEmail} · {new Date(report.createdAt).toLocaleString('es-CL')}
@@ -240,7 +240,7 @@ export const ReportsPanel: React.FC = () => {
                       <button
                         onClick={() => resolve(report, 'resolved')}
                         disabled={busy === report.id}
-                        className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                        className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold cursor-pointer"
                       >
                         Resolver
                       </button>
@@ -250,7 +250,7 @@ export const ReportsPanel: React.FC = () => {
                       {space && space.status === 'active' && (
                         <button
                           onClick={() => adminToggleSpaceStatus(space.id, 'paused')}
-                          className="px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold cursor-pointer"
+                          className="px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold cursor-pointer"
                         >
                           Pausar publicación
                         </button>
@@ -268,7 +268,7 @@ export const ReportsPanel: React.FC = () => {
 
       <div className={cardClass}>
         <div className="p-5 border-b border-slate-100 space-y-2">
-          <h2 className="text-base font-bold text-slate-900">Suspensión de cuentas</h2>
+          <h2 className="text-base font-semibold text-slate-900">Suspensión de cuentas</h2>
           <p className="text-xs text-slate-500">
             Una cuenta suspendida no puede iniciar sesión, reservar ni publicar, y sus publicaciones activas se pausan.
           </p>
@@ -278,17 +278,17 @@ export const ReportsPanel: React.FC = () => {
           {users.map((u) => (
             <li key={u.id} className="p-4 flex items-center justify-between gap-3 text-xs">
               <div className="min-w-0">
-                <p className="font-bold text-slate-900 truncate">{u.fullName}</p>
+                <p className="font-semibold text-slate-900 truncate">{u.fullName}</p>
                 <p className="text-slate-500 truncate">
                   {u.email} · {u.role === 'owner' ? 'Propietario' : 'Arrendatario'}
-                  {u.isSuspended && <span className="text-rose-600 font-bold"> · Suspendida</span>}
+                  {u.isSuspended && <span className="text-red-600 font-semibold"> · Suspendida</span>}
                 </p>
               </div>
               <button
                 onClick={() => toggleSuspension(u.id, !u.isSuspended)}
                 disabled={busy === u.id}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer shrink-0 ${
-                  u.isSuspended ? 'bg-emerald-600 text-white' : 'border border-rose-300 text-rose-700'
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shrink-0 ${
+                  u.isSuspended ? 'bg-emerald-600 text-white' : 'border border-red-300 text-red-700'
                 }`}
               >
                 {busy === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : u.isSuspended ? 'Reactivar' : 'Suspender'}
@@ -296,7 +296,7 @@ export const ReportsPanel: React.FC = () => {
             </li>
           ))}
         </ul>
-        {error && <p className="p-4 text-[11px] font-semibold text-rose-600">{error}</p>}
+        {error && <p className="p-4 text-[12.5px] font-semibold text-red-600">{error}</p>}
       </div>
     </div>
   );
@@ -308,7 +308,7 @@ export const ReportsPanel: React.FC = () => {
 const LIGHT_CLASS: Record<KpiLight, string> = {
   green: 'bg-emerald-500',
   yellow: 'bg-amber-400',
-  red: 'bg-rose-500',
+  red: 'bg-brand-500',
   none: 'bg-slate-300',
 };
 
@@ -333,7 +333,7 @@ export const KpiDashboard: React.FC = () => {
     <div className={cardClass}>
       <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Indicadores clave (KPI)</h2>
+          <h2 className="text-base font-semibold text-slate-900">Indicadores clave (KPI)</h2>
           <p className="text-xs text-slate-500">
             Calculados en la base de datos a partir de reservas, contratos, verificaciones, valoraciones y visitas.
           </p>
@@ -347,19 +347,19 @@ export const KpiDashboard: React.FC = () => {
       {loading ? (
         <p className="p-5 text-xs text-slate-500">Calculando…</p>
       ) : error ? (
-        <p className="p-5 text-xs text-rose-600">{error}</p>
+        <p className="p-5 text-xs text-red-600">{error}</p>
       ) : (
         <div className="p-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {kpis.map((kpi) => (
             <div key={kpi.id} className="p-4 rounded-2xl border border-slate-200 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-500">{kpi.id}</span>
+                <span className="text-[11.5px] font-semibold text-slate-500">{kpi.id}</span>
                 <span className={`w-3 h-3 rounded-full ${LIGHT_CLASS[kpi.light]}`} aria-label={`Semáforo ${kpi.light}`} />
               </div>
-              <p className="text-xs font-bold text-slate-900">{kpi.name}</p>
-              <p className="text-2xl font-bold text-slate-900 tabular-nums">{kpi.display}</p>
-              <p className="text-[11px] text-slate-500">Meta: {kpi.target}</p>
-              {kpi.detail && <p className="text-[10px] text-slate-400">{kpi.detail}</p>}
+              <p className="text-xs font-semibold text-slate-900">{kpi.name}</p>
+              <p className="text-2xl font-semibold text-slate-900 tabular-nums">{kpi.display}</p>
+              <p className="text-[12.5px] text-slate-500">Meta: {kpi.target}</p>
+              {kpi.detail && <p className="text-[11.5px] text-slate-400">{kpi.detail}</p>}
             </div>
           ))}
         </div>
@@ -413,7 +413,7 @@ export const DiscountCodesPanel: React.FC = () => {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
       <form onSubmit={save} className={`${cardClass} p-5 space-y-3`}>
-        <h2 className="text-base font-bold text-slate-900">Nuevo código</h2>
+        <h2 className="text-base font-semibold text-slate-900">Nuevo código</h2>
         <input required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="CÓDIGO" className={`${inputClass} w-full uppercase`} />
         <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción" className={`${inputClass} w-full`} />
         <label className="block text-xs text-slate-600">
@@ -426,8 +426,8 @@ export const DiscountCodesPanel: React.FC = () => {
           <input type="date" value={form.validUntil} onChange={(e) => setForm({ ...form, validUntil: e.target.value })} className={`${inputClass} w-full mt-1`} />
         </label>
         <input type="number" min={1} value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })} placeholder="Máximo de usos (opcional)" className={`${inputClass} w-full`} />
-        {error && <p className="text-[11px] font-semibold text-rose-600">{error}</p>}
-        <button type="submit" disabled={saving} className="w-full px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+        {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
+        <button type="submit" disabled={saving} className="w-full px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold cursor-pointer disabled:opacity-50">
           Guardar código
         </button>
       </form>
@@ -445,9 +445,9 @@ export const DiscountCodesPanel: React.FC = () => {
           <tbody className="divide-y divide-slate-100">
             {codes.map((c) => (
               <tr key={c.code}>
-                <td className="px-4 py-2 font-mono font-bold">
+                <td className="px-4 py-2 font-mono font-semibold">
                   {c.code}
-                  {c.description && <span className="block font-sans font-normal text-[10px] text-slate-500">{c.description}</span>}
+                  {c.description && <span className="block font-sans font-normal text-[11.5px] text-slate-500">{c.description}</span>}
                 </td>
                 <td className="px-4 py-2">
                   {c.percentOff}%{c.maxDiscountClp ? ` (tope ${formatClp(c.maxDiscountClp)})` : ''}
@@ -460,7 +460,7 @@ export const DiscountCodesPanel: React.FC = () => {
                 <td className="px-4 py-2">
                   <button
                     onClick={() => toggle(c)}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}
+                    className={`px-2 py-1 rounded-lg text-[11.5px] font-semibold cursor-pointer ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {c.active ? 'Activo' : 'Inactivo'}
                   </button>
@@ -486,7 +486,7 @@ export const PaymentsPanel: React.FC = () => {
   return (
     <div className={cardClass}>
       <div className="p-5 border-b border-slate-100">
-        <h2 className="text-base font-bold text-slate-900">Transacciones Webpay Plus</h2>
+        <h2 className="text-base font-semibold text-slate-900">Transacciones Webpay Plus</h2>
         <p className="text-xs text-slate-500">Registro de órdenes de compra, autorizaciones y reversas informadas por Transbank.</p>
       </div>
       <div className="overflow-x-auto">
@@ -511,11 +511,11 @@ export const PaymentsPanel: React.FC = () => {
                 <td className="px-4 py-2 tabular-nums">{formatClp(p.amountClp)}</td>
                 <td className="px-4 py-2">
                   {p.status}
-                  {p.environment === 'integration' && <span className="block text-[10px] text-slate-400">integración</span>}
+                  {p.environment === 'integration' && <span className="block text-[11.5px] text-slate-400">integración</span>}
                 </td>
                 <td className="px-4 py-2 font-mono">
                   {p.authorizationCode || '—'}
-                  {p.cardLast4 && <span className="block text-[10px] text-slate-400">**** {p.cardLast4}</span>}
+                  {p.cardLast4 && <span className="block text-[11.5px] text-slate-400">**** {p.cardLast4}</span>}
                 </td>
                 <td className="px-4 py-2 tabular-nums">{p.refundedAmountClp ? formatClp(p.refundedAmountClp) : '—'}</td>
               </tr>

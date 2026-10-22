@@ -17,23 +17,23 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
   // La dirección exacta solo se entrega a quien tiene una reserva en el espacio.
   const shownAddress = address || 'Dirección exacta visible al confirmar tu reserva';
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-      <div className="p-5 sm:p-6 pb-4 flex items-center justify-between border-b border-slate-100">
+    <div>
+      <div className="pb-5 flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-rose-600" />
-            <span>Ubicación y entorno</span>
+          <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-slate-950">
+            Dónde vas a estar
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-[14.5px] text-slate-600 mt-1 flex items-center gap-1.5">
+            <MapPin className="w-4 h-4 text-slate-500" />
             {shownAddress} • {commune}
           </p>
         </div>
-        <span className="text-[11px] font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200/80">
+        <span className="text-[12.5px] font-semibold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200/80">
           {commune}, {region}
         </span>
       </div>
 
-      <div className="relative w-full h-72 sm:h-80 bg-[#e5e9ec] overflow-hidden select-none">
+      <div className="relative w-full h-72 sm:h-80 bg-[#e5e9ec] overflow-hidden select-none rounded-[1.25rem]">
         {/* SVG Styled Cartographic Background */}
         <svg className="w-full h-full object-cover" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -96,41 +96,41 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
         </svg>
 
         {/* Floating Landmarks Chips (styled exactly like the reference) */}
-        <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
-          <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+        <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
+          <span className="w-2 h-2 rounded-full bg-brand-500"></span>
           <span>Museo de la memoria</span>
         </div>
 
-        <div className="absolute top-24 right-8 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+        <div className="absolute top-24 right-8 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span>Los descubridores</span>
         </div>
 
-        <div className="absolute top-44 right-14 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+        <div className="absolute top-44 right-14 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span>Parque inés de suárez</span>
         </div>
 
-        <div className="absolute bottom-16 right-16 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+        <div className="absolute bottom-16 right-16 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
           <span className="w-2 h-2 rounded-full bg-sky-500"></span>
           <span>Mallplaza egaña</span>
         </div>
 
-        <div className="absolute bottom-5 right-24 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
-          <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+        <div className="absolute bottom-5 right-24 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
+          <span className="w-2 h-2 rounded-full bg-brand-500"></span>
           <span>Estadio nacional julio martínez</span>
         </div>
 
         {/* Hospital Badge */}
-        <div className="absolute top-6 left-28 w-6 h-6 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center justify-center shadow-md">
+        <div className="absolute top-6 left-28 w-6 h-6 rounded-full bg-brand-500 text-white font-semibold text-xs flex items-center justify-center shadow-md">
           H
         </div>
 
         {/* MAIN PIN SPOTLIGHT: The Space itself with pulse and detailed pill */}
         <div className="absolute top-[38%] left-[42%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group cursor-pointer z-10">
           {/* Main Landmark Card Pin */}
-          <div className="bg-slate-900 text-white text-xs font-bold px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700 ring-4 ring-rose-500/20 whitespace-nowrap animate-bounce-short">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+          <div className="bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700 ring-4 ring-brand-500/20 whitespace-nowrap animate-bounce-short">
+            <span className="w-2.5 h-2.5 rounded-full bg-brand-500 animate-ping"></span>
             <span>{address ? address.split(',')[0] : commune}</span>
             {landmark && <span className="text-slate-400 font-normal">({landmark})</span>}
           </div>
@@ -139,12 +139,12 @@ export const SpaceLocationMap: React.FC<SpaceLocationMapProps> = ({
           <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-slate-900 drop-shadow-sm"></div>
 
           {/* Pin Target Dot */}
-          <div className="w-3.5 h-3.5 rounded-full bg-rose-600 border-2 border-white shadow-md -mt-0.5"></div>
+          <div className="w-3.5 h-3.5 rounded-full bg-brand-600 border-2 border-white shadow-md -mt-0.5"></div>
         </div>
 
         {/* Bottom controls */}
-        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-700 border border-slate-200/80 flex items-center gap-2 shadow-xs">
-          <Navigation className="w-3.5 h-3.5 text-rose-600" />
+        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11.5px] font-semibold text-slate-700 border border-slate-200/80 flex items-center gap-2 shadow-xs">
+          <Navigation className="w-3.5 h-3.5 text-brand-600" />
           <span>Mapa referencial de la comuna</span>
         </div>
       </div>

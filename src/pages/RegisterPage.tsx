@@ -138,8 +138,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     >
 
             {error && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2 font-medium">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl flex items-center gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
                 <span>{error}</span>
               </div>
             )}
@@ -161,7 +161,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   <button
                     type="button"
                     onClick={() => setRole('tenant')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                       role === 'tenant'
                         ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -173,9 +173,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   <button
                     type="button"
                     onClick={() => setRole('owner')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                       role === 'owner'
-                        ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                        ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -198,7 +198,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     data-temp-mail-org="0"
                     value={firstNames}
                     onChange={(e) => setFirstNames(capitalizeInitial(e.target.value))}
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium !bg-none"
                   />
                 </div>
 
@@ -212,20 +212,20 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     max={getAdultBirthDateLimit()}
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium"
                   />
-                  {birthDate && !isAtLeast18(birthDate) && <p className="mt-1 text-[11px] text-rose-600">Debes tener 18 años o más.</p>}
+                  {birthDate && !isAtLeast18(birthDate) && <p className="mt-1 text-[12.5px] text-brand-600">Debes tener 18 años o más.</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1.5">Apellidos</label>
-                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium" />
+                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1.5">Género</label>
-                  <select value={gender} onChange={(e) => setGender(e.target.value as UserGender)} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium">
+                  <select value={gender} onChange={(e) => setGender(e.target.value as UserGender)} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium">
                     <option value="femenino">Femenino</option>
                     <option value="masculino">Masculino</option>
                     <option value="no_binario">No binario</option>
@@ -247,7 +247,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     autoComplete="off"
                     value={rut}
                     onChange={(e) => setRut(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium !bg-none"
                   />
                 </div>
                 <div>
@@ -264,7 +264,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     placeholder="912345678"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').replace(/^56/, '').slice(0, 9))}
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium !bg-none"
                   />
                 </div>
               </div>
@@ -286,7 +286,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   data-form-type="other"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
+                  className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium !bg-none"
                 />
               </div>
 
@@ -302,7 +302,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     placeholder="Mínimo 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium"
                   />
                 </div>
                 <div>
@@ -315,7 +315,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     placeholder="Repite tu contraseña"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
+                    className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-500/15 font-medium"
                   />
                 </div>
               </div>
@@ -327,9 +327,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   required
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
+                  className="mt-0.5 w-4 h-4 rounded text-brand-600 focus:ring-brand-500 border-slate-300 cursor-pointer"
                 />
-                <span className="text-[11px] text-slate-600 leading-snug">
+                <span className="text-[12.5px] text-slate-600 leading-snug">
                   Al tocar «Crear cuenta», aceptas los <Link to="/terminos" className="font-semibold text-blue-700 hover:underline">Términos y condiciones</Link> de Spotly y confirmas que has leído la <Link to="/privacidad" className="font-semibold text-blue-700 hover:underline">Política de privacidad</Link> y la <Link to="/cookies" className="font-semibold text-blue-700 hover:underline">Política de cookies</Link>.
                 </span>
               </label>
@@ -337,7 +337,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="shine group w-full py-3.5 bg-stone-950 hover:bg-rose-600 text-white font-semibold text-sm rounded-full shadow-[0_14px_30px_-12px_rgba(12,10,9,0.55)] transition-[background-color,transform] duration-300 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="group w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-[15px] rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>{loading ? 'Creando cuenta...' : 'Crear cuenta gratis'}</span>
@@ -349,7 +349,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={() => onNavigate('login')}
-                className="font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                className="font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer"
               >
                 Iniciar sesión aquí
               </button>

@@ -68,7 +68,7 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
     }
     if (outcome === 'rechazado') {
       return {
-        tone: 'rose' as const,
+        tone: 'red' as const,
         icon: <X className="w-9 h-9" strokeWidth={3} />,
         title: 'Reserva rechazada: pago no aprobado',
         text: 'Tu banco no autorizó el pago. La causa más común es saldo o cupo insuficiente. No se hizo ningún cargo y el horario quedó libre para que lo intentes de nuevo.',
@@ -76,7 +76,7 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
     }
     if (outcome === 'anulado') {
       return {
-        tone: 'rose' as const,
+        tone: 'red' as const,
         icon: <X className="w-9 h-9" strokeWidth={3} />,
         title: 'Pago anulado',
         text: 'Cancelaste el pago en Webpay. No se hizo ningún cargo y la reserva no se registró.',
@@ -84,14 +84,14 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
     }
     if (outcome === 'expirado') {
       return {
-        tone: 'rose' as const,
+        tone: 'red' as const,
         icon: <AlertTriangle className="w-8 h-8" />,
         title: 'La reserva expiró',
         text: 'El tiempo para pagar se agotó y el horario se liberó. Si alcanzó a cobrarse, el monto se reversó automáticamente.',
       };
     }
     return {
-      tone: 'rose' as const,
+      tone: 'red' as const,
       icon: <AlertTriangle className="w-8 h-8" />,
       title: 'No pudimos confirmar el pago',
       text: 'Revisa el estado en Mis reservas. Si ves un cargo sin reserva, contáctanos desde Ayuda y soporte.',
@@ -102,7 +102,7 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
     neutral: 'bg-slate-100 text-slate-600',
     emerald: 'bg-emerald-500 text-white',
     amber: 'bg-amber-400 text-slate-900',
-    rose: 'bg-rose-600 text-white',
+    red: 'bg-red-600 text-white',
   }[content.tone];
 
   return createPortal(
@@ -128,7 +128,7 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
         </motion.div>
 
         <div className="space-y-1.5">
-          <h2 id="booking-result-title" className="text-xl font-bold text-slate-900">
+          <h2 id="booking-result-title" className="text-xl font-semibold text-slate-900">
             {content.title}
           </h2>
           <p id="booking-result-text" className="text-sm text-slate-600 leading-relaxed">
@@ -138,15 +138,15 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
 
         {reservation && !loading && (success || outcome === 'rechazado') && (
           <div className="text-left p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
-            <div className="font-bold text-slate-900 truncate">{reservation.spaceTitle}</div>
+            <div className="font-semibold text-slate-900 truncate">{reservation.spaceTitle}</div>
             <div className="flex items-center gap-1.5 text-slate-600">
               <CalendarCheck className="w-3.5 h-3.5 text-slate-400" /> {describeWhen(reservation)}
             </div>
             <div className="flex items-center justify-between pt-1">
               <span className="text-slate-500">{success ? 'Total pagado' : 'Total'}</span>
-              <span className="font-extrabold text-slate-900">{formatClp(reservation.totalClp)}</span>
+              <span className="font-semibold text-slate-900">{formatClp(reservation.totalClp)}</span>
             </div>
-            <div className="text-[10px] font-mono text-slate-400">Reserva #{reservation.id.slice(-6)}</div>
+            <div className="text-[11.5px] font-mono text-slate-400">Reserva #{reservation.id.slice(-6)}</div>
           </div>
         )}
 
@@ -155,7 +155,7 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
             <button
               type="button"
               onClick={onFinish}
-              className="flex-1 px-4 py-3 rounded-2xl border border-slate-200 text-slate-800 font-bold text-sm hover:bg-slate-50 cursor-pointer"
+              className="flex-1 px-4 py-3 rounded-2xl border border-slate-200 text-slate-800 font-semibold text-sm hover:bg-slate-50 cursor-pointer"
             >
               Finalizar
             </button>
@@ -163,14 +163,14 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
               type="button"
               autoFocus
               onClick={onViewBookings}
-              className="flex-1 px-4 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-sm cursor-pointer"
+              className="flex-1 px-4 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-semibold text-sm cursor-pointer"
             >
               Ver mis reservas
             </button>
           </div>
         )}
         {!loading && !success && onRetry && (
-          <button type="button" onClick={onRetry} className="text-xs font-bold text-rose-600 hover:underline cursor-pointer">
+          <button type="button" onClick={onRetry} className="text-xs font-semibold text-brand-600 hover:underline cursor-pointer">
             Intentar de nuevo con otro medio de pago
           </button>
         )}

@@ -24,12 +24,12 @@ export const ContactTenantModal: React.FC<ContactTenantModalProps> = ({ tenant, 
     <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
             <MessageSquare className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Contactar al arrendatario</h3>
-            <p className="text-[11px] text-slate-500">Recinto: {tenant.spaceTitle}</p>
+            <h3 className="text-sm font-semibold text-slate-900">Contactar al arrendatario</h3>
+            <p className="text-[12.5px] text-slate-500">Recinto: {tenant.spaceTitle}</p>
           </div>
         </div>
         <button
@@ -42,7 +42,7 @@ export const ContactTenantModal: React.FC<ContactTenantModalProps> = ({ tenant, 
 
       <div className="space-y-3 text-xs">
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-          <div className="font-bold text-slate-900">{tenant.name}</div>
+          <div className="font-semibold text-slate-900">{tenant.name}</div>
           <div className="text-slate-600">Correo: {tenant.email || 'Sin correo'}</div>
           <div className="text-slate-600">Teléfono: {tenant.phone || 'Sin teléfono'}</div>
         </div>
@@ -57,7 +57,7 @@ export const ContactTenantModal: React.FC<ContactTenantModalProps> = ({ tenant, 
               href={`https://wa.me/${toWhatsAppNumber(tenant.phone)}?text=${encodeURIComponent(`Hola ${tenant.name}, te escribo por tu reserva en ${tenant.spaceTitle}.`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-2 transition"
+              className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-2 transition"
             >
               <MessageSquare className="w-4 h-4" />
               <span>Abrir WhatsApp</span>
@@ -65,7 +65,7 @@ export const ContactTenantModal: React.FC<ContactTenantModalProps> = ({ tenant, 
           ) : tenant.email ? (
             <a
               href={`mailto:${tenant.email}?subject=${encodeURIComponent(`Reserva en ${tenant.spaceTitle}`)}`}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold flex items-center justify-center gap-2 transition"
+              className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center justify-center gap-2 transition"
             >
               <MessageSquare className="w-4 h-4" />
               <span>Enviar correo</span>
@@ -75,7 +75,7 @@ export const ContactTenantModal: React.FC<ContactTenantModalProps> = ({ tenant, 
           )}
           <button
             onClick={onClose}
-            className="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 cursor-pointer"
+            className="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 cursor-pointer"
           >
             Cerrar
           </button>

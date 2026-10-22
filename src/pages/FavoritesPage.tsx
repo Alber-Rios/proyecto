@@ -61,12 +61,12 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
     return (
       <div className="max-w-2xl mx-auto py-16 px-4">
         <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 text-center shadow-lg space-y-6">
-          <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mx-auto shadow-xs">
+          <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-3xl flex items-center justify-center mx-auto shadow-xs">
             <Heart className="w-8 h-8" />
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">
               Inicia sesión para ver tus favoritos
             </h2>
             <p className="text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
@@ -78,14 +78,14 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('login')}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-semibold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
               Iniciar sesión
             </button>
             <button
               type="button"
               onClick={() => onNavigate('register')}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
               Registrarte gratis
             </button>
@@ -101,13 +101,13 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 text-xs font-semibold text-rose-600">
-              <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+            <div className="inline-flex items-center gap-2 text-xs font-semibold text-brand-600">
+              <Heart className="w-4 h-4 fill-brand-500 text-brand-500" />
               <span>Colección personal</span>
               <span aria-hidden="true">·</span>
               <span>{favoriteSpaceIds.length} {favoriteSpaceIds.length === 1 ? 'espacio guardado' : 'espacios guardados'}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
               Mis lugares favoritos
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
@@ -129,7 +129,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <button
                 type="button"
                 onClick={clearFavorites}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-rose-200 hover:bg-rose-50/60 text-slate-600 hover:text-rose-600 text-xs font-semibold transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-red-200 hover:bg-red-50/60 text-slate-600 hover:text-red-600 text-xs font-semibold transition cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Vaciar lista</span>
@@ -152,7 +152,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                       active
-                        ? 'bg-rose-600 text-white shadow-2xs'
+                        ? 'bg-brand-600 text-white shadow-2xs'
                         : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
                     }`}
                   >
@@ -169,7 +169,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-rose-500 cursor-pointer"
+                className="text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-brand-500 cursor-pointer"
               >
                 <option value="saved">Guardados recientemente</option>
                 <option value="price_asc">Menor precio por día</option>
@@ -184,10 +184,10 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
       {favoriteSpaceIds.length === 0 ? (
         <div className="space-y-10">
           <div className="bg-white rounded-2xl border border-slate-200/90 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-brand-50 text-brand-500 flex items-center justify-center mx-auto">
               <Heart className="w-7 h-7" />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
               Aún no tienes espacios en tu lista de favoritos
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
@@ -197,7 +197,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('home')}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold shadow-sm transition cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer"
               >
                 <span>Descubrir espacios disponibles</span>
                 <ArrowRight className="w-4 h-4" />
@@ -210,14 +210,14 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-900">
                     Espacios destacados que podrían interesarte
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => onNavigate('home')}
-                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 cursor-pointer"
+                  className="text-xs font-semibold text-brand-600 hover:text-brand-700 cursor-pointer"
                 >
                   Ver catálogo completo
                 </button>
@@ -238,7 +238,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
       ) : favoriteSpaces.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3">
           <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
-          <p className="text-sm font-bold text-slate-800">
+          <p className="text-sm font-semibold text-slate-800">
             No tienes favoritos en esta categoría
           </p>
           <p className="text-xs text-slate-500">

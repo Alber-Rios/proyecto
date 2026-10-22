@@ -3,14 +3,14 @@ import { AppProvider, useApp } from './context/AppContext.tsx';
 import { Header } from './components/Header.tsx';
 import { HomePage } from './pages/HomePage.tsx';
 import { Space } from './types.ts';
-import { Building2 } from 'lucide-react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
-import { PageTransition, ScrollProgress } from './components/motion/Motion.tsx';
+import { PageTransition } from './components/motion/Motion.tsx';
+import { runViewTransition } from './lib/viewTransition.ts';
 import { CookieBanner } from './components/CookieBanner.tsx';
 
 // Las páginas se cargan bajo demanda para que la portada descargue solo lo que necesita.
-const SpaceDetailPage = lazy(() => import('./pages/SpaceDetailPage.tsx').then((m) => ({ default: m.SpaceDetailPage })));
+const loadSpaceDetail = () => import('./pages/SpaceDetailPage.tsx');
+const SpaceDetailPage = lazy(() => loadSpaceDetail().then((m) => ({ default: m.SpaceDetailPage })));
 const LoginPage = lazy(() => import('./pages/LoginPage.tsx').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/RegisterPage.tsx').then((m) => ({ default: m.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.tsx').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -84,14 +84,19 @@ function AppContent() {
       'wallet': '/billetera'
     };
     
-    navigate(routes[view] || '/');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    runViewTransition(() => {
+      navigate(routes[view] || '/');
+      window.scrollTo({ top: 0 });
+    });
   };
 
+  // La foto de la tarjeta se transforma en la portada de la ficha (View Transitions).
   const handleSelectSpace = (space: Space) => {
-    setSelectedSpace(space);
-    navigate(`/space/${space.id}`);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    runViewTransition(() => {
+      setSelectedSpace(space);
+      navigate(`/space/${space.id}`);
+      window.scrollTo({ top: 0 });
+    }, loadSpaceDetail);
   };
 
   // Extract current view string from location for Header compatibility
@@ -103,8 +108,7 @@ function AppContent() {
     || Boolean(currentUser?.ownerTermsAccepted);
 
   return (
-    <div className="min-h-screen bg-stone-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-rose-500 selection:text-white">
-      <ScrollProgress />
+    <div className="min-h-screen bg-white text-slate-800 flex flex-col font-sans antialiased">
       {/* Header Principal */}
       <Header
         currentView={currentViewString as any}
@@ -114,9 +118,8 @@ function AppContent() {
       />
 
       {/* Contenido Principal */}
-      <main className="flex-1 max-w-7xl 2xl:max-w-[1536px] w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-hidden">
-        <Suspense fallback={<div className="min-h-[100vh] py-24 text-center text-sm text-slate-500" role="status">Cargando…</div>}>
-        <AnimatePresence mode="wait" initial={false}>
+      <main className="flex-1 max-w-7xl 2xl:max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-10 pt-3 sm:pt-5 pb-12 sm:pb-16 min-w-0 overflow-x-hidden">
+        <Suspense fallback={<div className="min-h-[70vh] flex items-center justify-center" role="status" aria-label="Cargando"><span className="h-5 w-5 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" /></div>}>
         <PageTransition key={location.pathname}>
         <Routes location={location}>
           <Route path="/" element={
@@ -210,7 +213,6 @@ function AppContent() {
           <Route path="*" element={<NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} />} />
         </Routes>
         </PageTransition>
-        </AnimatePresence>
         </Suspense>
       </main>
 
@@ -227,71 +229,61 @@ function AppContent() {
         )}
       </Suspense>
 
-      {/* Footer Institucional Chileno */}
-      <footer className="bg-slate-900 text-slate-400 text-sm mt-16 border-t border-slate-800">
-        <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-rose-600 flex items-center justify-center text-white">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <span className="text-white font-bold text-base tracking-tight">
-                  Spotly
-                </span>
+      {/* Pie de página */}
+      <footer className="mt-20 bg-slate-50 border-t border-slate-200/80 text-sm">
+        <div className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 pt-12 pb-8">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+            <div className="col-span-2 md:col-span-1 space-y-3 max-w-xs">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-[650] tracking-[-0.045em] text-slate-950">Spotly</span>
+                <span className="h-[6px] w-[6px] -ml-1 rounded-full bg-brand-600" aria-hidden="true" />
               </div>
-              <p className="text-slate-400 leading-relaxed text-sm">
-                Una plataforma para encontrar y publicar espacios con modalidades de arriendo flexibles. Revisa los detalles y condiciones de cada publicación.
+              <p className="text-slate-500 leading-relaxed">
+                Espacios para trabajar, crear, reunirte o descansar en todo Chile. Por hora, día o mes, con contrato y pago protegido.
               </p>
             </div>
 
-            <div>
-              <h2 className="text-white text-sm font-semibold mb-3">Encuentra un espacio</h2>
-              <p className="text-sm leading-relaxed mb-3">Explora las publicaciones disponibles y revisa sus precios, ubicación y condiciones.</p>
-              <button type="button" onClick={() => handleNavigate('home')} className="text-rose-300 hover:text-white font-semibold transition">
-                Ir al catálogo
-              </button>
-            </div>
+            <nav aria-label="Arrendar" className="space-y-3">
+              <h2 className="font-semibold text-slate-900">Arrendar</h2>
+              <ul className="space-y-2 text-slate-600">
+                <li><button type="button" onClick={() => handleNavigate('home')} className="hover:text-slate-950 hover:underline cursor-pointer">Buscar espacios</button></li>
+                {currentUser && <li><button type="button" onClick={() => handleNavigate('my-bookings')} className="hover:text-slate-950 hover:underline cursor-pointer">Mis reservas</button></li>}
+                {currentUser && <li><button type="button" onClick={() => handleNavigate('favorites')} className="hover:text-slate-950 hover:underline cursor-pointer">Favoritos</button></li>}
+                <li><button type="button" onClick={() => handleNavigate('support')} className="hover:text-slate-950 hover:underline cursor-pointer">Ayuda y soporte</button></li>
+              </ul>
+            </nav>
 
-            <div>
-              <h2 className="text-white text-sm font-semibold mb-3">Publica tu espacio</h2>
-              <p className="text-sm leading-relaxed mb-3">Administra tus publicaciones y solicitudes desde el panel de propietario.</p>
-              <button type="button" onClick={handleOpenOwnerUpgrade} className="text-rose-300 hover:text-white font-semibold transition">
-                Comenzar a publicar
-              </button>
-            </div>
+            <nav aria-label="Publicar" className="space-y-3">
+              <h2 className="font-semibold text-slate-900">Publicar</h2>
+              <ul className="space-y-2 text-slate-600">
+                <li><button type="button" onClick={handleOpenOwnerUpgrade} className="hover:text-slate-950 hover:underline cursor-pointer">Publica tu espacio</button></li>
+                {canAccessOwnerDashboard && <li><button type="button" onClick={() => handleNavigate('owner')} className="hover:text-slate-950 hover:underline cursor-pointer">Panel de propietario</button></li>}
+              </ul>
+            </nav>
 
-            <div>
-              <h2 className="text-white text-sm font-semibold mb-3">¿Necesitas ayuda?</h2>
-              <p className="text-sm leading-relaxed mb-3">Encuentra orientación para tu cuenta, publicaciones y reservas.</p>
-              <button type="button" onClick={() => handleNavigate('support')} className="text-rose-300 hover:text-white font-semibold transition">
-                Ir a ayuda y soporte
-              </button>
-            </div>
-
-            <div>
-              <h2 className="text-white text-sm font-semibold mb-3">Información legal</h2>
-              <ul className="space-y-1 text-sm">
+            <nav aria-label="Información legal" className="space-y-3">
+              <h2 className="font-semibold text-slate-900">Legal</h2>
+              <ul className="space-y-2 text-slate-600">
                 {[
                   ['/aviso-legal', 'Aviso legal'],
                   ['/terminos', 'Términos y condiciones'],
-                  ['/privacidad', 'Política de privacidad'],
-                  ['/cookies', 'Política de cookies'],
+                  ['/privacidad', 'Privacidad'],
+                  ['/cookies', 'Cookies'],
                   ['/mapa-del-sitio', 'Mapa del sitio'],
                 ].map(([href, label]) => (
                   <li key={href}>
-                    <Link to={href} onClick={() => window.scrollTo({ top: 0 })} className="inline-block py-1.5 text-slate-400 hover:text-white transition">
+                    <Link to={href} onClick={() => window.scrollTo({ top: 0 })} className="hover:text-slate-950 hover:underline">
                       {label}
                     </Link>
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           </div>
 
-          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400">
-            <span>© {new Date().getFullYear()} Spotly.</span>
-            <span>La disponibilidad y las condiciones dependen de cada publicación.</span>
+          <div className="mt-12 pt-6 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[13px] text-slate-500">
+            <span>© {new Date().getFullYear()} Spotly · Hecho en Chile</span>
+            <span>Precios en pesos chilenos (CLP) · Hora de Chile continental</span>
           </div>
         </div>
       </footer>
