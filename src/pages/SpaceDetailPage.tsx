@@ -588,7 +588,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           />
 
           {/* K. VALORACIONES (RF-29) */}
-          <SpaceReviews space={space} />
+          <SpaceReviews space={space} onOpenAuth={onOpenAuth} />
 
           {currentUser && currentUser.id !== space.ownerId && (
             <div className="flex justify-end">

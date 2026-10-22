@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { calculateRefund } from '../utils/refundPolicy.ts';
 import { formatClp, getTodayIso } from '../utils/formatters.ts';
 import { insertReviewToDb } from '../lib/dataAccess.ts';
+import { isReservationFinished } from '../utils/reviewEligibility.ts';
 import { CreditCard, Loader2, Star, XCircle, X } from 'lucide-react';
 
 const PAYMENT_LABELS: Record<string, { text: string; className: string }> = {
@@ -57,8 +58,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
     Date.now() - new Date(reservation.createdAt).getTime() < PAYMENT_HOLD_MINUTES * 60000;
 
   const canCancel = reservation.status === 'pending' || reservation.status === 'confirmed';
-  const finished =
-    reservation.status === 'completed' || (reservation.status === 'confirmed' && reservation.endDate <= getTodayIso());
+  const finished = isReservationFinished(reservation);
   const canReview = finished && !existingReview;
 
   const refundPreview = useMemo(

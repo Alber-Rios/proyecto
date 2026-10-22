@@ -50,3 +50,28 @@ describe('bloqueos del propietario', () => {
     expect(describeBlock(dayBlock)).toBe('01/11/2026 al 30/11/2026');
   });
 });
+
+import { isReservationFinished } from './reviewEligibility.ts';
+import type { Reservation } from '../types.ts';
+
+describe('isReservationFinished (reseñas)', () => {
+  const now = { iso: '2026-10-22', hour: 15, minute: 0 };
+  const base = { status: 'confirmed', startDate: '2026-10-20', endDate: '2026-10-21' } as Reservation;
+
+  it('permite valorar reservas confirmadas ya terminadas o completadas', () => {
+    expect(isReservationFinished(base, now)).toBe(true);
+    expect(isReservationFinished({ ...base, status: 'completed', endDate: '2026-10-30' }, now)).toBe(true);
+  });
+
+  it('no permite valorar reservas futuras, pendientes ni canceladas', () => {
+    expect(isReservationFinished({ ...base, endDate: '2026-10-25' }, now)).toBe(false);
+    expect(isReservationFinished({ ...base, status: 'pending' }, now)).toBe(false);
+    expect(isReservationFinished({ ...base, status: 'cancelled' }, now)).toBe(false);
+  });
+
+  it('en el arriendo por hora de hoy espera a que termine la franja', () => {
+    const hourly = { ...base, rentalModality: 'por_hora', endDate: '2026-10-22', hourStart: 13 } as Reservation;
+    expect(isReservationFinished({ ...hourly, hourEnd: 15 }, now)).toBe(true);
+    expect(isReservationFinished({ ...hourly, hourEnd: 17 }, now)).toBe(false);
+  });
+});

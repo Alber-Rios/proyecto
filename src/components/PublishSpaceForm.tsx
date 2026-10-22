@@ -96,6 +96,12 @@ const digits = (raw: string): number | '' => {
   return clean === '' ? '' : parseInt(clean, 10);
 };
 
+// Muestra los montos con punto de miles mientras se escriben (10000 → 10.000).
+// El valor guardado sigue siendo un número; `digits` quita los puntos al leer.
+// Se agrupa a mano para que 1.000 también lleve punto en todos los navegadores.
+const thousands = (value: number | ''): string =>
+  value === '' ? '' : String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
 // Reduce las fotos a un máximo de 1600 px para que la publicación cargue rápido.
 function compressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -516,9 +522,9 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                         <input
                           inputMode="numeric"
                           aria-label="Monto de la garantía"
-                          value={deposit}
+                          value={thousands(deposit)}
                           onChange={(e) => setDeposit(digits(e.target.value))}
-                          placeholder="Ej: 350000"
+                          placeholder="Ej: 350.000"
                           className={`${inputClass} pl-7`}
                         />
                       </div>
@@ -775,7 +781,7 @@ const ModalityRow: React.FC<{
           <input
             inputMode="numeric"
             aria-label={`Precio ${label.toLowerCase()}`}
-            value={price}
+            value={thousands(price)}
             onChange={(e) => onPrice(digits(e.target.value))}
             placeholder="Precio"
             className="w-full pl-7 pr-16 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden"

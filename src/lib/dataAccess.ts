@@ -198,6 +198,18 @@ export async function insertReviewToDb(review: {
   return mapReviewRow(data);
 }
 
+// El autor edita su calificación o comentario (la base no le deja tocar la respuesta).
+export async function updateReviewInDb(reviewId: string, changes: { rating: number; comment?: string }): Promise<Review> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .update({ rating: changes.rating, comment: changes.comment?.trim() || null })
+    .eq('id', reviewId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return mapReviewRow(data);
+}
+
 export async function replyToReviewInDb(reviewId: string, reply: string): Promise<Review> {
   const { data, error } = await supabase
     .from('reviews')
