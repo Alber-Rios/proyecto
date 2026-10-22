@@ -26,7 +26,7 @@ export const PaymentStatusBadge: React.FC<{ reservation: Reservation }> = ({ res
 
 export function reservationStatusLabel(reservation: Reservation): string {
   if (reservation.status === 'pending' && reservation.paymentStatus === 'pending') return 'Esperando pago';
-  if (reservation.status === 'pending') return 'Pendiente de aceptación del anfitrión';
+  if (reservation.status === 'pending') return 'Lista de espera · esperando al anfitrión';
   if (reservation.status === 'confirmed') return 'Confirmada';
   if (reservation.status === 'completed') return 'Finalizada';
   if (reservation.status === 'rejected') return 'Rechazada por el anfitrión';

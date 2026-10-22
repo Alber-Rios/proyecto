@@ -256,9 +256,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     });
 
     if (choice.kind === 'card') {
-      await payWithWalletCard(res.reservation.id, choice.cardId);
+      // El servidor cancela la reserva si el banco rechaza el cobro: en ambos casos
+      // se muestra el resultado (exitosa / en lista de espera / rechazada).
+      let outcome: 'exito' | 'rechazado' = 'exito';
+      try {
+        await payWithWalletCard(res.reservation.id, choice.cardId);
+      } catch (err) {
+        console.warn('Pago con tarjeta guardada no aprobado:', err);
+        outcome = 'rechazado';
+      }
       onClose();
-      navigate(`/my-bookings?pago=exito&reserva=${encodeURIComponent(res.reservation.id)}`);
+      navigate(`/my-bookings?pago=${outcome}&reserva=${encodeURIComponent(res.reservation.id)}`);
       return;
     }
     await startWebpayPayment(res.reservation.id);

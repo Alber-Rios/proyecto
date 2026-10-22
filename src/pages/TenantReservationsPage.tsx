@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { BookingResultModal, PaymentOutcome } from '../components/BookingResultModal.tsx';
 import { ReservationActions, PaymentStatusBadge, reservationStatusLabel } from '../components/ReservationActions.tsx';
 import { getReviewsByTenant } from '../lib/dataAccess.ts';
 import { useApp } from '../context/AppContext.tsx';
@@ -25,6 +26,7 @@ import {
   Eye,
   X,
   CreditCard,
+  Clock,
 } from 'lucide-react';
 
 interface TenantReservationsPageProps {
@@ -40,14 +42,21 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
 }) => {
   const { currentUser, reservations, contracts, visitRequests, createDispute, refreshReservations } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
+  const routerNavigate = useNavigate();
   const paymentResult = searchParams.get('pago');
   const [myReviews, setMyReviews] = useState<Review[]>([]);
 
-  // Al volver de Webpay se recargan reservas y pagos con el estado definitivo.
+  const highlightId = searchParams.get('reserva');
+  const [confirmingPayment, setConfirmingPayment] = useState(Boolean(paymentResult));
+
+  // Al volver de Webpay se recargan reservas y pagos con el estado definitivo
+  // antes de mostrar el resultado (exitosa, en lista de espera o rechazada).
   useEffect(() => {
-    if (paymentResult) {
-      refreshReservations().catch(console.warn);
-    }
+    if (!paymentResult) return;
+    setConfirmingPayment(true);
+    refreshReservations()
+      .catch(console.warn)
+      .finally(() => setConfirmingPayment(false));
   }, [paymentResult]);
 
   useEffect(() => {
@@ -56,11 +65,69 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
     }
   }, [currentUser?.id]);
 
-  const [activeTab, setActiveTab] = useState<'reservations' | 'visits'>('reservations');
+  const [activeTab, setActiveTab] = useState<'confirmed' | 'waitlist' | 'visits'>('confirmed');
+  const [showClosed, setShowClosed] = useState(false);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState<Reservation | null>(null);
   const [disputeReservationId, setDisputeReservationId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
+
+  // (Los hooks van antes de los retornos tempranos para respetar las reglas de React.)
+  // Filtrar las reservas de este usuario
+  const myBookings = useMemo(() => {
+    return reservations.filter((r) => r.tenantId === currentUser?.id);
+  }, [reservations, currentUser?.id]);
+
+  // Mis reservas: confirmadas (próximas primero) y finalizadas.
+  const confirmedBookings = useMemo(
+    () =>
+      myBookings
+        .filter((b) => b.status === 'confirmed' || b.status === 'completed')
+        .sort((a, b) => {
+          if (a.status !== b.status) return a.status === 'confirmed' ? -1 : 1;
+          return a.status === 'confirmed' ? a.startDate.localeCompare(b.startDate) : b.startDate.localeCompare(a.startDate);
+        }),
+    [myBookings]
+  );
+  // Lista de espera: pagadas que esperan la aceptación del anfitrión, y las que
+  // aún están dentro del plazo para pagar.
+  const waitlistBookings = useMemo(
+    () => myBookings.filter((b) => b.status === 'pending').sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    [myBookings]
+  );
+  const closedBookings = useMemo(
+    () => myBookings.filter((b) => b.status === 'cancelled' || b.status === 'rejected'),
+    [myBookings]
+  );
+  const resultReservation = highlightId ? myBookings.find((b) => b.id === highlightId) : undefined;
+
+  // Al llegar desde un pago se abre la pestaña donde quedó la reserva.
+  useEffect(() => {
+    if (!resultReservation) return;
+    if (resultReservation.status === 'pending') setActiveTab('waitlist');
+    else if (resultReservation.status === 'cancelled' || resultReservation.status === 'rejected') setShowClosed(true);
+    else setActiveTab('confirmed');
+  }, [resultReservation?.id, resultReservation?.status]);
+
+  const closePaymentResult = (keepHighlight: boolean) => {
+    const next = new URLSearchParams();
+    if (keepHighlight && highlightId) next.set('reserva', highlightId);
+    setSearchParams(next, { replace: true });
+    if (keepHighlight && highlightId) {
+      window.setTimeout(() => {
+        document.getElementById(`reserva-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  };
+
+  // Filtrar solicitudes de visita de este usuario
+  const myVisits = useMemo(() => {
+    return visitRequests.filter(
+      (v) =>
+        Boolean(currentUser) &&
+        (v.tenantId === currentUser!.id || v.tenantEmail.toLowerCase() === currentUser!.email.toLowerCase())
+    );
+  }, [visitRequests, currentUser]);
 
   // Si no está registrado o autenticado
   if (!currentUser) {
@@ -127,18 +194,6 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
     );
   }
 
-  // Filtrar las reservas de este usuario
-  const myBookings = useMemo(() => {
-    return reservations.filter((r) => r.tenantId === currentUser.id);
-  }, [reservations, currentUser.id]);
-
-  // Filtrar solicitudes de visita de este usuario
-  const myVisits = useMemo(() => {
-    return visitRequests.filter(
-      (v) => v.tenantId === currentUser.id || v.tenantEmail.toLowerCase() === currentUser.email.toLowerCase()
-    );
-  }, [visitRequests, currentUser]);
-
   const findContract = (reservation: Reservation): DigitalContract | undefined =>
     contracts.find((c) => c.id === reservation.digitalContractId || c.reservationId === reservation.id);
 
@@ -176,8 +231,8 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       tone: 'emerald',
     },
     {
-      label: 'Solicitudes pendientes',
-      value: myBookings.filter((booking) => booking.status === 'pending').length,
+      label: 'En lista de espera',
+      value: waitlistBookings.length,
       tone: 'amber',
     },
     {
@@ -186,6 +241,143 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       tone: 'indigo',
     },
   ];
+
+  const renderBooking = (booking: Reservation) => (
+  <div
+    key={booking.id}
+    id={`reserva-${booking.id}`}
+    className={`bg-white rounded-3xl border p-5 sm:p-6 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-5 hover:shadow-md transition ${
+      booking.id === highlightId ? 'border-rose-400 ring-2 ring-rose-200' : 'border-slate-200'
+    }`}
+  >
+    <div className="flex flex-col sm:flex-row items-start gap-4 min-w-0 flex-1">
+      <img
+        src={booking.spaceImage}
+        alt={booking.spaceTitle}
+        className="w-full sm:w-40 h-32 object-cover rounded-2xl bg-slate-100 shrink-0"
+      />
+
+      <div className="space-y-2 min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg">
+            Reserva #{booking.id.slice(-6)}
+          </span>
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+              booking.status === 'confirmed'
+                ? 'bg-emerald-100 text-emerald-800'
+                : booking.status === 'pending'
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-rose-100 text-rose-800'
+            }`}
+          >
+            {reservationStatusLabel(booking)}
+          </span>
+          <PaymentStatusBadge reservation={booking} />
+          {booking.disputeStatus === 'opened' && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+              Disputa en arbitraje
+            </span>
+          )}
+        </div>
+
+        <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+          {booking.spaceTitle}
+        </h3>
+        <div className="text-xs text-slate-500 flex items-center gap-1">
+          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+          <span className="truncate">{booking.spaceAddress}</span>
+        </div>
+
+        <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
+          <span className="flex items-center gap-1 font-medium text-slate-800">
+            <Calendar className="w-3.5 h-3.5 text-rose-500" />
+            {booking.startDate} al {booking.endDate} (
+            {booking.rentalModality === 'por_hora'
+              ? `${booking.durationUnits || 1} hrs`
+              : `${booking.totalDays} ${booking.totalDays === 1 ? 'día' : 'días'}`}
+            )
+          </span>
+          <span>
+            Anfitrión: <strong className="text-slate-800">{booking.ownerName}</strong>
+          </span>
+          <span>
+            Total Pagado:{' '}
+            <strong className="text-slate-900 font-extrabold">{formatClp(booking.totalClp)}</strong>
+          </span>
+          {booking.securityDepositClp > 0 && (
+            <span className="text-slate-500">
+              Garantía: <strong>{formatClp(booking.securityDepositClp)}</strong>
+            </span>
+          )}
+          {booking.discountClp ? (
+            <span className="text-emerald-700">
+              Descuento {booking.discountCode}: <strong>−{formatClp(booking.discountClp)}</strong>
+            </span>
+          ) : null}
+          {booking.refundAmountClp !== undefined && booking.refundAmountClp > 0 && (
+            <span className="text-indigo-700">
+              Reembolso: <strong>{formatClp(booking.refundAmountClp)}</strong>
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Botones de Acción: Ver Detalle, Descargar Reserva, Ver/Descargar Contrato */}
+    <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100 shrink-0 w-full xl:w-auto">
+      <button
+        onClick={() => setSelectedBookingDetail(booking)}
+        className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+      >
+        <Eye className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+        Ver reserva
+      </button>
+
+      <button
+        onClick={() => downloadReservationDocument(booking)}
+        className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+        title="Descargar comprobante oficial de la reserva"
+      >
+        <Download className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+        Descargar reserva
+      </button>
+
+      <button
+        onClick={() => handleOpenContract(booking)}
+        className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+      >
+        <FileText className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+        Ver contrato
+      </button>
+
+      <button
+        onClick={() => handleDownloadContract(booking)}
+        className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+        title="Descargar contrato de arrendamiento digital"
+      >
+        <Download className="w-3.5 h-3.5 shrink-0" />
+        Descargar contrato
+      </button>
+
+      <ReservationActions
+        reservation={booking}
+        existingReview={myReviews.find((r) => r.reservationId === booking.id)}
+        onReviewed={(review) => setMyReviews((prev) => [review, ...prev])}
+      />
+
+      {booking.disputeStatus !== 'opened' && (
+        <button
+          onClick={() => setDisputeReservationId(booking.id)}
+          className="w-full sm:w-auto px-3 py-2.5 sm:py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+        >
+          <Scale className="w-3.5 h-3.5 shrink-0" />
+          Reportar problema del lugar
+        </button>
+      )}
+    </div>
+  </div>
+  );
 
   return (
     <div className="space-y-6 pb-16">
@@ -271,53 +463,55 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       )}
 
       {paymentResult && (
-        <div
-          className={`rounded-2xl p-4 border flex items-start justify-between gap-3 ${
-            paymentResult === 'exito' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'
-          }`}
-          role="status"
-        >
-          <div className="text-xs space-y-0.5">
-            <p className="font-bold text-sm">
-              {paymentResult === 'exito'
-                ? 'Pago aprobado por Webpay Plus'
-                : paymentResult === 'anulado'
-                ? 'Pago anulado'
-                : paymentResult === 'expirado'
-                ? 'La reserva expiró antes de completar el pago'
-                : 'El pago no fue aprobado'}
-            </p>
-            <p>
-              {paymentResult === 'exito'
-                ? 'Tu reserva quedó registrada con su contrato firmado. Si el anfitrión requiere aprobación, te avisaremos cuando la acepte.'
-                : paymentResult === 'expirado'
-                ? 'El horario ya había sido liberado; el cobro fue reversado automáticamente.'
-                : 'No se realizó ningún cargo y el horario quedó disponible nuevamente.'}
-            </p>
-          </div>
-          <button
-            onClick={() => setSearchParams({})}
-            aria-label="Cerrar aviso"
-            className="cursor-pointer shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <BookingResultModal
+          outcome={(['exito', 'rechazado', 'anulado', 'expirado'].includes(paymentResult) ? paymentResult : 'error') as PaymentOutcome}
+          reservation={resultReservation}
+          loading={confirmingPayment}
+          onFinish={() => {
+            closePaymentResult(false);
+            onNavigate('home');
+          }}
+          onViewBookings={() => closePaymentResult(true)}
+          onRetry={
+            resultReservation
+              ? () => {
+                  closePaymentResult(false);
+                  routerNavigate(`/space/${encodeURIComponent(resultReservation.spaceId)}`);
+                }
+              : undefined
+          }
+        />
       )}
 
       {/* Pestañas: Reservas vs Visitas */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar">
         <button
           type="button"
-          onClick={() => setActiveTab('reservations')}
+          onClick={() => setActiveTab('confirmed')}
           className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'reservations'
+            activeTab === 'confirmed'
               ? 'bg-rose-600 text-white shadow-xs'
               : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
           <FileText className="w-4 h-4 shrink-0" />
-          <span>Mis Reservas y Contratos ({myBookings.length})</span>
+          <span>Mis reservas ({confirmedBookings.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('waitlist')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'waitlist'
+              ? 'bg-amber-500 text-slate-900 shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <Clock className="w-4 h-4 shrink-0" />
+          <span>Lista de espera ({waitlistBookings.length})</span>
+          {waitlistBookings.length > 0 && activeTab !== 'waitlist' && (
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" aria-hidden />
+          )}
         </button>
 
         <button
@@ -334,158 +528,59 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         </button>
       </div>
 
-      {activeTab === 'reservations' ? (
-        myBookings.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
-            <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-            <h3 className="text-base font-bold text-slate-800">No tienes reservas registradas</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Explora nuestro catálogo de oficinas, estudios y salas para reservar tu próximo espacio con contrato digital y comprobante descargable.
-            </p>
-            <button
-              onClick={() => onNavigate('home')}
-              className="mt-2 px-5 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition inline-flex items-center gap-2 cursor-pointer"
-            >
-              Ver espacios disponibles
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {myBookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-5 hover:shadow-md transition"
+      {activeTab === 'confirmed' ? (
+        <div className="space-y-4">
+          {confirmedBookings.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800">Aún no tienes reservas confirmadas</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {waitlistBookings.length > 0
+                  ? `Tienes ${waitlistBookings.length} ${waitlistBookings.length === 1 ? 'solicitud' : 'solicitudes'} en lista de espera: aparecerán aquí cuando el anfitrión las acepte.`
+                  : 'Explora el catálogo de oficinas, estudios y salas para reservar tu próximo espacio con contrato digital.'}
+              </p>
+              <button
+                onClick={() => (waitlistBookings.length > 0 ? setActiveTab('waitlist') : onNavigate('home'))}
+                className="mt-2 px-5 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition inline-flex items-center gap-2 cursor-pointer"
               >
-                <div className="flex flex-col sm:flex-row items-start gap-4 min-w-0 flex-1">
-                  <img
-                    src={booking.spaceImage}
-                    alt={booking.spaceTitle}
-                    className="w-full sm:w-40 h-32 object-cover rounded-2xl bg-slate-100 shrink-0"
-                  />
+                {waitlistBookings.length > 0 ? 'Ver lista de espera' : 'Ver espacios disponibles'}
+              </button>
+            </div>
+          ) : (
+            confirmedBookings.map(renderBooking)
+          )}
 
-                  <div className="space-y-2 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg">
-                        Reserva #{booking.id.slice(-6)}
-                      </span>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                          booking.status === 'confirmed'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : booking.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {reservationStatusLabel(booking)}
-                      </span>
-                      <PaymentStatusBadge reservation={booking} />
-                      {booking.disputeStatus === 'opened' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
-                          Disputa en arbitraje
-                        </span>
-                      )}
-                    </div>
-
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
-                      {booking.spaceTitle}
-                    </h3>
-                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span className="truncate">{booking.spaceAddress}</span>
-                    </div>
-
-                    <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
-                      <span className="flex items-center gap-1 font-medium text-slate-800">
-                        <Calendar className="w-3.5 h-3.5 text-rose-500" />
-                        {booking.startDate} al {booking.endDate} (
-                        {booking.rentalModality === 'por_hora'
-                          ? `${booking.durationUnits || 1} hrs`
-                          : `${booking.totalDays} ${booking.totalDays === 1 ? 'día' : 'días'}`}
-                        )
-                      </span>
-                      <span>
-                        Anfitrión: <strong className="text-slate-800">{booking.ownerName}</strong>
-                      </span>
-                      <span>
-                        Total Pagado:{' '}
-                        <strong className="text-slate-900 font-extrabold">{formatClp(booking.totalClp)}</strong>
-                      </span>
-                      {booking.securityDepositClp > 0 && (
-                        <span className="text-slate-500">
-                          Garantía: <strong>{formatClp(booking.securityDepositClp)}</strong>
-                        </span>
-                      )}
-                      {booking.discountClp ? (
-                        <span className="text-emerald-700">
-                          Descuento {booking.discountCode}: <strong>−{formatClp(booking.discountClp)}</strong>
-                        </span>
-                      ) : null}
-                      {booking.refundAmountClp !== undefined && booking.refundAmountClp > 0 && (
-                        <span className="text-indigo-700">
-                          Reembolso: <strong>{formatClp(booking.refundAmountClp)}</strong>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Botones de Acción: Ver Detalle, Descargar Reserva, Ver/Descargar Contrato */}
-                <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100 shrink-0 w-full xl:w-auto">
-                  <button
-                    onClick={() => setSelectedBookingDetail(booking)}
-                    className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    Ver reserva
-                  </button>
-
-                  <button
-                    onClick={() => downloadReservationDocument(booking)}
-                    className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                    title="Descargar comprobante oficial de la reserva"
-                  >
-                    <Download className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    Descargar reserva
-                  </button>
-
-                  <button
-                    onClick={() => handleOpenContract(booking)}
-                    className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    Ver contrato
-                  </button>
-
-                  <button
-                    onClick={() => handleDownloadContract(booking)}
-                    className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
-                    title="Descargar contrato de arrendamiento digital"
-                  >
-                    <Download className="w-3.5 h-3.5 shrink-0" />
-                    Descargar contrato
-                  </button>
-
-                  <ReservationActions
-                    reservation={booking}
-                    existingReview={myReviews.find((r) => r.reservationId === booking.id)}
-                    onReviewed={(review) => setMyReviews((prev) => [review, ...prev])}
-                  />
-
-                  {booking.disputeStatus !== 'opened' && (
-                    <button
-                      onClick={() => setDisputeReservationId(booking.id)}
-                      className="w-full sm:w-auto px-3 py-2.5 sm:py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
-                    >
-                      <Scale className="w-3.5 h-3.5 shrink-0" />
-                      Reportar problema del lugar
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+          {closedBookings.length > 0 && (
+            <div className="pt-2 space-y-4">
+              <button
+                type="button"
+                onClick={() => setShowClosed((v) => !v)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                aria-expanded={showClosed}
+              >
+                {showClosed ? 'Ocultar' : 'Ver'} reservas canceladas o rechazadas ({closedBookings.length})
+              </button>
+              {showClosed && <div className="space-y-4 opacity-80">{closedBookings.map(renderBooking)}</div>}
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'waitlist' ? (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+            <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+            <p>
+              Aquí quedan tus solicitudes mientras el anfitrión decide. Cuando las acepte pasarán solas a <strong>Mis reservas</strong>;
+              si las rechaza, se te devuelve lo pagado.
+            </p>
           </div>
-        )
+          {waitlistBookings.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-10 text-center text-xs text-slate-500">
+              No tienes solicitudes en lista de espera.
+            </div>
+          ) : (
+            waitlistBookings.map(renderBooking)
+          )}
+        </div>
       ) : (
         <div className="space-y-4">
           {myVisits.length === 0 ? (
