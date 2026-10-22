@@ -1514,6 +1514,10 @@ DECLARE
   v_code TEXT;
   v_percent INTEGER;
   v_max_discount NUMERIC;
+  v_hours TEXT[];
+  v_open INTEGER;
+  v_close INTEGER;
+  v_dow INTEGER;
 BEGIN
   IF public.is_trusted_context() THEN
     RETURN NEW;
@@ -1543,6 +1547,26 @@ BEGIN
      AND NEW.hour_start <= extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int THEN
     RAISE EXCEPTION 'Esa hora ya pasó: elige una franja desde las %:00',
       lpad((extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int + 1)::text, 2, '0');
+  END IF;
+  -- Arriendo por hora dentro del horario de atención del espacio
+  -- (texto del formulario: "Lun-Vie 08:00-20:00", misma regla que src/utils/schedule.ts).
+  IF NEW.hour_start IS NOT NULL AND NEW.hour_end IS NOT NULL AND COALESCE(v_space.opening_hours, '') <> '' THEN
+    v_hours := regexp_match(v_space.opening_hours, '(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})');
+    IF v_hours IS NOT NULL THEN
+      v_open := v_hours[1]::int + CASE WHEN v_hours[2]::int > 0 THEN 1 ELSE 0 END;
+      v_close := LEAST(24, v_hours[3]::int);
+      IF v_close > v_open AND (NEW.hour_start < v_open OR NEW.hour_end > v_close) THEN
+        RAISE EXCEPTION 'Fuera del horario del espacio: se puede reservar de %:00 a %:00',
+          lpad(v_open::text, 2, '0'), lpad(v_close::text, 2, '0');
+      END IF;
+    END IF;
+    v_dow := extract(dow FROM NEW.start_date)::int; -- 0 = domingo
+    IF v_space.opening_hours NOT LIKE '%24/7%' AND (
+         (v_space.opening_hours LIKE 'Lun-Vie%' AND v_dow IN (0, 6))
+      OR (v_space.opening_hours LIKE 'Lun-Sáb%' AND v_dow = 0)
+      OR (v_space.opening_hours LIKE 'Sáb-Dom%' AND v_dow BETWEEN 1 AND 5)) THEN
+      RAISE EXCEPTION 'El espacio no atiende ese día (%)', split_part(v_space.opening_hours, ' ', 1);
+    END IF;
   END IF;
   IF NEW.hour_start IS NOT NULL AND NEW.hour_end IS NOT NULL
      AND NEW.start_date = NEW.end_date AND NEW.hour_end <= NEW.hour_start THEN

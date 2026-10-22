@@ -75,3 +75,31 @@ describe('isReservationFinished (reseñas)', () => {
     expect(isReservationFinished({ ...hourly, hourEnd: 17 }, now)).toBe(false);
   });
 });
+
+import { parseOpeningHours, isOpenOnDate, slotHours, DEFAULT_SCHEDULE } from './schedule.ts';
+
+describe('parseOpeningHours (horario del espacio)', () => {
+  it('interpreta días y horas del formulario de publicación', () => {
+    const s = parseOpeningHours('Lun-Vie 08:00-20:00');
+    expect(s.open).toBe(8);
+    expect(s.close).toBe(20);
+    expect(s.days).toEqual([1, 2, 3, 4, 5]);
+    expect(slotHours(s)).toEqual([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    expect(s.hoursLabel).toBe('08:00 a 20:00');
+  });
+
+  it('respeta días cerrados (22/10/2026 es jueves, 25/10/2026 domingo)', () => {
+    const s = parseOpeningHours('Lun-Vie 08:00-20:00');
+    expect(isOpenOnDate(s, '2026-10-22')).toBe(true);
+    expect(isOpenOnDate(s, '2026-10-25')).toBe(false);
+    expect(isOpenOnDate(parseOpeningHours('Sáb-Dom 10:00-18:00'), '2026-10-25')).toBe(true);
+  });
+
+  it('24/7, medias horas y textos vacíos', () => {
+    const all = parseOpeningHours('Lun-Dom 00:00-24:00 (24/7)');
+    expect([all.open, all.close, all.days.length]).toEqual([0, 24, 7]);
+    const half = parseOpeningHours('Lun-Vie 08:30-20:30');
+    expect([half.open, half.close]).toEqual([9, 20]);
+    expect(parseOpeningHours('')).toEqual(DEFAULT_SCHEDULE);
+  });
+});

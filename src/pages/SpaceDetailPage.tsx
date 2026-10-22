@@ -1,3 +1,4 @@
+import { parseOpeningHours } from '../utils/schedule.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { takeBookingDraft, BookingDraft } from '../utils/bookingDraft.ts';
@@ -111,8 +112,19 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
   const [endDate, setEndDate] = useState(todayStr); // Default to same day (1 day) as requested
   const [selectedMonth, setSelectedMonth] = useState('2026-10');
   const [hourStart, setHourStart] = useState(10);
-  const [hourEnd, setHourEnd] = useState(14);
+  const [hourEnd, setHourEnd] = useState(11);
   const [intendedUse, setIntendedUse] = useState('');
+
+  // Al abrir un espacio, el arriendo por hora parte en la apertura y con el
+  // mínimo de horas del espacio (normalmente 1). El widget luego salta a la
+  // primera franja libre si esa ya pasó o está ocupada.
+  useEffect(() => {
+    if (!space) return;
+    const schedule = parseOpeningHours(space.openingHours);
+    const minHours = Math.max(1, space.minBookingHours || 1);
+    setHourStart(schedule.open);
+    setHourEnd(Math.min(schedule.close, schedule.open + minHours));
+  }, [space?.id]);
 
   // Galería de fotos
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -431,11 +443,20 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                 HORARIO
               </span>
-              <div className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
-                <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="truncate">{space.openingHours || 'A convenir'}</span>
-              </div>
-              <span className="text-[10px] text-slate-400 block">Días y horas disponibles</span>
+              {(() => {
+                const schedule = parseOpeningHours(space.openingHours);
+                return (
+                  <>
+                    <div className="text-sm sm:text-base font-extrabold text-slate-900 flex items-start gap-1.5 leading-tight">
+                      <Clock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <span>{space.openingHours ? schedule.hoursLabel : 'A convenir'}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block">
+                      {space.openingHours ? schedule.daysLabel : 'Días y horas disponibles'}
+                    </span>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
