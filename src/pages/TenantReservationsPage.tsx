@@ -569,8 +569,8 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
             <Clock className="w-4 h-4 shrink-0 mt-0.5" />
             <p>
-              Aquí quedan tus solicitudes mientras el anfitrión decide. Cuando las acepte pasarán solas a <strong>Mis reservas</strong>;
-              si las rechaza, se te devuelve lo pagado.
+              Aquí quedan tus solicitudes mientras el anfitrión decide. Cuando las acepte pasarán solas a <strong>Mis reservas</strong>.
+              Si las rechaza, o no responde antes de la fecha de inicio, se cancelan y se te devuelve el 100 % de lo pagado.
             </p>
           </div>
           {waitlistBookings.length === 0 ? (

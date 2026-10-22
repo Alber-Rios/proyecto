@@ -2275,6 +2275,37 @@ END;
 $$;
 
 -- ---------- Mantenimiento periódico (pg_cron) ----------
+-- Solicitudes pagadas que el anfitrión no aceptó a tiempo (espacios sin
+-- "Reserva inmediata"): al llegar la fecha/hora de inicio se rechazan solas con
+-- reembolso del 100 % (payment_status = 'refund_pending'; el cobro lo reversa
+-- /api/webpay?action=refund). Las dispara el trabajo de mantenimiento.
+CREATE FUNCTION public.expire_unanswered_requests()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_prev TEXT := public.begin_trusted();
+  v_count INTEGER;
+  v_hour INTEGER := extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int;
+BEGIN
+  UPDATE public.reservations
+  SET status = 'rejected',
+      payment_status = CASE WHEN payment_status = 'paid' THEN 'refund_pending' ELSE payment_status END,
+      refund_amount_clp = CASE WHEN payment_status = 'paid' THEN total_clp ELSE 0 END,
+      cancelled_at = now(),
+      cancellation_reason = 'El anfitrión no respondió la solicitud antes de la fecha de inicio'
+  WHERE status = 'pending'
+    AND payment_status IN ('paid', 'legacy_simulated', 'not_required')
+    AND (start_date < public.chile_today()
+         OR (start_date = public.chile_today() AND (hour_start IS NULL OR hour_start <= v_hour)));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  PERFORM public.end_trusted(v_prev);
+  RETURN v_count;
+END;
+$$;
+
 CREATE FUNCTION public.run_maintenance()
 RETURNS VOID
 LANGUAGE plpgsql
@@ -2283,6 +2314,7 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   PERFORM public.release_expired_payment_holds(NULL);
+  PERFORM public.expire_unanswered_requests();
   PERFORM public.purge_old_login_attempts();
   DELETE FROM public.space_views WHERE created_at < now() - interval '400 days';
   DELETE FROM public.notifications WHERE read AND created_at < now() - interval '180 days';

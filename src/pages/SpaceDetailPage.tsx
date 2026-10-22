@@ -1,3 +1,4 @@
+import { useAutoCarousel } from '../hooks/useAutoCarousel.ts';
 import { parseOpeningHours } from '../utils/schedule.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -127,7 +128,13 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
   }, [space?.id]);
 
   // Galería de fotos
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  // Galería en carrusel: avanza sola cada 4,5 s y se pausa al pasar el cursor o
+  // al usar las flechas/miniaturas con el teclado.
+  const [galleryPaused, setGalleryPaused] = useState(false);
+  const galleryCount = space?.images?.length || 0;
+  const { index: activeImageIndex, direction: galleryDirection, go: goToImage, next: nextImage, prev: prevImage, running: galleryRunning } =
+    useAutoCarousel(galleryCount, 4500, galleryPaused);
+  const setActiveImageIndex = (i: number) => goToImage(i);
 
   // Modales
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -319,19 +326,38 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               initial={{ opacity: 0, scale: 0.985 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.9, ease: EASE_LUXE }}
+              onMouseEnter={() => setGalleryPaused(true)}
+              onMouseLeave={() => setGalleryPaused(false)}
+              onFocusCapture={() => setGalleryPaused(true)}
+              onBlurCapture={() => setGalleryPaused(false)}
+              aria-roledescription="carrusel"
+              aria-label={`Fotos de ${space.title}`}
               className="relative aspect-16/9 sm:aspect-21/10 rounded-[2rem] overflow-hidden bg-stone-950 shadow-[0_40px_80px_-35px_rgba(12,10,9,0.55)] group"
             >
               {imagesList.length > 0 ? (
-                <AnimatePresence initial={false} mode="popLayout">
+                <AnimatePresence initial={false} custom={galleryDirection}>
                   <motion.img
                     key={activeImageIndex}
                     src={imagesList[activeImageIndex]}
-                    alt={space.title}
-                    initial={{ opacity: 0, scale: 1.06 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8, ease: EASE_LUXE }}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    alt={`${space.title} — foto ${activeImageIndex + 1} de ${imagesList.length}`}
+                    custom={galleryDirection}
+                    variants={{
+                      enter: (dir: number) => ({ x: `${dir * 100}%`, opacity: 0.6 }),
+                      center: { x: '0%', opacity: 1 },
+                      exit: (dir: number) => ({ x: `${dir * -100}%`, opacity: 0.6 }),
+                    }}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.7, ease: EASE_LUXE }}
+                    drag={imagesList.length > 1 ? 'x' : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.2}
+                    onDragEnd={(_, info) => {
+                      if (info.offset.x < -60) nextImage();
+                      else if (info.offset.x > 60) prevImage();
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover touch-pan-y"
                   />
                 </AnimatePresence>
               ) : <div className="w-full h-full" aria-label="Este espacio no tiene fotografías" />}
@@ -342,7 +368,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                   <button
                     type="button"
                     aria-label="Foto anterior"
-                    onClick={() => setActiveImageIndex((i) => (i - 1 + imagesList.length) % imagesList.length)}
+                    onClick={prevImage}
                     className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-stone-900 shadow-lg backdrop-blur-md transition duration-300 hover:bg-white hover:scale-105 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
                   >
                     <GalleryPrev className="h-5 w-5" />
@@ -350,7 +376,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                   <button
                     type="button"
                     aria-label="Foto siguiente"
-                    onClick={() => setActiveImageIndex((i) => (i + 1) % imagesList.length)}
+                    onClick={nextImage}
                     className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-stone-900 shadow-lg backdrop-blur-md transition duration-300 hover:bg-white hover:scale-105 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
                   >
                     <GalleryNext className="h-5 w-5" />
@@ -371,9 +397,36 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               </div>
 
               {/* Badge inferior de contador */}
-              {imagesList.length > 0 && <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10">
+              {imagesList.length > 0 && <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10" aria-live="polite">
                 Fotografía {activeImageIndex + 1} de {imagesList.length}
               </div>}
+
+              {/* Indicadores del carrusel con barra de progreso del avance automático */}
+              {imagesList.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
+                  {imagesList.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImageIndex(idx)}
+                      aria-label={`Ir a la foto ${idx + 1}`}
+                      className={`relative h-1.5 rounded-full overflow-hidden bg-white/40 transition-all duration-500 cursor-pointer ${
+                        idx === activeImageIndex ? 'w-8' : 'w-1.5 hover:bg-white/70'
+                      }`}
+                    >
+                      {idx === activeImageIndex && (
+                        <motion.span
+                          key={`${activeImageIndex}-${galleryRunning}`}
+                          className="absolute inset-y-0 left-0 bg-white rounded-full"
+                          initial={{ width: galleryRunning ? '0%' : '100%' }}
+                          animate={{ width: '100%' }}
+                          transition={{ duration: galleryRunning ? 4.5 : 0, ease: 'linear' }}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </motion.div>
 
             {/* Miniaturas de la galería */}

@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useAutoCarousel } from '../hooks/useAutoCarousel.ts';
 import { Space } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, getSpaceRateInfo } from '../utils/formatters.ts';
@@ -23,6 +25,10 @@ interface SpaceCardProps {
 export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
   const { currentUser, isSpaceFavorite, toggleFavoriteSpace } = useApp();
   const isFavorite = isSpaceFavorite(space.id);
+  // Las fotos rotan solas mientras el cursor (o el foco) está sobre la tarjeta.
+  const images = space.images || [];
+  const [hovering, setHovering] = useState(false);
+  const { index: photoIndex, go: goToPhoto } = useAutoCarousel(images.length, 2200, !hovering);
 
   return (
     <div
@@ -31,6 +37,13 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
       tabIndex={0}
       aria-label={`Ver ${space.title}`}
       onClick={() => onSelect(space)}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => {
+        setHovering(false);
+        goToPhoto(0);
+      }}
+      onFocus={() => setHovering(true)}
+      onBlur={() => setHovering(false)}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {
@@ -42,12 +55,34 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
     >
       {/* Imagen Principal con Badges */}
       <div className="shine relative aspect-4/3 overflow-hidden bg-gradient-to-br from-stone-100 to-stone-200">
-        {space.images?.[0] ? <img
-          src={space.images[0]}
-          alt={space.title}
-          className="w-full h-full object-cover scale-[1.01] group-hover:scale-[1.08] transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
-          loading="lazy"
-        /> : <div className="w-full h-full" aria-label="Este espacio no tiene imágenes" />}
+        {images.length > 0 ? (
+          <AnimatePresence initial={false}>
+            <motion.img
+              key={photoIndex}
+              src={images[photoIndex]}
+              alt={space.title}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+              className="absolute inset-0 w-full h-full object-cover scale-[1.01] group-hover:scale-[1.08] transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+              loading="lazy"
+            />
+          </AnimatePresence>
+        ) : (
+          <div className="w-full h-full" aria-label="Este espacio no tiene imágenes" />
+        )}
+
+        {images.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1" aria-hidden>
+            {images.slice(0, 6).map((_, idx) => (
+              <span
+                key={idx}
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === photoIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/55'}`}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Botón Favorito (Corazón) - Solo para usuarios registrados */}
         {currentUser && (

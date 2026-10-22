@@ -350,52 +350,33 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
     return past;
   }, [startDate, chileNow, SLOT_HOURS]);
 
-  // Cambia la cantidad de horas: si el bloque ya no cabe antes del cierre (o pisa
-  // horas ocupadas), la hora de inicio retrocede a la más cercana donde sí cabe.
-  const setDuration = (count: number) => {
-    const fits = (start: number) => {
-      if (start < schedule.open || start + count > MAX_END_HOUR) return false;
-      for (let k = start; k < start + count; k++) {
-        if (occupiedHoursOnSelectedDate.has(k) || pastHoursOnSelectedDate.has(k)) return false;
-      }
-      return true;
-    };
-    let start = hourStart;
-    if (!fits(start)) {
-      const candidates = SLOT_HOURS.filter(fits);
-      start = [...candidates].reverse().find((h) => h <= hourStart) ?? candidates[0] ?? hourStart;
-    }
-    onHourStartChange(start);
-    onHourEndChange(Math.min(MAX_END_HOUR, start + count));
-  };
-
-  // Mayor bloque de horas seguidas libres en la fecha elegida (para desactivar
-  // las duraciones que no caben ese día).
-  const longestFreeRun = useMemo(() => {
-    if (!openOnSelectedDate) return 0;
-    let best = 0;
-    let run = 0;
-    for (const h of SLOT_HOURS) {
-      if (occupiedHoursOnSelectedDate.has(h) || pastHoursOnSelectedDate.has(h)) run = 0;
-      else best = Math.max(best, ++run);
-    }
-    return best;
-  }, [openOnSelectedDate, SLOT_HOURS, occupiedHoursOnSelectedDate, pastHoursOnSelectedDate]);
-  const fitsToday = (count: number) => count <= longestFreeRun;
-
   const isHourUnavailable = (h: number) => occupiedHoursOnSelectedDate.has(h) || pastHoursOnSelectedDate.has(h);
 
-  // Horas de inicio en las que cabe el bloque completo sin pisar horas ocupadas ni pasadas.
+  // Horas seguidas libres desde `start` hasta la hora de cierre (o hasta la
+  // primera hora ocupada). Es el máximo que se puede arrendar partiendo ahí.
+  const freeRunFrom = (start: number) => {
+    if (!openOnSelectedDate || start < schedule.open) return 0;
+    let n = 0;
+    for (let k = start; k < MAX_END_HOUR && !isHourUnavailable(k); k++) n++;
+    return n;
+  };
+
+  // Horas de inicio posibles: libres y con al menos el mínimo de horas antes del cierre.
   const validStartHours = useMemo(() => {
     if (!openOnSelectedDate) return [];
-    return SLOT_HOURS.filter((h) => {
-      if (h + totalHours > MAX_END_HOUR) return false;
-      for (let k = h; k < h + totalHours; k++) {
-        if (occupiedHoursOnSelectedDate.has(k) || pastHoursOnSelectedDate.has(k)) return false;
-      }
-      return true;
-    });
-  }, [totalHours, occupiedHoursOnSelectedDate, pastHoursOnSelectedDate, openOnSelectedDate, SLOT_HOURS, MAX_END_HOUR]);
+    return SLOT_HOURS.filter((h) => freeRunFrom(h) >= minHours);
+  }, [occupiedHoursOnSelectedDate, pastHoursOnSelectedDate, openOnSelectedDate, SLOT_HOURS, MAX_END_HOUR, minHours]);
+
+  // Máximo de horas que se pueden elegir desde la hora de inicio actual: nunca se
+  // pasa de la hora de cierre (si cierra a las 20:00, desde las 19:00 solo cabe 1).
+  const maxFromStart = Math.min(maxBlockHours, freeRunFrom(hourStart));
+  const fitsFromStart = (count: number) => count <= maxFromStart;
+
+  // Cambia la cantidad de horas respetando la hora de inicio elegida.
+  const setDuration = (count: number) => {
+    if (!fitsFromStart(count)) return;
+    onHourEndChange(hourStart + count);
+  };
 
   const visibleSlotHours = useMemo(
     () => (openOnSelectedDate ? SLOT_HOURS.filter((h) => !pastHoursOnSelectedDate.has(h)) : []),
@@ -420,17 +401,19 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       onEndDateChange(next);
       return;
     }
-    // Si el bloque elegido ya no cabe antes del cierre, se ajusta su duración.
-    if (totalHours > maxBlockHours) {
-      onHourEndChange(hourStart + maxBlockHours);
-      return;
-    }
+    // La hora de inicio ya pasó, quedó ocupada o no deja el mínimo antes del cierre:
+    // se pasa a la primera hora válida.
     if (validStartHours.length > 0 && !validStartHours.includes(hourStart)) {
       const next = validStartHours.find((h) => h >= hourStart) ?? validStartHours[0];
       onHourStartChange(next);
-      onHourEndChange(next + totalHours);
+      onHourEndChange(next + Math.max(minHours, Math.min(totalHours, freeRunFrom(next))));
+      return;
     }
-  }, [activeModality, startDate, todayIso, validStartHours, hourStart, totalHours, pastHoursOnSelectedDate, openOnSelectedDate, schedule, maxBlockHours]);
+    // El bloque no puede pasar de la hora de cierre ni pisar horas ocupadas.
+    if (validStartHours.includes(hourStart) && totalHours > maxFromStart) {
+      onHourEndChange(hourStart + Math.max(minHours, maxFromStart));
+    }
+  }, [activeModality, startDate, todayIso, validStartHours, hourStart, totalHours, maxFromStart, pastHoursOnSelectedDate, openOnSelectedDate, schedule, minHours]);
 
   // Verificar si un mes está ocupado
   const isMonthOccupied = (monthKey: string) => {
@@ -446,7 +429,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
       );
     }
     if (activeModality === 'por_hora') {
-      if (!validStartHours.includes(hourStart)) return true;
+      if (!validStartHours.includes(hourStart) || totalHours > maxFromStart) return true;
       for (let h = hourStart; h < hourEnd; h++) {
         if (occupiedHoursOnSelectedDate.has(h) || pastHoursOnSelectedDate.has(h)) return true;
       }
@@ -877,7 +860,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       className="w-full px-3 py-2 text-xs font-bold text-slate-900 bg-white border border-rose-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden shadow-xs cursor-pointer"
                     >
                       {hourOptions.map((h) => (
-                        <option key={h} value={h} disabled={!fitsToday(h) && h !== totalHours}>
+                        <option key={h} value={h} disabled={!fitsFromStart(h)}>
                           {h} {h === 1 ? 'hora' : 'horas'} de arriendo • {formatClp(priceHour * h)}
                         </option>
                       ))}
@@ -907,9 +890,9 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     <button
                       type="button"
                       onClick={() => {
-                        if (totalHours < maxBlockHours && fitsToday(totalHours + 1)) setDuration(totalHours + 1);
+                        setDuration(totalHours + 1);
                       }}
-                      disabled={totalHours >= maxBlockHours || !fitsToday(totalHours + 1)}
+                      disabled={!fitsFromStart(totalHours + 1)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                       title="Sumar 1 hora"
                     >
@@ -928,8 +911,12 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       onClick={() => {
                         setDuration(h);
                       }}
-                      disabled={!fitsToday(h)}
-                      title={fitsToday(h) ? undefined : `No quedan ${h} horas seguidas libres este día`}
+                      disabled={!fitsFromStart(h)}
+                      title={
+                        fitsFromStart(h)
+                          ? undefined
+                          : `Desde las ${pad2(hourStart)} solo caben ${maxFromStart} ${maxFromStart === 1 ? 'hora' : 'horas'} (cierre ${pad2(MAX_END_HOUR)})`
+                      }
                       className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg border transition cursor-pointer disabled:opacity-35 disabled:line-through disabled:cursor-not-allowed ${
                         totalHours === h
                           ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
@@ -971,8 +958,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     onChange={(e) => {
                       const newStart = Number(e.target.value);
                       onHourStartChange(newStart);
-                      const newEnd = Math.min(MAX_END_HOUR, newStart + totalHours);
-                      onHourEndChange(newEnd);
+                      onHourEndChange(newStart + Math.max(minHours, Math.min(totalHours, freeRunFrom(newStart))));
                     }}
                     className="w-full px-2.5 py-2 text-xs font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
                   >
@@ -1047,7 +1033,14 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
 
                 {openOnSelectedDate && validStartHours.length === 0 && (
                   <p className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 leading-snug">
-                    No hay {totalHours} {totalHours === 1 ? 'hora seguida libre' : 'horas seguidas libres'} este día. Elige menos horas u otra fecha.
+                    No quedan horas libres este día. Elige otra fecha.
+                  </p>
+                )}
+
+                {validStartHours.includes(hourStart) && maxFromStart < maxBlockHours && (
+                  <p className="text-[10px] text-slate-500 leading-snug">
+                    Desde las {pad2(hourStart)} puedes arrendar hasta {maxFromStart} {maxFromStart === 1 ? 'hora' : 'horas'}
+                    {hourStart + maxFromStart >= MAX_END_HOUR ? ` (el espacio cierra a las ${pad2(MAX_END_HOUR)})` : ' (después hay una reserva)'}.
                   </p>
                 )}
 
@@ -1061,12 +1054,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                         type="button"
                         onClick={() => {
                           if (isOccupied) return;
-                          // Si el bloque no cabe desde esta hora, se ajusta al inicio válido más cercano.
-                          const start = validStartHours.includes(h)
-                            ? h
-                            : [...validStartHours].reverse().find((v) => v <= h && v + totalHours > h) ?? h;
-                          onHourStartChange(start);
-                          onHourEndChange(Math.min(MAX_END_HOUR, start + totalHours));
+                          // Se empieza en la franja elegida; si las horas elegidas no caben
+                          // antes del cierre, se recortan (cierre 20:00 → desde 19:00, 1 hora).
+                          if (!validStartHours.includes(h)) return;
+                          onHourStartChange(h);
+                          onHourEndChange(h + Math.max(minHours, Math.min(totalHours, freeRunFrom(h))));
                         }}
                         disabled={isOccupied}
                         title={isOccupied ? `Franja ${h}:00 pedida u ocupada` : `Franja ${h}:00 disponible`}

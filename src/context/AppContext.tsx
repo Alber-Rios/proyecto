@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
   UserProfile,
   Space,
@@ -1198,6 +1198,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('El reembolso quedó pendiente de proceso:', err);
     }
   };
+
+  // Reembolsos que quedaron pendientes (p. ej. una solicitud que el anfitrión no
+  // respondió a tiempo y la base rechazó sola): se reintentan al cargar las
+  // reservas, una vez por sesión y reserva. La API valida que quien la llama sea
+  // arrendatario, propietario o administración de esa reserva.
+  const refundAttempts = useRef(new Set<string>());
+  useEffect(() => {
+    if (!currentUser || !isSupabaseConfigured()) return;
+    const pending = reservations.filter(
+      (r) =>
+        r.paymentStatus === 'refund_pending' &&
+        (r.tenantId === currentUser.id || r.ownerId === currentUser.id) &&
+        !refundAttempts.current.has(r.id)
+    );
+    pending.forEach((r) => {
+      refundAttempts.current.add(r.id);
+      callApi('/api/webpay?action=refund', { reservationId: r.id })
+        .then(() => refreshReservations())
+        .catch((err) => console.warn('El reembolso sigue pendiente:', err));
+    });
+  }, [reservations, currentUser?.id]);
 
   // Cancelación con cálculo de reembolso en servidor (RF-18).
   const cancelReservation = async (reservationId: string, reason?: string): Promise<Reservation | undefined> => {
