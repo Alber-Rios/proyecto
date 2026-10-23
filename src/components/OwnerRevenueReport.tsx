@@ -1,15 +1,39 @@
 import React, { useMemo, useState } from 'react';
 import { Reservation } from '../types.ts';
-import { formatClp } from '../utils/formatters.ts';
-import { buildRevenueCsv, monthlyRevenue, revenueRows } from '../utils/revenueReport.ts';
+import { formatClp, getTodayIso } from '../utils/formatters.ts';
+import { buildRevenueCsv, revenueRows } from '../utils/revenueReport.ts';
+import { lastMonths, bucketKeyOf, periodBuckets, PeriodToggle, PERIOD_TEXT, usePeriod, VerticalBarChart } from './dashboard/DashboardCharts.tsx';
 import { Download, BarChart3 } from 'lucide-react';
 
-// Gráfico de ingresos por mes (RF-27) y exportación del reporte (RF-28).
+const compactClp = (v: number) =>
+  v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1).replace('.', ',')}M` : v >= 1000 ? `$${Math.round(v / 1000)}k` : formatClp(v);
+
+// Gráfico de ingresos por día, semana o mes (RF-27) y exportación del reporte (RF-28).
 export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ reservations }) => {
+  const [period, setPeriod] = usePeriod('spotly-owner-revenue-period');
   const [months, setMonths] = useState(6);
-  const series = useMemo(() => monthlyRevenue(reservations, months), [reservations, months]);
-  const max = Math.max(...series.map((m) => m.net), 1);
+  const todayIso = getTodayIso();
   const rows = useMemo(() => revenueRows(reservations), [reservations]);
+  const buckets = useMemo(() => {
+    if (period !== 'month') return periodBuckets(todayIso, period);
+    return lastMonths(todayIso, months).map((m) => {
+      const [y, mo] = m.key.split('-').map(Number);
+      return { key: m.key, label: m.label, start: `${m.key}-01`, end: `${m.key}-${String(new Date(y, mo, 0).getDate()).padStart(2, '0')}` };
+    });
+  }, [todayIso, period, months]);
+  const series = useMemo(() => {
+    const map = new Map<string, { net: number; count: number }>();
+    for (const r of rows) {
+      const k = bucketKeyOf(r.startDate, buckets);
+      if (!k) continue;
+      const v = map.get(k) || { net: 0, count: 0 };
+      map.set(k, { net: v.net + r.net, count: v.count + 1 });
+    }
+    return buckets.map((b) => {
+      const v = map.get(b.key) || { net: 0, count: 0 };
+      return { key: b.key, label: b.label, value: v.net, detail: `${v.count} ${v.count === 1 ? 'reserva' : 'reservas'}` };
+    });
+  }, [rows, buckets]);
 
   const handleExport = () => {
     const csv = buildRevenueCsv(rows);
@@ -24,24 +48,20 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 
-  const chartHeight = 140;
-  const barWidth = 36;
-  const gap = 18;
-  const chartWidth = series.length * (barWidth + gap) + gap;
-
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-rose-600" /> Ingresos netos por mes
+            <BarChart3 className="w-4 h-4 text-rose-600" /> Ingresos netos {PERIOD_TEXT[period].per}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Reservas confirmadas o finalizadas con pago aprobado, descontada la comisión de la plataforma.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-600">
+        <div className="flex flex-wrap items-center gap-2">
+          <PeriodToggle id="owner-revenue" value={period} onChange={setPeriod} />
+          {period === 'month' && <label className="text-xs text-slate-600">
             <span className="sr-only">Período</span>
             <select
               value={months}
@@ -52,7 +72,7 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
               <option value={6}>6 meses</option>
               <option value={12}>12 meses</option>
             </select>
-          </label>
+          </label>}
           <button
             onClick={handleExport}
             disabled={rows.length === 0}
@@ -63,35 +83,13 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <svg
-          viewBox={`0 0 ${chartWidth} ${chartHeight + 40}`}
-          width="100%"
-          style={{ minWidth: Math.min(chartWidth, 320), maxHeight: 220 }}
-          role="img"
-          aria-label="Ingresos netos por mes"
-        >
-          <line x1={0} x2={chartWidth} y1={chartHeight} y2={chartHeight} stroke="#e2e8f0" />
-          {series.map((m, i) => {
-            const h = Math.round((m.net / max) * (chartHeight - 20));
-            const x = gap + i * (barWidth + gap);
-            return (
-              <g key={m.key}>
-                <title>{`${m.label}: ${formatClp(m.net)} (${m.count} reservas)`}</title>
-                <rect x={x} y={chartHeight - h} width={barWidth} height={Math.max(h, m.net > 0 ? 2 : 0)} rx={6} fill="#e11d48" />
-                <text x={x + barWidth / 2} y={chartHeight + 14} textAnchor="middle" fontSize={10} fill="#64748b">
-                  {m.label}
-                </text>
-                {m.net > 0 && (
-                  <text x={x + barWidth / 2} y={chartHeight - h - 4} textAnchor="middle" fontSize={9} fill="#0f172a">
-                    {Math.round(m.net / 1000)}k
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
+      <VerticalBarChart
+        key={`${period}-${months}`}
+        title={`Ingresos netos ${PERIOD_TEXT[period].per}`}
+        data={series}
+        formatValue={compactClp}
+        height={170}
+      />
 
       <p className="text-[11px] text-slate-500">
         {rows.length} {rows.length === 1 ? 'reserva incluida' : 'reservas incluidas'} en el reporte exportable · Total neto{' '}

@@ -9,8 +9,12 @@ import {
   OccupancyHeatStrip,
   StatTile,
   VerticalBarChart,
-  lastMonths,
   pctChange,
+  periodBuckets,
+  bucketKeyOf,
+  usePeriod,
+  PeriodToggle,
+  PERIOD_TEXT,
 } from './DashboardCharts.tsx';
 
 type OwnerTab = 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits';
@@ -58,23 +62,29 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
   onGoTab,
   onOpenCalendar,
 }) => {
-  const months = useMemo(() => lastMonths(todayIso, 6), [todayIso]);
-  const currentMonth = months[months.length - 1].key;
-  const previousMonth = months[months.length - 2].key;
+  // Día, semana o mes: cambia los indicadores, el gráfico de ingresos y el ranking.
+  const [period, setPeriod] = usePeriod('spotly-owner-period');
+  const text = PERIOD_TEXT[period];
+  const buckets = useMemo(() => periodBuckets(todayIso, period), [todayIso, period]);
+  const currentKey = buckets[buckets.length - 1].key;
+  const previousKey = buckets[buckets.length - 2].key;
+  const rangeStart = buckets[0].start;
+  const rangeEnd = buckets[buckets.length - 1].end;
 
-  const incomeByMonth = useMemo(() => {
+  const incomeByBucket = useMemo(() => {
     const map = new Map<string, { net: number; count: number }>();
     for (const r of bookings) {
       if (!isEarning(r)) continue;
-      const key = r.startDate.slice(0, 7);
+      const key = bucketKeyOf(r.startDate, buckets);
+      if (!key) continue;
       const prev = map.get(key) || { net: 0, count: 0 };
       map.set(key, { net: prev.net + netOf(r), count: prev.count + 1 });
     }
     return map;
-  }, [bookings]);
+  }, [bookings, buckets]);
 
-  const thisMonth = incomeByMonth.get(currentMonth) || { net: 0, count: 0 };
-  const lastMonth = incomeByMonth.get(previousMonth) || { net: 0, count: 0 };
+  const thisPeriod = incomeByBucket.get(currentKey) || { net: 0, count: 0 };
+  const lastPeriod = incomeByBucket.get(previousKey) || { net: 0, count: 0 };
 
   const activeSpaces = useMemo(() => spaces.filter((s) => s.status === 'active'), [spaces]);
 
@@ -124,7 +134,9 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
   const ranking = useMemo(() => {
     return spaces
       .map((sp) => {
-        const own = bookings.filter((r) => r.spaceId === sp.id && isEarning(r));
+        const own = bookings.filter(
+          (r) => r.spaceId === sp.id && isEarning(r) && r.startDate >= rangeStart && r.startDate <= rangeEnd
+        );
         return {
           key: sp.id,
           label: sp.title,
@@ -134,7 +146,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
       })
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
-  }, [spaces, bookings]);
+  }, [spaces, bookings, rangeStart, rangeEnd]);
 
   const upcomingBlocks = blocks.filter((b) => b.endDate >= todayIso).length;
   const moderation = spaces.filter((s) => s.status === 'pending_approval').length;
@@ -142,19 +154,25 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
 
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-slate-500">
+          Mostrando <strong className="text-slate-800">{text.range.toLowerCase()}</strong>
+        </p>
+        <PeriodToggle id="owner" value={period} onChange={setPeriod} />
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile
-          label="Ingresos netos del mes"
-          value={formatClp(thisMonth.net)}
-          delta={pctChange(thisMonth.net, lastMonth.net)}
-          hint="vs. mes anterior"
+          label={`Ingresos netos ${text.current}`}
+          value={formatClp(thisPeriod.net)}
+          delta={pctChange(thisPeriod.net, lastPeriod.net)}
+          hint={text.previous}
           icon={<Wallet className="w-4 h-4" />}
           onClick={() => onGoTab('finances')}
         />
         <StatTile
-          label="Reservas del mes"
-          value={String(thisMonth.count)}
-          delta={pctChange(thisMonth.count, lastMonth.count)}
+          label={`Reservas ${text.current}`}
+          value={String(thisPeriod.count)}
+          delta={pctChange(thisPeriod.count, lastPeriod.count)}
           hint="confirmadas"
           icon={<CalendarCheck className="w-4 h-4" />}
           onClick={() => onGoTab('bookings')}
@@ -179,14 +197,15 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Ingresos netos por mes</h3>
-            <span className="text-[10px] text-slate-500">Últimos 6 meses · después de comisión</span>
+            <h3 className="text-sm font-bold text-slate-900">Ingresos netos {text.per}</h3>
+            <span className="text-[10px] text-slate-500">{text.range} · después de comisión</span>
           </div>
           <VerticalBarChart
-            title="Ingresos netos por mes"
-            data={months.map((m) => {
-              const v = incomeByMonth.get(m.key) || { net: 0, count: 0 };
-              return { key: m.key, label: m.label, value: v.net, detail: `${v.count} ${v.count === 1 ? 'reserva' : 'reservas'}` };
+            key={period}
+            title={`Ingresos netos ${text.per}`}
+            data={buckets.map((b) => {
+              const v = incomeByBucket.get(b.key) || { net: 0, count: 0 };
+              return { key: b.key, label: b.label, value: v.net, detail: `${v.count} ${v.count === 1 ? 'reserva' : 'reservas'}` };
             })}
             formatValue={compactClp}
           />
@@ -224,12 +243,15 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
-          <h3 className="text-sm font-bold text-slate-900">Tus espacios que más generan</h3>
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="text-sm font-bold text-slate-900">Tus espacios que más generan</h3>
+            <span className="text-[10px] text-slate-500">{text.range}</span>
+          </div>
           <HorizontalBarList
             title="Ingresos netos por espacio"
             data={ranking}
             formatValue={compactClp}
-            emptyText="Aún no tienes reservas confirmadas."
+            emptyText="Sin reservas confirmadas en este período."
             onSelect={(id) => onOpenCalendar(id, todayIso)}
           />
         </section>

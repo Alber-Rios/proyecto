@@ -116,7 +116,13 @@ export const VerticalBarChart: React.FC<{
       </div>
       <div className="flex gap-2 sm:gap-3 px-1" aria-hidden>
         {data.map((d, i) => (
-          <span key={d.key} className={`flex-1 text-center text-[10px] ${i === lastIdx ? 'font-bold text-slate-800' : 'text-slate-500'}`}>
+          <span
+            key={d.key}
+            className={`flex-1 min-w-0 text-center text-[10px] whitespace-nowrap ${i === lastIdx ? 'font-bold text-slate-800' : 'text-slate-500'} ${
+              // Con muchas barras, en pantallas chicas se muestra una etiqueta por medio.
+              data.length > 8 && (lastIdx - i) % 2 === 1 ? 'invisible sm:visible' : ''
+            }`}
+          >
             {d.label}
           </span>
         ))}
@@ -341,3 +347,122 @@ export function pctChange(current: number, previous: number): number | null {
   if (previous === 0) return current === 0 ? 0 : null;
   return ((current - previous) / previous) * 100;
 }
+
+/* ------------------------------------------------------------------ */
+/* Períodos: ver los paneles por día, semana o mes                     */
+/* ------------------------------------------------------------------ */
+
+export type DashboardPeriod = 'day' | 'week' | 'month';
+
+export interface PeriodBucket {
+  key: string;
+  label: string;
+  /** Primer y último día (ISO, inclusive) del período. */
+  start: string;
+  end: string;
+}
+
+export const PERIOD_TEXT: Record<
+  DashboardPeriod,
+  { current: string; previous: string; per: string; range: string; name: string }
+> = {
+  day: { current: 'de hoy', previous: 'vs. ayer', per: 'por día', range: 'Últimos 14 días', name: 'Día' },
+  week: { current: 'de la semana', previous: 'vs. semana anterior', per: 'por semana', range: 'Últimas 8 semanas', name: 'Semana' },
+  month: { current: 'del mes', previous: 'vs. mes anterior', per: 'por mes', range: 'Últimos 6 meses', name: 'Mes' },
+};
+
+const isoOf = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const shiftDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return isoOf(d);
+};
+const DAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+/** Períodos a mostrar en los gráficos (el último es el actual). */
+export function periodBuckets(todayIso: string, period: DashboardPeriod): PeriodBucket[] {
+  if (period === 'month') {
+    return lastMonths(todayIso, 6).map((m) => {
+      const [y, mo] = m.key.split('-').map(Number);
+      const last = new Date(y, mo, 0).getDate();
+      return { key: m.key, label: m.label, start: `${m.key}-01`, end: `${m.key}-${String(last).padStart(2, '0')}` };
+    });
+  }
+  if (period === 'week') {
+    // Semanas de lunes a domingo.
+    const today = new Date(`${todayIso}T12:00:00`);
+    const monday = shiftDays(todayIso, -((today.getDay() + 6) % 7));
+    return Array.from({ length: 8 }, (_, i) => {
+      const start = shiftDays(monday, -7 * (7 - i));
+      const [, m, d] = start.split('-').map(Number);
+      return { key: start, label: `${d} ${MONTH_SHORT[m - 1].toLowerCase()}`, start, end: shiftDays(start, 6) };
+    });
+  }
+  return Array.from({ length: 14 }, (_, i) => {
+    const iso = shiftDays(todayIso, -(13 - i));
+    const d = new Date(`${iso}T12:00:00`);
+    return { key: iso, label: `${DAY_SHORT[d.getDay()]} ${d.getDate()}`, start: iso, end: iso };
+  });
+}
+
+/** Clave del período al que pertenece una fecha (o null si está fuera del rango). */
+export function bucketKeyOf(iso: string, buckets: PeriodBucket[]): string | null {
+  const day = iso.slice(0, 10);
+  for (const b of buckets) if (day >= b.start && day <= b.end) return b.key;
+  return null;
+}
+
+/** Selector Día / Semana / Mes, recuerda la elección en este navegador. */
+export function usePeriod(storageKey: string, initial: DashboardPeriod = 'month') {
+  const [period, setPeriodState] = useState<DashboardPeriod>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved === 'day' || saved === 'week' || saved === 'month' ? saved : initial;
+    } catch {
+      return initial;
+    }
+  });
+  const setPeriod = (p: DashboardPeriod) => {
+    setPeriodState(p);
+    try {
+      localStorage.setItem(storageKey, p);
+    } catch {
+      /* sin almacenamiento: solo dura esta visita */
+    }
+  };
+  return [period, setPeriod] as const;
+}
+
+export const PeriodToggle: React.FC<{ value: DashboardPeriod; onChange: (p: DashboardPeriod) => void; id: string }> = ({
+  value,
+  onChange,
+  id,
+}) => (
+  <div className="inline-flex rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="Ver por período">
+    {(['day', 'week', 'month'] as DashboardPeriod[]).map((p) => {
+      const active = value === p;
+      return (
+        <button
+          key={p}
+          type="button"
+          role="radio"
+          aria-checked={active}
+          onClick={() => onChange(p)}
+          className={`relative rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+            active ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          {active && (
+            <motion.span
+              layoutId={`period-pill-${id}`}
+              className="absolute inset-0 rounded-lg bg-white shadow-sm"
+              transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
+            />
+          )}
+          <span className="relative">{PERIOD_TEXT[p].name}</span>
+        </button>
+      );
+    })}
+  </div>
+);
