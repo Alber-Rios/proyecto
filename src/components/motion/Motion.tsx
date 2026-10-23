@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
 import {
   motion,
-  useReducedMotion,
   useScroll,
   useSpring,
   useMotionValue,
   useMotionTemplate,
   type Variants,
 } from 'motion/react';
+import { useReducedMotion } from '../../lib/motionPreference.ts';
 
 // Curva "expo out": arranca rápido y se asienta suave, la sensación de producto caro.
 export const EASE_LUXE = [0.16, 1, 0.3, 1] as const;

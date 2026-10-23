@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useReducedMotion } from '../lib/motionPreference.ts';
 
 /**
  * Fondo de la portada: fotografías de espacios que se pueden arrendar

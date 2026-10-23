@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from '../lib/motionPreference.ts';
 import { useCallback, useEffect, useState } from 'react';
 
 /**
@@ -10,8 +11,7 @@ export function useAutoCarousel(count: number, intervalMs = 4500, paused = false
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [hidden, setHidden] = useState(typeof document !== 'undefined' && document.visibilityState === 'hidden');
-  const reduceMotion =
-    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion = prefersReducedMotion();
 
   useEffect(() => {
     const onVis = () => setHidden(document.visibilityState === 'hidden');

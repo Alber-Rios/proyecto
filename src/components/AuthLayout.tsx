@@ -1,5 +1,6 @@
 import React from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
+import { useReducedMotion } from '../lib/motionPreference.ts';
 import { Check } from 'lucide-react';
 import { EASE_LUXE } from './motion/Motion.tsx';
 

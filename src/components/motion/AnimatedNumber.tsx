@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { animate } from 'animejs';
+import { prefersReducedMotion } from '../../lib/motionPreference.ts';
 
 /**
  * Texto con un número que "cuenta" hasta su valor (Anime.js).
@@ -22,8 +23,7 @@ const parse = (text: string) => {
 const formatCl = (v: number, decimals: number) =>
   v.toLocaleString('es-CL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
-const prefersReduced = () =>
-  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const prefersReduced = prefersReducedMotion;
 
 export const AnimatedNumber: React.FC<{
   text: string;

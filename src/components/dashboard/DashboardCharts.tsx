@@ -4,7 +4,8 @@
 // color de la serie), tooltip al pasar el cursor/foco y tabla equivalente para
 // lectores de pantalla.
 import React, { useId, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useReducedMotion } from '../../lib/motionPreference.ts';
 import { AnimatedNumber } from '../motion/AnimatedNumber.tsx';
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;

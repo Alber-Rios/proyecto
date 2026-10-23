@@ -5,7 +5,7 @@ import { HomePage } from './pages/HomePage.tsx';
 import { Space } from './types.ts';
 import { Building2 } from 'lucide-react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, MotionConfig } from 'motion/react';
 import { PageTransition, ScrollProgress } from './components/motion/Motion.tsx';
 import { CookieBanner } from './components/CookieBanner.tsx';
 
@@ -303,9 +303,13 @@ function AppContent() {
 
 export function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    // Los efectos se muestran también con "movimiento reducido" activo en el sistema
+    // (ver src/lib/motionPreference.ts).
+    <MotionConfig reducedMotion="never">
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </MotionConfig>
   );
 }
 export default App;

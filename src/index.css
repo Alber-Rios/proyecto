@@ -23,16 +23,6 @@
     outline-offset: 2px;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
-  }
-
   input,
   textarea {
     background-image: none !important;
@@ -113,10 +103,6 @@ div[data-temp-mail] {
   animation: gradient-pan 8s ease-in-out infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .aurora-a, .aurora-b, .text-luxe { animation: none !important; }
-  .shine::before { display: none; }
-}
 
 /* ===== Entrada de modales y diálogos =====
    El fondo oscuro aparece con un fundido y la ventana sube un poco mientras
