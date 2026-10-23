@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrandLogo } from './BrandLogo.tsx';
 import { motion } from 'motion/react';
 import { useReducedMotion } from '../lib/motionPreference.ts';
 import { Check } from 'lucide-react';
@@ -45,9 +46,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
 
           <div className="relative z-10 space-y-8">
-            <motion.div {...enter(0.1)} className="flex items-baseline gap-1.5">
-              <span className="font-display text-3xl leading-none">Spotly</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden="true" />
+            <motion.div {...enter(0.1)} className="flex">
+              <BrandLogo tone="light" animated className="text-3xl" />
             </motion.div>
 
             <div className="space-y-3">

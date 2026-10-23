@@ -1,9 +1,9 @@
 import React, { lazy, Suspense, useState } from 'react';
+import { BrandLogo } from './components/BrandLogo.tsx';
 import { AppProvider, useApp } from './context/AppContext.tsx';
 import { Header } from './components/Header.tsx';
 import { HomePage } from './pages/HomePage.tsx';
 import { Space } from './types.ts';
-import { Building2 } from 'lucide-react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { PageTransition, ScrollProgress } from './components/motion/Motion.tsx';
@@ -232,14 +232,7 @@ function AppContent() {
         <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-rose-600 flex items-center justify-center text-white">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <span className="text-white font-bold text-base tracking-tight">
-                  Spotly
-                </span>
-              </div>
+              <BrandLogo tone="light" className="text-[1.6rem]" />
               <p className="text-slate-400 leading-relaxed text-sm">
                 Una plataforma para encontrar y publicar espacios con modalidades de arriendo flexibles. Revisa los detalles y condiciones de cada publicación.
               </p>

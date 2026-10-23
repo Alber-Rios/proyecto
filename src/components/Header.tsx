@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrandLogo } from './BrandLogo.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.tsx';
 import {
@@ -147,15 +148,9 @@ export const Header: React.FC<HeaderProps> = ({
               id="brand-logo-btn"
               onClick={() => onNavigate('home')}
               aria-label="Spotly, ir al inicio"
-              className="group flex items-baseline gap-1.5 text-left shrink-0 rounded-md cursor-pointer"
+              className="group flex items-center text-left shrink-0 rounded-md cursor-pointer"
             >
-              <span className="font-display text-2xl sm:text-[1.7rem] leading-none text-slate-900 transition-transform duration-500 group-hover:-translate-y-0.5">
-                Spotly
-              </span>
-              <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-60 motion-safe:animate-ping [animation-duration:2.4s]" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-600" />
-              </span>
+              <BrandLogo animated className="text-[1.6rem] sm:text-[1.85rem] transition-transform duration-500 group-hover:-translate-y-0.5" />
             </button>
 
             {/* Enlaces rápidos visibles en Tablet (md) y PC (lg) */}
