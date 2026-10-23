@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAutoCarousel } from '../hooks/useAutoCarousel.ts';
 import { Space } from '../types.ts';
@@ -25,10 +25,9 @@ interface SpaceCardProps {
 export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
   const { currentUser, isSpaceFavorite, toggleFavoriteSpace } = useApp();
   const isFavorite = isSpaceFavorite(space.id);
-  // Las fotos rotan solas mientras el cursor (o el foco) está sobre la tarjeta.
+  // Las fotos del espacio pasan solas cada 3 segundos.
   const images = space.images || [];
-  const [hovering, setHovering] = useState(false);
-  const { index: photoIndex, go: goToPhoto } = useAutoCarousel(images.length, 2200, !hovering);
+  const { index: photoIndex } = useAutoCarousel(images.length, 3000);
 
   return (
     <div
@@ -37,13 +36,6 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
       tabIndex={0}
       aria-label={`Ver ${space.title}`}
       onClick={() => onSelect(space)}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => {
-        setHovering(false);
-        goToPhoto(0);
-      }}
-      onFocus={() => setHovering(true)}
-      onBlur={() => setHovering(false)}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') {

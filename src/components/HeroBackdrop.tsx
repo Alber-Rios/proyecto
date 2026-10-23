@@ -18,7 +18,7 @@ const SLIDES = [
   { src: img('photo-1743419672503-3e363bcd3634'), label: 'Espacios de trabajo compartido', credit: 'rawkkim' },
 ];
 
-const SLIDE_MS = 7000;
+const SLIDE_MS = 3000;
 
 export const HeroBackdrop: React.FC = () => {
   const reduce = useReducedMotion();
@@ -49,12 +49,12 @@ export const HeroBackdrop: React.FC = () => {
             src={slide.src}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
-            initial={{ opacity: 0, scale: reduce ? 1 : 1.06 }}
+            initial={{ opacity: 0, scale: reduce ? 1 : 1.04 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{
-              opacity: { duration: 1.2, ease: [0.4, 0, 0.2, 1] },
-              scale: { duration: (SLIDE_MS + 1200) / 1000, ease: 'linear' },
+              opacity: { duration: 0.8, ease: [0.4, 0, 0.2, 1] },
+              scale: { duration: (SLIDE_MS + 800) / 1000, ease: 'linear' },
             }}
             decoding="async"
           />
@@ -79,7 +79,6 @@ export const HeroBackdrop: React.FC = () => {
               {slide.label}
             </motion.p>
           </AnimatePresence>
-          <p className="mt-0.5 text-[11px] text-white/60">Foto: {slide.credit} · Unsplash</p>
         </div>
         <div className="flex gap-1.5 pb-1.5">
           {SLIDES.map((s, i) => (

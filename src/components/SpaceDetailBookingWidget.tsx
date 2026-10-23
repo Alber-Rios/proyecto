@@ -1091,52 +1091,6 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
             </div>
           )}
 
-          {/* ¿PARA QUÉ VA A UTILIZAR ESTE LUGAR? */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <label className="text-xs font-extrabold text-slate-900 block">
-                  ¿Para qué va a utilizar este lugar?
-                </label>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                  Comenta el uso que le darás al lugar durante tu reserva.
-                </p>
-              </div>
-              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider">
-                Ley 18.101
-              </span>
-            </div>
-
-            {/* Caja de texto para comentar para qué va a utilizar este lugar */}
-            <div className="relative">
-              <textarea
-                rows={3}
-                value={intendedUse}
-                onChange={(e) => onIntendedUseChange(e.target.value)}
-                placeholder="Comenta aquí para qué vas a utilizar este lugar..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 focus:outline-hidden bg-white shadow-2xs transition resize-y min-h-[80px] leading-relaxed"
-              />
-              <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400 px-1">
-                <span>
-                  {intendedUse.trim().length === 0 ? (
-                    <span className="text-amber-600 font-semibold">Requerido para realizar la reserva</span>
-                  ) : (
-                    <span className="text-emerald-700 font-semibold">Uso del lugar comentado ({intendedUse.length} caracteres)</span>
-                  )}
-                </span>
-                {intendedUse.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onIntendedUseChange('')}
-                    className="text-slate-400 hover:text-slate-600 underline cursor-pointer"
-                  >
-                    Limpiar texto
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* DESGLOSE TRANSPARENTE DE COSTOS */}
           <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider pb-1">
@@ -1347,13 +1301,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     <span>No disponible (Horario/Día ocupado)</span>
                   </>
                 ) : (
-                  <span>
-                    {activeModality === 'por_dia'
-                      ? 'Continuar al contrato digital'
-                      : activeModality === 'mensual'
-                      ? 'Continuar al contrato mensual'
-                      : 'Continuar a reserva inmediata'}
-                  </span>
+                  <span>Reservar</span>
                 )}
               </button>
 

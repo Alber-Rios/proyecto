@@ -128,12 +128,12 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
   }, [space?.id]);
 
   // Galería de fotos
-  // Galería en carrusel: avanza sola cada 4,5 s y se pausa al pasar el cursor o
-  // al usar las flechas/miniaturas con el teclado.
+  // Galería en carrusel: avanza sola cada 3 s; se pausa solo mientras se usa
+  // con el teclado.
   const [galleryPaused, setGalleryPaused] = useState(false);
   const galleryCount = space?.images?.length || 0;
   const { index: activeImageIndex, direction: galleryDirection, go: goToImage, next: nextImage, prev: prevImage, running: galleryRunning } =
-    useAutoCarousel(galleryCount, 4500, galleryPaused);
+    useAutoCarousel(galleryCount, 3000, galleryPaused);
   const setActiveImageIndex = (i: number) => goToImage(i);
 
   // Modales
@@ -326,8 +326,6 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               initial={{ opacity: 0, scale: 0.985 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.9, ease: EASE_LUXE }}
-              onMouseEnter={() => setGalleryPaused(true)}
-              onMouseLeave={() => setGalleryPaused(false)}
               onFocusCapture={() => setGalleryPaused(true)}
               onBlurCapture={() => setGalleryPaused(false)}
               aria-roledescription="carrusel"
@@ -420,7 +418,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                           className="absolute inset-y-0 left-0 bg-white rounded-full"
                           initial={{ width: galleryRunning ? '0%' : '100%' }}
                           animate={{ width: '100%' }}
-                          transition={{ duration: galleryRunning ? 4.5 : 0, ease: 'linear' }}
+                          transition={{ duration: galleryRunning ? 3 : 0, ease: 'linear' }}
                         />
                       )}
                     </button>
