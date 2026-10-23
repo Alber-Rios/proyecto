@@ -8,6 +8,9 @@ Para cualquier trabajo de UI usa los skills de `.claude/skills/`:
 - `taste-skill` (design-taste-frontend): evitar el look genérico de IA, tipografía, color, layout.
 - `emil-design-eng`, `animate`, `review-animations`, `improve-animations`, `animation-performance`: criterio de Emil Kowalski para animaciones y detalles de UI.
 
+## Prompts
+- `prompt-master`: escribir o mejorar prompts para otras IA (Claude, ChatGPT, Cursor, Midjourney, etc.).
+
 ## MCP (`.mcp.json`)
 - `figma`: MCP oficial de Figma (pide iniciar sesión la primera vez).
 - `playwright`: navegador para probar y sacar capturas de la app (`npm run dev`).
