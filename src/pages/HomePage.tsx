@@ -117,8 +117,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   const activeSpaces = spaces.filter((space) => space.status === 'active');
-  // Primera foto de cada espacio publicado, para el fondo de la portada.
-  const heroImages = activeSpaces.map((space) => space.images?.[0]).filter((src): src is string => Boolean(src));
 
   const handlePublishSpace = () => {
     if (!currentUser) {
@@ -138,8 +136,8 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* Hero Section */}
       <Spotlight className="overflow-hidden rounded-[2rem] bg-stone-950 text-white shadow-[0_40px_80px_-30px_rgba(12,10,9,0.6)]">
         <section className="relative min-h-[30rem] sm:min-h-[34rem] flex items-center px-6 py-14 sm:px-14 sm:py-20">
-          {/* Fondo: plano del edificio con disponibilidad y fotos de los espacios */}
-          <HeroBackdrop images={heroImages} />
+          {/* Fondo: fotos de espacios que se pueden arrendar */}
+          <HeroBackdrop />
 
           <div className="relative z-10 max-w-3xl space-y-7">
             <h1 className="font-display text-[2.6rem] sm:text-7xl leading-[1.02] tracking-tight">

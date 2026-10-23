@@ -2,172 +2,108 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 /**
- * Fondo de la portada: el plano de un edificio que se dibuja solo, con sus
- * espacios que se marcan como libres o reservados a lo largo del día, y las
- * fotos de los espacios publicados rotando al costado.
+ * Fondo de la portada: fotografías de espacios que se pueden arrendar
+ * (salas, oficinas, estudios, lofts), con fundido y un acercamiento lento.
+ * Fotos con licencia Unsplash (uso libre); se cargan desde su CDN.
  */
 
-type RoomState = 'free' | 'busy';
+const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=2000&q=70`;
 
-const ROOMS: { label: string; x: number; y: number; w: number; h: number; outdoor?: boolean }[] = [
-  { label: 'Oficina', x: 20, y: 20, w: 200, h: 170 },
-  { label: 'Sala de reuniones', x: 220, y: 20, w: 230, h: 170 },
-  { label: 'Estudio', x: 450, y: 20, w: 170, h: 230 },
-  { label: 'Box', x: 20, y: 190, w: 130, h: 200 },
-  { label: 'Cowork', x: 150, y: 250, w: 180, h: 140 },
-  { label: 'Bodega', x: 330, y: 250, w: 120, h: 140 },
-  { label: 'Quincho', x: 450, y: 250, w: 170, h: 140, outdoor: true },
+const SLIDES = [
+  { src: img('photo-1774186184398-1cc2da3d029e'), label: 'Salas de reuniones', credit: 'Marc Wieland' },
+  { src: img('photo-1774853107769-c80031c15220'), label: 'Oficinas privadas', credit: 'FlippingBook' },
+  { src: img('photo-1786325492140-7353058296ae'), label: 'Estudios de foto y video', credit: 'Neon Wang' },
+  { src: img('photo-1785917835430-f1617b7d68ff'), label: 'Lofts para eventos', credit: 'Szcze hoo' },
+  { src: img('photo-1687945727613-a4d06cc41024'), label: 'Salas para equipos', credit: 'ASR Design Studio' },
+  { src: img('photo-1743419672503-3e363bcd3634'), label: 'Espacios de trabajo compartido', credit: 'rawkkim' },
 ];
 
-// Cómo va cambiando la ocupación durante el "día" (una fila por momento).
-const STATES: RoomState[][] = [
-  ['busy', 'free', 'free', 'busy', 'free', 'free', 'busy'],
-  ['free', 'busy', 'free', 'busy', 'busy', 'free', 'free'],
-  ['free', 'free', 'busy', 'free', 'busy', 'busy', 'free'],
-  ['busy', 'free', 'busy', 'free', 'free', 'busy', 'busy'],
-];
-const HOURS = ['09:00', '11:30', '14:00', '17:30'];
-const STEP_MS = 2600;
-const PHOTO_MS = 6500;
+const SLIDE_MS = 7000;
 
-export const HeroBackdrop: React.FC<{ images: string[] }> = ({ images }) => {
+export const HeroBackdrop: React.FC = () => {
   const reduce = useReducedMotion();
-  const [step, setStep] = useState(0);
-  const [photo, setPhoto] = useState(0);
-  const photos = images.slice(0, 6);
+  const [index, setIndex] = useState(0);
 
   useEffect(() => {
     if (reduce) return;
     const id = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setStep((s) => (s + 1) % STATES.length);
-    }, STEP_MS);
+      if (document.visibilityState === 'visible') setIndex((i) => (i + 1) % SLIDES.length);
+    }, SLIDE_MS);
     return () => window.clearInterval(id);
-  }, [reduce]);
+  }, [reduce, index]);
 
+  // Precarga la siguiente foto para que el cambio no muestre un hueco.
   useEffect(() => {
-    if (reduce || photos.length < 2) return;
-    const id = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setPhoto((p) => (p + 1) % photos.length);
-    }, PHOTO_MS);
-    return () => window.clearInterval(id);
-  }, [reduce, photos.length]);
+    const next = new Image();
+    next.src = SLIDES[(index + 1) % SLIDES.length].src;
+  }, [index]);
 
-  const states = STATES[step];
+  const slide = SLIDES[index];
 
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* Fotos de los espacios publicados */}
-      {photos.length > 0 && (
-        <div className="absolute inset-y-0 right-0 w-full lg:w-[62%] [mask-image:linear-gradient(to_left,black_45%,transparent)]">
-          <AnimatePresence initial={false}>
-            <motion.img
-              key={photos[photo]}
-              src={photos[photo]}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-              initial={{ opacity: 0, scale: 1.08 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ opacity: { duration: 1.4 }, scale: { duration: PHOTO_MS / 1000 + 1.4, ease: 'linear' } }}
-            />
-          </AnimatePresence>
-          <div className="absolute inset-0 bg-stone-950/70" />
-        </div>
-      )}
-
-      {/* Plano del edificio */}
-      <div className="absolute -right-40 top-1/2 w-[40rem] max-w-none -translate-y-1/2 opacity-25 sm:-right-24 lg:right-8 lg:w-[28rem] lg:opacity-95 xl:right-12 xl:w-[31rem]">
-        <svg viewBox="0 0 640 430" className="w-full">
-          <defs>
-            <pattern id="hero-dots" width="16" height="16" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.08)" />
-            </pattern>
-          </defs>
-          <rect x="0" y="0" width="640" height="430" fill="url(#hero-dots)" />
-
-          {ROOMS.map((r, i) => {
-            const free = states[i] === 'free';
-            return (
-              <g key={r.label}>
-                <motion.rect
-                  x={r.x + 4}
-                  y={r.y + 4}
-                  width={r.w - 8}
-                  height={r.h - 8}
-                  rx="10"
-                  initial={false}
-                  animate={{
-                    fill: free ? 'rgba(52,211,153,0.16)' : 'rgba(255,255,255,0.03)',
-                    stroke: free ? 'rgba(110,231,183,0.55)' : 'rgba(255,255,255,0.14)',
-                  }}
-                  transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-                  strokeWidth="1.2"
-                  strokeDasharray={r.outdoor ? '6 5' : undefined}
-                />
-                <text
-                  x={r.x + 18}
-                  y={r.y + 32}
-                  fill="rgba(255,255,255,0.72)"
-                  style={{ font: '600 13px "Instrument Sans", system-ui, sans-serif' }}
-                >
-                  {r.label}
-                </text>
-                <motion.text
-                  x={r.x + 18}
-                  y={r.y + 50}
-                  initial={false}
-                  animate={{ fill: free ? 'rgba(110,231,183,0.95)' : 'rgba(255,255,255,0.4)' }}
-                  transition={{ duration: 0.6 }}
-                  style={{ font: '500 11px "Instrument Sans", system-ui, sans-serif' }}
-                >
-                  {free ? '● Libre' : 'Reservado'}
-                </motion.text>
-              </g>
-            );
-          })}
-
-          {/* Muros: se dibujan al cargar */}
-          <motion.path
-            d="M20 20 H620 V390 H20 Z M220 20 V190 M450 20 V390 M20 190 H220 M150 190 V390 M150 250 H450 M330 250 V390 M450 250 H620"
-            fill="none"
-            stroke="rgba(255,255,255,0.35)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            initial={reduce ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 2.4, ease: [0.65, 0, 0.35, 1] }}
+    <>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-stone-900">
+        <AnimatePresence initial={false}>
+          <motion.img
+            key={slide.src}
+            src={slide.src}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            initial={{ opacity: 0, scale: reduce ? 1 : 1.06 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              opacity: { duration: 1.2, ease: [0.4, 0, 0.2, 1] },
+              scale: { duration: (SLIDE_MS + 1200) / 1000, ease: 'linear' },
+            }}
+            decoding="async"
           />
-          {/* Puerta de entrada */}
-          <rect x="268" y="386" width="40" height="8" fill="#0c0a09" />
-        </svg>
-
-        {/* Hora del día que avanza */}
-        <div className="absolute right-4 -top-10 hidden items-center lg:flex gap-2 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white/80 backdrop-blur-sm sm:right-10">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 motion-safe:animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-          </span>
-          Disponibilidad en vivo ·
-          <span className="relative inline-block w-[2.6rem] tabular-nums">
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.span
-                key={HOURS[step]}
-                initial={{ y: 8, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -8, opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="inline-block"
-              >
-                {HOURS[step]}
-              </motion.span>
-            </AnimatePresence>
-          </span>
-        </div>
+        </AnimatePresence>
+        {/* Velos para que el texto se lea sobre cualquier foto */}
+        <div className="absolute inset-0 bg-gradient-to-r from-stone-950/90 via-stone-950/60 to-stone-950/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-stone-950/20" />
       </div>
 
-      {/* Oscurece el lado del texto para que se lea bien */}
-      <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/80 to-transparent lg:via-stone-950/60" />
-      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-stone-950/80 to-transparent" />
-    </div>
+      {/* Tipo de espacio de la foto actual + avance */}
+      <div className="absolute bottom-8 right-10 z-10 hidden items-end gap-4 md:flex">
+        <div className="text-right">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.p
+              key={slide.label}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.35 }}
+              className="text-sm font-semibold text-white"
+            >
+              {slide.label}
+            </motion.p>
+          </AnimatePresence>
+          <p className="mt-0.5 text-[11px] text-white/60">Foto: {slide.credit} · Unsplash</p>
+        </div>
+        <div className="flex gap-1.5 pb-1.5">
+          {SLIDES.map((s, i) => (
+            <button
+              key={s.src}
+              type="button"
+              aria-label={`Ver foto: ${s.label}`}
+              aria-current={i === index}
+              onClick={() => setIndex(i)}
+              className="relative h-[3px] w-7 cursor-pointer overflow-hidden rounded-full bg-white/25 hover:bg-white/40"
+            >
+              {i === index && (
+                <motion.span
+                  key={`${index}-bar`}
+                  className="absolute inset-y-0 left-0 rounded-full bg-white"
+                  initial={{ width: reduce ? '100%' : '0%' }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: reduce ? 0 : SLIDE_MS / 1000, ease: 'linear' }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 };
