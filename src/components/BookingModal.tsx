@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Space, DigitalContract, VisitRequest } from '../types.ts';
 import { calculateBookingAmounts } from '../utils/pricing.ts';
@@ -8,6 +8,9 @@ import { formatClp, formatRut, getTodayIso, getOffsetDateIso } from '../utils/fo
 import { SignatureCanvas } from './SignatureCanvas.tsx';
 import { CheckoutPaymentBox, AppliedDiscount, PaymentChoice } from './CheckoutPaymentBox.tsx';
 import { saveBookingDraft } from '../utils/bookingDraft.ts';
+import { PaymentProgressModal, PaymentProgressStep } from './PaymentProgressModal.tsx';
+import { BookingResultModal, PaymentOutcome } from './BookingResultModal.tsx';
+import type { Reservation } from '../types.ts';
 import {
   Calendar as CalendarIcon,
   ShieldCheck,
@@ -139,9 +142,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     initialModality || (space?.rentalModality === 'por_hora' ? 'por_hora' : space?.rentalModality === 'mensual' ? 'mensual' : 'por_dia')
   );
 
-  // Sincronizar usuario o modo inicial al abrir el modal
+  // Progreso del pago y resultado final (se muestran encima del modal).
+  const [progress, setProgress] = useState<{ step: PaymentProgressStep; method: 'card' | 'webpay' } | null>(null);
+  const [result, setResult] = useState<{ outcome: PaymentOutcome; reservation: Reservation } | null>(null);
+
+  // Sincronizar usuario o modo inicial SOLO al abrir el modal. Antes se
+  // reiniciaba cada vez que cambiaban los datos del usuario o del espacio (por
+  // ejemplo, justo después de registrar la reserva) y la persona volvía al paso
+  // del contrato mientras el pago seguía en curso.
+  const openedRef = useRef(false);
   useEffect(() => {
+    if (!isOpen) {
+      openedRef.current = false;
+      return;
+    }
+    if (openedRef.current) return;
+    openedRef.current = true;
     if (isOpen) {
+      setProgress(null);
+      setResult(null);
       setActiveMode(initialMode);
       setBookingStep(initialStep !== undefined ? initialStep : 1);
       setError(null);
@@ -232,7 +251,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     setError(null);
-    const res = await createBooking({
+    const method: 'card' | 'webpay' = choice.kind === 'card' ? 'card' : 'webpay';
+    // Cada paso se muestra al menos un instante para que se entienda qué pasa.
+    const atLeast = <T,>(p: Promise<T>, ms = 700) =>
+      Promise.all([p, new Promise((r) => window.setTimeout(r, ms))]).then(([v]) => v);
+
+    setProgress({ step: 0, method });
+    let res: Awaited<ReturnType<typeof createBooking>>;
+    try {
+      res = await atLeast(createBooking({
       space: space!,
       startDate,
       endDate,
@@ -253,23 +280,44 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       rentalMonth: activeModality === 'mensual' ? selectedMonth : undefined,
       durationUnits: calculations.units,
       priceUnit: activeModality === 'por_hora' ? 'hour' : activeModality === 'mensual' ? 'month' : 'day',
-    });
+    }));
+    } catch (err) {
+      // Horario tomado, sesión vencida, etc.: se vuelve al pago con el motivo.
+      setProgress(null);
+      throw err;
+    }
+    setProgress({ step: 1, method });
+    await new Promise((r) => window.setTimeout(r, 600));
+    setProgress({ step: 2, method });
 
     if (choice.kind === 'card') {
-      // El servidor cancela la reserva si el banco rechaza el cobro: en ambos casos
-      // se muestra el resultado (exitosa / en lista de espera / rechazada).
-      let outcome: 'exito' | 'rechazado' = 'exito';
+      // El servidor cancela la reserva si el banco rechaza el cobro (por ejemplo,
+      // saldo o cupo insuficiente): en ambos casos se muestra el resultado aquí.
+      let outcome: PaymentOutcome = 'exito';
       try {
-        await payWithWalletCard(res.reservation.id, choice.cardId);
+        await atLeast(payWithWalletCard(res.reservation.id, choice.cardId), 900);
       } catch (err) {
         console.warn('Pago con tarjeta guardada no aprobado:', err);
         outcome = 'rechazado';
       }
-      onClose();
-      navigate(`/my-bookings?pago=${outcome}&reserva=${encodeURIComponent(res.reservation.id)}`);
+      setProgress(null);
+      setResult({
+        outcome,
+        reservation: {
+          ...res.reservation,
+          status: outcome === 'exito' ? (space?.instantBooking === false ? 'pending' : 'confirmed') : 'cancelled',
+          paymentStatus: outcome === 'exito' ? 'paid' : 'failed',
+        },
+      });
       return;
     }
-    await startWebpayPayment(res.reservation.id);
+    // Webpay: la página se va a Transbank y vuelve a Mis reservas con el resultado.
+    try {
+      await startWebpayPayment(res.reservation.id);
+    } catch (err) {
+      setProgress(null);
+      throw err;
+    }
   };
 
   // Guarda la reserva en curso y lleva al usuario a Transbank para inscribir una tarjeta.
@@ -345,7 +393,44 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   if (!isOpen || !space) return null;
 
+  // Resultado del pago con tarjeta guardada: reemplaza al formulario.
+  if (result) {
+    return (
+      <BookingResultModal
+        outcome={result.outcome}
+        reservation={result.reservation}
+        onFinish={() => {
+          setResult(null);
+          onClose();
+        }}
+        onViewBookings={() => {
+          const id = result.reservation.id;
+          setResult(null);
+          onClose();
+          navigate(`/my-bookings?reserva=${encodeURIComponent(id)}`);
+        }}
+        onRetry={
+          result.outcome === 'exito'
+            ? undefined
+            : () => {
+                setResult(null);
+                setBookingStep(2);
+              }
+        }
+      />
+    );
+  }
+
   return (
+    <>
+      {progress && (
+        <PaymentProgressModal
+          step={progress.step}
+          method={progress.method}
+          spaceTitle={space.title}
+          totalLabel={formatClp(calculations.total)}
+        />
+      )}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
       <div
         id="booking-visit-modal"
@@ -1076,5 +1161,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
