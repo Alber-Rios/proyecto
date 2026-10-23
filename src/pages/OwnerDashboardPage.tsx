@@ -1,4 +1,5 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
+import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -97,7 +98,8 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(() => new Date());
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week' | 'list'>('month');
   const [pendingFilter, setPendingFilter] = useState<'all' | 'selected'>('all');
-  const [bookingListStatusFilter, setBookingListStatusFilter] = useState<'pending_valid' | 'all' | 'confirmed' | 'past'>('pending_valid');
+  const [bookingListStatusFilter, setBookingListStatusFilter] = useState<'pending_valid' | 'all' | 'confirmed' | 'past' | 'cancelled'>('pending_valid');
+  const [cancelledByFilter, setCancelledByFilter] = useState<'all' | 'tenant' | 'owner'>('all');
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
   const [maintenanceDate, setMaintenanceDate] = useState(() => getTodayIso());
   const [spaceToDelete, setSpaceToDelete] = useState<Space | null>(null);
@@ -236,8 +238,24 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
   // Reservas recibidas para las propiedades de este propietario
   const myReceivedBookings = useMemo(() => {
-    return reservations.filter((r) => r.ownerId === currentUser.id);
+    // Las reservas que se anularon solas porque el pago falló (saldo
+    // insuficiente, tarjeta rechazada) no son parte del historial.
+    return reservations.filter(
+      (r) => r.ownerId === currentUser.id && (r.status !== 'cancelled' || isHistoryCancellation(r))
+    );
   }, [reservations, currentUser.id]);
+
+  const cancelledReceived = useMemo(
+    () => myReceivedBookings.filter((r) => r.status === 'cancelled'),
+    [myReceivedBookings]
+  );
+  const cancelledCounts = useMemo(() => {
+    const c = { tenant: 0, owner: 0, admin: 0 };
+    cancelledReceived.forEach((r) => {
+      c[cancelledByOf(r)] += 1;
+    });
+    return c;
+  }, [cancelledReceived]);
 
   // Solicitudes pendientes válidas para aprobar (del día actual hacia adelante)
   const pendingValidBookings = useMemo(() => {
@@ -952,9 +970,45 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                   : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
               }`}
             >
-              Pasadas / Expiradas ({myReceivedBookings.filter((b) => b.startDate < todayIso).length})
+              Pasadas / Expiradas ({myReceivedBookings.filter((b) => b.startDate < todayIso && b.status !== 'cancelled').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setBookingListStatusFilter('cancelled')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                bookingListStatusFilter === 'cancelled'
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Canceladas ({cancelledReceived.length})
             </button>
           </div>
+
+          {bookingListStatusFilter === 'cancelled' && (
+            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 overflow-x-auto" role="group" aria-label="Quién canceló">
+              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap mr-1">Cancelada por:</span>
+              {([
+                ['all', `Todas (${cancelledReceived.length})`],
+                ['tenant', `El arrendatario (${cancelledCounts.tenant})`],
+                ['owner', `Ti (${cancelledCounts.owner + cancelledCounts.admin})`],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={cancelledByFilter === value}
+                  onClick={() => setCancelledByFilter(value)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+                    cancelledByFilter === value
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {(() => {
             let displayedBookings = selectedSpaceId
@@ -968,7 +1022,16 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             } else if (bookingListStatusFilter === 'confirmed') {
               displayedBookings = displayedBookings.filter((b) => b.status === 'confirmed');
             } else if (bookingListStatusFilter === 'past') {
-              displayedBookings = displayedBookings.filter((b) => b.startDate < todayIso);
+              displayedBookings = displayedBookings.filter((b) => b.startDate < todayIso && b.status !== 'cancelled');
+            } else if (bookingListStatusFilter === 'cancelled') {
+              displayedBookings = displayedBookings
+                .filter((b) => b.status === 'cancelled')
+                .filter((b) => {
+                  if (cancelledByFilter === 'all') return true;
+                  const by = cancelledByOf(b);
+                  return cancelledByFilter === 'tenant' ? by === 'tenant' : by !== 'tenant';
+                })
+                .sort((a, b) => (b.cancelledAt || b.startDate).localeCompare(a.cancelledAt || a.startDate));
             }
 
             if (displayedBookings.length === 0) {
@@ -999,6 +1062,8 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                                 ? isPast
                                   ? 'bg-slate-100 text-slate-700 border border-slate-300'
                                   : 'bg-amber-100 text-amber-800'
+                                : res.status === 'cancelled'
+                                ? 'bg-slate-100 text-slate-700 border border-slate-200'
                                 : 'bg-rose-100 text-rose-800'
                             }`}
                           >
@@ -1008,6 +1073,14 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                               ? isPast
                                 ? 'Expirada (Fecha anterior a hoy)'
                                 : 'Esperando tu respuesta (Vigente)'
+                              : res.status === 'cancelled'
+                              ? cancelledByOf(res) === 'tenant'
+                                ? 'Cancelada por el arrendatario'
+                                : cancelledByOf(res) === 'owner'
+                                ? 'Cancelada por ti'
+                                : 'Cancelada por administración'
+                              : res.status === 'completed'
+                              ? 'Finalizada'
                               : 'Rechazada'}
                           </span>
 
@@ -1034,6 +1107,15 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                           {res.intendedUse && (
                             <span className="w-full text-slate-500 italic mt-0.5">
                               Uso previsto: "{res.intendedUse}"
+                            </span>
+                          )}
+                          {res.status === 'cancelled' && (
+                            <span className="w-full text-slate-600 mt-0.5">
+                              {res.cancelledAt && <>Cancelada el <strong>{res.cancelledAt.slice(0, 10)}</strong> · </>}
+                              {res.cancellationReason && <>Motivo: <strong>{res.cancellationReason}</strong></>}
+                              {res.refundAmountClp !== undefined && res.refundAmountClp > 0 && (
+                                <> · Reembolso al arrendatario: <strong>{formatClp(res.refundAmountClp)}</strong></>
+                              )}
                             </span>
                           )}
                         </div>

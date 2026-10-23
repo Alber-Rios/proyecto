@@ -219,6 +219,7 @@ export interface Reservation {
   refundAmountClp?: number;
   cancelledAt?: string;
   cancellationReason?: string;
+  cancelledBy?: string;
   confirmedAt?: string;
   paidAt?: string;
   digitalContractId?: string;

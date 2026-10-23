@@ -285,6 +285,7 @@ export function mapReservationRow(row: any): Reservation {
     refundAmountClp: row.refund_amount_clp !== null && row.refund_amount_clp !== undefined ? Number(row.refund_amount_clp) : undefined,
     cancelledAt: row.cancelled_at || undefined,
     cancellationReason: row.cancellation_reason || undefined,
+    cancelledBy: row.cancelled_by || undefined,
     confirmedAt: row.confirmed_at || undefined,
     paidAt: row.paid_at || undefined,
     createdAt: row.created_at,

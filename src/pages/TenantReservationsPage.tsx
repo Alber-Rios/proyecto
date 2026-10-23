@@ -1,4 +1,5 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
+import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookingResultModal, PaymentOutcome } from '../components/BookingResultModal.tsx';
@@ -96,10 +97,20 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
     () => myBookings.filter((b) => b.status === 'pending').sort((a, b) => a.startDate.localeCompare(b.startDate)),
     [myBookings]
   );
-  const closedBookings = useMemo(
-    () => myBookings.filter((b) => b.status === 'cancelled' || b.status === 'rejected'),
-    [myBookings]
-  );
+  // Historial de canceladas, separado por quién canceló. Las que se anularon
+  // solas porque el pago falló (saldo insuficiente, tarjeta rechazada) no se muestran.
+  const closedGroups = useMemo(() => {
+    const byDate = (a: Reservation, b: Reservation) =>
+      (b.cancelledAt || b.startDate).localeCompare(a.cancelledAt || a.startDate);
+    const cancelled = myBookings.filter(isHistoryCancellation);
+    return [
+      { key: 'tenant', title: 'Canceladas por ti', items: cancelled.filter((b) => cancelledByOf(b) === 'tenant').sort(byDate) },
+      { key: 'owner', title: 'Canceladas por el anfitrión', items: cancelled.filter((b) => cancelledByOf(b) === 'owner').sort(byDate) },
+      { key: 'admin', title: 'Canceladas por administración', items: cancelled.filter((b) => cancelledByOf(b) === 'admin').sort(byDate) },
+      { key: 'rejected', title: 'Rechazadas por el anfitrión', items: myBookings.filter((b) => b.status === 'rejected').sort(byDate) },
+    ].filter((g) => g.items.length > 0);
+  }, [myBookings]);
+  const closedCount = closedGroups.reduce((n, g) => n + g.items.length, 0);
   const resultReservation = highlightId ? myBookings.find((b) => b.id === highlightId) : undefined;
 
   // Al llegar desde un pago se abre la pestaña donde quedó la reserva.
@@ -557,7 +568,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             confirmedBookings.map(renderBooking)
           )}
 
-          {closedBookings.length > 0 && (
+          {closedCount > 0 && (
             <div className="pt-2 space-y-4">
               <button
                 type="button"
@@ -565,9 +576,21 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                 className="text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
                 aria-expanded={showClosed}
               >
-                {showClosed ? 'Ocultar' : 'Ver'} reservas canceladas o rechazadas ({closedBookings.length})
+                {showClosed ? 'Ocultar' : 'Ver'} historial de canceladas y rechazadas ({closedCount})
               </button>
-              {showClosed && <div className="space-y-4 opacity-80">{closedBookings.map(renderBooking)}</div>}
+              {showClosed && (
+                <div className="space-y-6">
+                  {closedGroups.map((g) => (
+                    <section key={g.key} aria-labelledby={`closed-${g.key}`} className="space-y-3">
+                      <h3 id={`closed-${g.key}`} className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                        {g.title}
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{g.items.length}</span>
+                      </h3>
+                      <div className="space-y-4 opacity-80">{g.items.map(renderBooking)}</div>
+                    </section>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
