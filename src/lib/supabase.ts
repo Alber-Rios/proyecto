@@ -203,6 +203,9 @@ export async function updateSpaceInDb(id: string, updates: Partial<Space>): Prom
   if (updates.images !== undefined) dbRow.images = updates.images;
   if (updates.isVerified !== undefined) dbRow.is_verified = updates.isVerified;
   if (updates.status !== undefined) dbRow.status = updates.status;
+  if (updates.instantBooking !== undefined) dbRow.instant_booking = updates.instantBooking;
+  if (updates.minBookingHours !== undefined) dbRow.min_booking_hours = updates.minBookingHours;
+  if (updates.minBookingDays !== undefined) dbRow.min_booking_days = updates.minBookingDays;
 
   const { error } = await supabase.from('spaces').update(dbRow).eq('id', id);
   if (error) {

@@ -56,6 +56,7 @@ import {
   X,
   Lock,
   Building2,
+  Loader2,
 } from 'lucide-react';
 
 interface OwnerDashboardPageProps {
@@ -77,6 +78,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     updateSpace,
     deleteSpace,
     updateReservationStatus,
+    cancelReservation,
     visitRequests,
     spaceBlocks,
     addSpaceBlock,
@@ -364,6 +366,31 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
   const resetForm = () => {
     setEditingSpace(null);
+  };
+
+  // Cancelación de una reserva confirmada por el propietario: la base registra el
+  // motivo y devuelve el 100 % de lo pagado al arrendatario.
+  const [cancelTarget, setCancelTarget] = useState<Reservation | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const submitOwnerCancel = async () => {
+    if (!cancelTarget) return;
+    if (cancelReason.trim().length < 5) {
+      setCancelError('Escribe el motivo de la cancelación para el arrendatario.');
+      return;
+    }
+    setCancelBusy(true);
+    setCancelError(null);
+    try {
+      await cancelReservation(cancelTarget.id, cancelReason.trim());
+      setCancelTarget(null);
+      setCancelReason('');
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : 'No se pudo cancelar la reserva.');
+    } finally {
+      setCancelBusy(false);
+    }
   };
 
   // La base valida la transición (p. ej., no se acepta sin pago aprobado) y calcula reembolsos.
@@ -1105,6 +1132,20 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                               </span>
                             )}
                           </>
+                        )}
+
+                        {res.status === 'confirmed' && (res.endDate || res.startDate) >= todayIso && (
+                          <button
+                            onClick={() => {
+                              setCancelTarget(res);
+                              setCancelReason('');
+                              setCancelError(null);
+                            }}
+                            className="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Cancelar reserva</span>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -1985,6 +2026,62 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
       {/* Modal para Contactar al Arrendatario */}
       {contactModalTenant && (
         <ContactTenantModal tenant={contactModalTenant} onClose={() => setContactModalTenant(null)} />
+      )}
+
+      {/* Confirmación para cancelar una reserva confirmada */}
+      {cancelTarget && createPortal(
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="owner-cancel-title">
+          <div className="w-full max-w-md space-y-4 rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
+                <XCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 id="owner-cancel-title" className="text-base font-bold text-slate-900">Cancelar reserva #{cancelTarget.id.slice(-6)}</h3>
+                <p className="mt-0.5 text-xs text-slate-600">
+                  {cancelTarget.spaceTitle} · {cancelTarget.tenantName} · {cancelTarget.startDate}
+                  {cancelTarget.hourStart != null && cancelTarget.hourEnd != null
+                    ? ` · ${String(cancelTarget.hourStart).padStart(2, '0')}:00 a ${String(cancelTarget.hourEnd).padStart(2, '0')}:00`
+                    : ''}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              Al cancelar como propietario se le devuelve al arrendatario el <strong>100 % de lo pagado ({formatClp(cancelTarget.totalClp)})</strong> y se le avisa con el motivo. El horario vuelve a quedar libre.
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-slate-800">Motivo (lo verá el arrendatario)</span>
+              <textarea
+                rows={3}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Ej.: corte de luz programado en el edificio ese día."
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+              />
+            </label>
+            {cancelError && <p className="text-xs font-semibold text-rose-600" role="alert">{cancelError}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelBusy}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                onClick={submitOwnerCancel}
+                disabled={cancelBusy}
+                className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-60 cursor-pointer"
+              >
+                {cancelBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Cancelar y reembolsar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal para ver detalle de un día específico en el calendario */}

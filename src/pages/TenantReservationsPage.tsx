@@ -322,6 +322,11 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             </span>
           )}
         </div>
+        {(booking.status === 'cancelled' || booking.status === 'rejected') && booking.cancellationReason && (
+          <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <strong className="text-slate-800">Motivo:</strong> {booking.cancellationReason}
+          </p>
+        )}
       </div>
     </div>
 
