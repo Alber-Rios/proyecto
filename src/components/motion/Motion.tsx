@@ -169,3 +169,27 @@ export const PageTransition: React.FC<{ children: React.ReactNode }> = ({ childr
     </motion.div>
   );
 };
+
+/**
+ * Contenido de una pestaña: al cambiar de pestaña entra con un fundido y un
+ * leve desplazamiento. No deja transform al terminar (los modales `fixed`
+ * internos siguen centrados en la ventana).
+ */
+export const TabPanel: React.FC<{ tabKey: string; children: React.ReactNode; className?: string }> = ({
+  tabKey,
+  children,
+  className,
+}) => {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      key={tabKey}
+      className={className}
+      initial={reduce ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0, transitionEnd: { transform: 'none' } }}
+      transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+};

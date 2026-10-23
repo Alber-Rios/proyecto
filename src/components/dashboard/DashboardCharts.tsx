@@ -4,6 +4,10 @@
 // color de la serie), tooltip al pasar el cursor/foco y tabla equivalente para
 // lectores de pantalla.
 import React, { useId, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatedNumber } from '../motion/AnimatedNumber.tsx';
+
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
 export interface BarDatum {
   key: string;
@@ -39,6 +43,7 @@ export const VerticalBarChart: React.FC<{
   emptyText?: string;
 }> = ({ title, data, formatValue, height = 160, emptyText = 'Aún no hay datos para este período.' }) => {
   const [hover, setHover] = useState<number | null>(null);
+  const reduce = useReducedMotion();
   const max = Math.max(0, ...data.map((d) => d.value));
   const hasData = max > 0;
   const lastIdx = data.length - 1;
@@ -69,26 +74,40 @@ export const VerticalBarChart: React.FC<{
               >
                 {/* La etiqueta solo en la barra actual y la máxima, para no saturar */}
                 {hasData && (i === lastIdx || d.value === max) && d.value > 0 && !active && (
-                  <span
+                  <motion.span
                     className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap"
                     style={{ bottom: `calc(${pct}% + 4px)` }}
+                    initial={reduce ? false : { opacity: 0, y: 6 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.5 + i * 0.07, ease: EASE_OUT }}
                   >
                     {formatValue(d.value)}
-                  </span>
+                  </motion.span>
                 )}
-                <div
-                  className={`w-full max-w-[38px] rounded-t-[4px] transition-all ${
+                <motion.div
+                  className={`w-full max-w-[38px] rounded-t-[4px] origin-bottom transition-[filter,box-shadow] ${
                     i === lastIdx ? BAR_COLOR : BAR_COLOR_MUTED
-                  } ${active ? 'ring-2 ring-slate-900/20' : ''}`}
-                  style={{ height: `${Math.max(pct, d.value > 0 ? 2 : 0)}%` }}
+                  } ${active ? 'ring-2 ring-slate-900/20 brightness-95' : ''}`}
+                  initial={reduce ? false : { height: '0%' }}
+                  animate={{ height: `${Math.max(pct, d.value > 0 ? 2 : 0)}%` }}
+                  transition={{ type: 'spring', duration: 0.9, bounce: 0.18, delay: i * 0.07 }}
                 />
-                {active && (
-                  <div className="absolute z-10 bottom-full mb-1 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[10px] shadow-lg whitespace-nowrap pointer-events-none">
-                    <div className="font-bold">{d.label}</div>
-                    <div>{formatValue(d.value)}</div>
-                    {d.detail && <div className="text-slate-300">{d.detail}</div>}
-                  </div>
-                )}
+                <AnimatePresence>
+                  {active && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                      transition={{ duration: 0.16, ease: EASE_OUT }}
+                      className="absolute z-10 bottom-full mb-1 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[10px] shadow-lg whitespace-nowrap pointer-events-none origin-bottom"
+                    >
+                      <div className="font-bold">{d.label}</div>
+                      <div>{formatValue(d.value)}</div>
+                      {d.detail && <div className="text-slate-300">{d.detail}</div>}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
@@ -114,6 +133,7 @@ export const HorizontalBarList: React.FC<{
   emptyText?: string;
   onSelect?: (key: string) => void;
 }> = ({ title, data, formatValue, emptyText = 'Sin datos todavía.', onSelect }) => {
+  const reduce = useReducedMotion();
   // Solo filas con valor: un ranking con ceros no aporta.
   data = data.filter((d) => d.value > 0);
   const max = Math.max(0, ...data.map((d) => d.value));
@@ -123,7 +143,7 @@ export const HorizontalBarList: React.FC<{
   return (
     <figure>
       <ul className="space-y-2.5">
-        {data.map((d) => {
+        {data.map((d, i) => {
           const Row = onSelect ? 'button' : 'div';
           return (
             <li key={d.key}>
@@ -134,10 +154,15 @@ export const HorizontalBarList: React.FC<{
               >
                 <div className="flex items-baseline justify-between gap-2 text-[11px]">
                   <span className={`font-semibold text-slate-700 truncate ${onSelect ? 'group-hover:text-slate-950' : ''}`}>{d.label}</span>
-                  <span className="font-bold text-slate-900 whitespace-nowrap">{formatValue(d.value)}</span>
+                  <AnimatedNumber className="font-bold text-slate-900 whitespace-nowrap" text={formatValue(d.value)} />
                 </div>
                 <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className={`h-full rounded-full ${BAR_COLOR}`} style={{ width: `${Math.max(2, (d.value / max) * 100)}%` }} />
+                  <motion.div
+                    className={`h-full rounded-full ${BAR_COLOR}`}
+                    initial={reduce ? false : { width: '0%' }}
+                    animate={{ width: `${Math.max(2, (d.value / max) * 100)}%` }}
+                    transition={{ duration: 0.9, delay: i * 0.08, ease: EASE_OUT }}
+                  />
                 </div>
                 {d.detail && <div className="text-[10px] text-slate-500 truncate">{d.detail}</div>}
               </Row>
@@ -175,13 +200,19 @@ export const OccupancyHeatStrip: React.FC<{ title: string; days: HeatDay[]; onSe
   onSelect,
 }) => {
   const legendId = useId();
+  const reduce = useReducedMotion();
   return (
     <figure className="space-y-2">
       <div className="grid grid-cols-7 gap-1.5" aria-describedby={legendId}>
-        {days.map((d) => (
-          <button
+        {days.map((d, i) => (
+          <motion.button
             key={d.iso}
             type="button"
+            initial={reduce ? false : { opacity: 0, scale: 0.85, y: 6 }}
+            whileInView={{ opacity: 1, scale: 1, y: 0 }}
+            viewport={{ once: true }}
+            whileHover={reduce ? undefined : { y: -2 }}
+            transition={{ duration: 0.35, delay: i * 0.03, ease: EASE_OUT }}
             onClick={() => onSelect?.(d.iso)}
             title={`${d.weekday} ${d.dayNum}: ${d.pct}% ocupado · ${d.detail}`}
             className={`rounded-xl p-1.5 text-center transition hover:ring-2 hover:ring-slate-900/20 ${heatClass(d.pct)} ${
@@ -191,7 +222,7 @@ export const OccupancyHeatStrip: React.FC<{ title: string; days: HeatDay[]; onSe
             <div className="text-[9px] font-semibold uppercase opacity-80">{d.weekday}</div>
             <div className="text-sm font-extrabold leading-tight">{d.dayNum}</div>
             <div className="text-[9px] font-bold">{d.pct}%</div>
-          </button>
+          </motion.button>
         ))}
       </div>
       <div id={legendId} className="flex items-center gap-1.5 text-[10px] text-slate-500">
@@ -222,13 +253,15 @@ export const StatTile: React.FC<{
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={`text-left p-4 rounded-2xl border bg-white shadow-2xs flex flex-col gap-2 min-w-0 ${
         tone === 'attention' ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'
-      } ${onClick ? 'cursor-pointer hover:border-slate-300 hover:shadow-xs transition' : ''}`}
+      } ${onClick ? 'cursor-pointer hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 transition duration-300' : ''}`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 leading-tight">{label}</span>
         {icon && <span className="text-slate-400 shrink-0">{icon}</span>}
       </div>
-      <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words leading-tight">{value}</div>
+      <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words leading-tight">
+        <AnimatedNumber text={value} />
+      </div>
       <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-h-[16px]">
         {delta != null && Number.isFinite(delta) && (
           <span
@@ -259,12 +292,17 @@ export const ActionQueue: React.FC<{
   }
   return (
     <ul className="space-y-2">
-      {pending.map((i) => (
-        <li key={i.key}>
+      {pending.map((i, idx) => (
+        <motion.li
+          key={i.key}
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.35, delay: idx * 0.06, ease: EASE_OUT }}
+        >
           <button
             type="button"
             onClick={i.onClick}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition cursor-pointer ${
+            className={`group w-full flex items-center gap-3 p-3 rounded-xl border text-left transition cursor-pointer ${
               i.urgent ? 'bg-amber-50 border-amber-200 hover:bg-amber-100/70' : 'bg-white border-slate-200 hover:bg-slate-50'
             }`}
           >
@@ -276,9 +314,9 @@ export const ActionQueue: React.FC<{
               <span className="block text-[10px] text-slate-500 truncate">{i.hint}</span>
             </span>
             <span className="text-sm font-extrabold text-slate-900">{i.count}</span>
-            <span className="text-slate-400" aria-hidden>→</span>
+            <span className="text-slate-400 transition-transform group-hover:translate-x-1" aria-hidden>→</span>
           </button>
-        </li>
+        </motion.li>
       ))}
     </ul>
   );

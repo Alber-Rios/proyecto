@@ -1,3 +1,4 @@
+import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookingResultModal, PaymentOutcome } from '../components/BookingResultModal.tsx';
@@ -528,6 +529,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         </button>
       </div>
 
+      <TabPanel tabKey={activeTab}>
       {activeTab === 'confirmed' ? (
         <div className="space-y-4">
           {confirmedBookings.length === 0 ? (
@@ -674,6 +676,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           )}
         </div>
       )}
+      </TabPanel>
 
       {/* Modal de Detalle Completo de Reserva */}
       {selectedBookingDetail && (

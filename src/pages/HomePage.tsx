@@ -8,6 +8,7 @@ const ContractModal = lazy(() => import('../components/ContractModal.tsx').then(
 
 import { motion, AnimatePresence } from 'motion/react';
 import { HeroBackdrop } from '../components/HeroBackdrop.tsx';
+import { AnimatedNumber } from '../components/motion/AnimatedNumber.tsx';
 import { Reveal, Stagger, staggerChild, SplitWords, Spotlight, Magnetic, EASE_LUXE } from '../components/motion/Motion.tsx';
 import {
   Building,
@@ -194,11 +195,11 @@ export const HomePage: React.FC<HomePageProps> = ({
               >
                 <div>
                   <dt className="text-[11px] uppercase tracking-[0.2em] text-stone-400">Espacios</dt>
-                  <dd className="font-display text-3xl">{activeSpaces.length}</dd>
+                  <dd className="font-display text-3xl"><AnimatedNumber text={String(activeSpaces.length)} duration={1600} /></dd>
                 </div>
                 <div>
                   <dt className="text-[11px] uppercase tracking-[0.2em] text-stone-400">Comunas</dt>
-                  <dd className="font-display text-3xl">{new Set(activeSpaces.map((sp) => sp.commune)).size}</dd>
+                  <dd className="font-display text-3xl"><AnimatedNumber text={String(new Set(activeSpaces.map((sp) => sp.commune)).size)} duration={1600} /></dd>
                 </div>
               </motion.dl>
             )}

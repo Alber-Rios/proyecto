@@ -1,5 +1,6 @@
 import { AdminOverview } from '../components/dashboard/AdminOverview.tsx';
 import { getTodayIso } from '../utils/formatters.ts';
+import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
 import { AuditLogPanel, ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
@@ -436,6 +437,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         ))}
       </div>
 
+      <TabPanel tabKey={activeTab} className="space-y-6">
       {activeTab === 'overview' && (
         <AdminOverview
           todayIso={getTodayIso()}
@@ -1552,6 +1554,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           </div>
         </div>
       )}
+      </TabPanel>
 
       {/* Ficha completa de una publicación */}
       {detailSpace && (

@@ -1,3 +1,4 @@
+import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -684,6 +685,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
         </button>
       </div>
 
+      <TabPanel tabKey={activeTab} className="space-y-8">
       {/* Contenido según Pestaña */}
       {activeTab === 'overview' && (
         <OwnerOverview
@@ -1853,6 +1855,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
           })()}
         </div>
       )}
+      </TabPanel>
 
       {/* Modal para Publicar o Modificar Espacio */}
       {isPublishModalOpen && createPortal(

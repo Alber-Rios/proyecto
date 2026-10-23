@@ -1,3 +1,4 @@
+import { AnimatedNumber } from './motion/AnimatedNumber.tsx';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Space, VisitRequest } from '../types.ts';
@@ -1131,7 +1132,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 <span className="text-[10px] text-slate-400">Valores exentos de IVA para personas naturales</span>
               </div>
               <div className="text-xl sm:text-2xl font-bold text-rose-600 tracking-tight">
-                {formatClp(calculations.total)}
+                <AnimatedNumber text={formatClp(calculations.total)} duration={900} />
               </div>
             </div>
           </div>
