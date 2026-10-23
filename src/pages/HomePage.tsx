@@ -7,6 +7,7 @@ const BookingModal = lazy(() => import('../components/BookingModal.tsx').then((m
 const ContractModal = lazy(() => import('../components/ContractModal.tsx').then((m) => ({ default: m.ContractModal })));
 
 import { motion, AnimatePresence } from 'motion/react';
+import { HeroBackdrop } from '../components/HeroBackdrop.tsx';
 import { Reveal, Stagger, staggerChild, SplitWords, Spotlight, Magnetic, EASE_LUXE } from '../components/motion/Motion.tsx';
 import {
   Building,
@@ -116,6 +117,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   const activeSpaces = spaces.filter((space) => space.status === 'active');
+  // Primera foto de cada espacio publicado, para el fondo de la portada.
+  const heroImages = activeSpaces.map((space) => space.images?.[0]).filter((src): src is string => Boolean(src));
 
   const handlePublishSpace = () => {
     if (!currentUser) {
@@ -133,14 +136,10 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="space-y-10 pb-16">
       {/* Hero Section */}
-      <Spotlight className="grain overflow-hidden rounded-[2rem] bg-stone-950 text-white shadow-[0_40px_80px_-30px_rgba(12,10,9,0.6)]">
+      <Spotlight className="overflow-hidden rounded-[2rem] bg-stone-950 text-white shadow-[0_40px_80px_-30px_rgba(12,10,9,0.6)]">
         <section className="relative min-h-[30rem] sm:min-h-[34rem] flex items-center px-6 py-14 sm:px-14 sm:py-20">
-          {/* Aurora de fondo */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div className="aurora-a absolute -top-1/3 -right-1/4 h-[36rem] w-[36rem] rounded-full bg-rose-600/35 blur-[110px]" />
-            <div className="aurora-b absolute -bottom-1/3 -left-1/4 h-[32rem] w-[32rem] rounded-full bg-amber-500/20 blur-[120px]" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
-          </div>
+          {/* Fondo: plano del edificio con disponibilidad y fotos de los espacios */}
+          <HeroBackdrop images={heroImages} />
 
           <div className="relative z-10 max-w-3xl space-y-7">
             <h1 className="font-display text-[2.6rem] sm:text-7xl leading-[1.02] tracking-tight">
@@ -158,7 +157,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, ease: EASE_LUXE, delay: 0.7 }}
-              className="text-stone-300 text-base sm:text-lg leading-relaxed max-w-2xl"
+              className="text-stone-300 text-base sm:text-lg leading-relaxed max-w-xl"
             >
               Explora espacios disponibles y revisa sus precios, ubicación, equipamiento y modalidades antes de solicitar una reserva.
             </motion.p>
