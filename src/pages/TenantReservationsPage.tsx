@@ -342,7 +342,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
     </div>
 
     {/* Botones de Acción: Ver Detalle, Descargar Reserva, Ver/Descargar Contrato */}
-    <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100 shrink-0 w-full xl:w-auto">
+    <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100 w-full xl:w-auto xl:max-w-[27rem] xl:justify-end">
       <button
         onClick={() => setSelectedBookingDetail(booking)}
         className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"

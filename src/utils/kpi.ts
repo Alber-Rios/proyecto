@@ -38,7 +38,7 @@ export function evaluateKpis(s: KpiSnapshot): EvaluatedKpi[] {
       target: 'Incremento ≥ 25 % respecto del período anterior',
       light: lightHigherIsBetter(s.kpi01_variation_pct, 25, 10),
       detail:
-        s.kpi01_variation_pct === null
+        s.kpi01_variation_pct == null
           ? 'Sin período anterior para comparar'
           : `Variación: ${fmt(s.kpi01_variation_pct, ' %')} (anterior ${fmt(s.kpi01_prev_occupancy_pct, ' %')})`,
     },
@@ -91,7 +91,7 @@ export function evaluateKpis(s: KpiSnapshot): EvaluatedKpi[] {
     {
       id: 'KPI-08',
       name: 'Satisfacción del usuario',
-      display: s.kpi08_avg_rating === null ? 'Sin datos' : `${Number(s.kpi08_avg_rating).toFixed(2).replace('.', ',')} / 5`,
+      display: s.kpi08_avg_rating == null ? 'Sin datos' : `${Number(s.kpi08_avg_rating).toFixed(2).replace('.', ',')} / 5`,
       target: '≥ 4,0',
       light: lightHigherIsBetter(s.kpi08_avg_rating, 4, 3.5),
       detail: `${s.kpi08_reviews} valoraciones`,
