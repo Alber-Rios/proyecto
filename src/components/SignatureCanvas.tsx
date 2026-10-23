@@ -89,17 +89,17 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-          <PenTool className="w-3.5 h-3.5 text-brand-600" />
+        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+          <PenTool className="w-3.5 h-3.5 text-rose-600" />
           <span>Firma Manuscrita en Pantalla (Dibuja con tu dedo o cursor)</span>
         </span>
         {hasSignature ? (
-          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[12.5px] font-semibold flex items-center gap-1">
+          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1">
             <Check className="w-3 h-3 text-emerald-600" />
             Firma estampada
           </span>
         ) : (
-          <span className="text-slate-400 text-[12.5px]">Traza tu firma sobre el recuadro</span>
+          <span className="text-slate-400 text-[11px]">Traza tu firma sobre el recuadro</span>
         )}
       </div>
 
@@ -116,7 +116,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
         />
 
         {/* Guía visual de firma en la base */}
-        <div className="absolute bottom-6 left-8 right-8 border-b border-slate-200 pointer-events-none flex justify-between text-[10.5px] text-slate-400">
+        <div className="absolute bottom-6 left-8 right-8 border-b border-slate-200 pointer-events-none flex justify-between text-[9px] text-slate-400">
           <span>✕ Firma del Arrendatario</span>
           <span>Ley N° 19.799</span>
         </div>
@@ -126,7 +126,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute top-2.5 right-2.5 px-2.5 py-1 bg-white/90 hover:bg-white text-slate-700 border border-slate-200 rounded-lg text-[12.5px] font-semibold shadow-xs transition flex items-center gap-1 cursor-pointer"
+            className="absolute top-2.5 right-2.5 px-2.5 py-1 bg-white/90 hover:bg-white text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold shadow-xs transition flex items-center gap-1 cursor-pointer"
           >
             <RotateCcw className="w-3 h-3" />
             <span>Borrar y repetir</span>

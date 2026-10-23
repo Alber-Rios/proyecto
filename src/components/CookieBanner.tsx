@@ -35,7 +35,7 @@ export const CookieBanner: React.FC = () => {
       <p className="text-sm leading-relaxed text-slate-700">
         Usamos cookies y almacenamiento local solo para mantener tu sesión y que el sitio funcione. No usamos
         cookies de publicidad ni de seguimiento.{' '}
-        <Link to="/cookies" className="font-semibold text-brand-700 underline underline-offset-2">
+        <Link to="/cookies" className="font-semibold text-rose-700 underline underline-offset-2">
           Leer la política de cookies
         </Link>
       </p>

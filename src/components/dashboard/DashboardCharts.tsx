@@ -13,8 +13,8 @@ export interface BarDatum {
 }
 
 // Paleta: un solo tono por gráfico (magnitud), en pasos de Tailwind.
-const BAR_COLOR = 'bg-brand-500';
-const BAR_COLOR_MUTED = 'bg-brand-200';
+const BAR_COLOR = 'bg-rose-500';
+const BAR_COLOR_MUTED = 'bg-rose-200';
 
 const SrTable: React.FC<{ caption: string; rows: { label: string; value: string }[] }> = ({ caption, rows }) => (
   <table className="sr-only">
@@ -50,7 +50,7 @@ export const VerticalBarChart: React.FC<{
         <div className="absolute inset-x-0 bottom-0 border-t border-slate-300" aria-hidden />
         <div className="absolute inset-x-0 border-t border-dashed border-slate-100" style={{ bottom: height / 2 }} aria-hidden />
         {!hasData && (
-          <div className="absolute inset-0 flex items-center justify-center text-[12.5px] text-slate-400">{emptyText}</div>
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] text-slate-400">{emptyText}</div>
         )}
         <div className="absolute inset-0 flex items-end gap-2 sm:gap-3 px-1" role="presentation">
           {data.map((d, i) => {
@@ -70,7 +70,7 @@ export const VerticalBarChart: React.FC<{
                 {/* La etiqueta solo en la barra actual y la máxima, para no saturar */}
                 {hasData && (i === lastIdx || d.value === max) && d.value > 0 && !active && (
                   <span
-                    className="absolute text-[11.5px] font-semibold text-slate-700 whitespace-nowrap"
+                    className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap"
                     style={{ bottom: `calc(${pct}% + 4px)` }}
                   >
                     {formatValue(d.value)}
@@ -83,8 +83,8 @@ export const VerticalBarChart: React.FC<{
                   style={{ height: `${Math.max(pct, d.value > 0 ? 2 : 0)}%` }}
                 />
                 {active && (
-                  <div className="absolute z-10 bottom-full mb-1 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[11.5px] shadow-lg whitespace-nowrap pointer-events-none">
-                    <div className="font-semibold">{d.label}</div>
+                  <div className="absolute z-10 bottom-full mb-1 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[10px] shadow-lg whitespace-nowrap pointer-events-none">
+                    <div className="font-bold">{d.label}</div>
                     <div>{formatValue(d.value)}</div>
                     {d.detail && <div className="text-slate-300">{d.detail}</div>}
                   </div>
@@ -96,7 +96,7 @@ export const VerticalBarChart: React.FC<{
       </div>
       <div className="flex gap-2 sm:gap-3 px-1" aria-hidden>
         {data.map((d, i) => (
-          <span key={d.key} className={`flex-1 text-center text-[11.5px] ${i === lastIdx ? 'font-semibold text-slate-800' : 'text-slate-500'}`}>
+          <span key={d.key} className={`flex-1 text-center text-[10px] ${i === lastIdx ? 'font-bold text-slate-800' : 'text-slate-500'}`}>
             {d.label}
           </span>
         ))}
@@ -118,7 +118,7 @@ export const HorizontalBarList: React.FC<{
   data = data.filter((d) => d.value > 0);
   const max = Math.max(0, ...data.map((d) => d.value));
   if (data.length === 0 || max === 0) {
-    return <p className="text-[12.5px] text-slate-400 py-4 text-center">{emptyText}</p>;
+    return <p className="text-[11px] text-slate-400 py-4 text-center">{emptyText}</p>;
   }
   return (
     <figure>
@@ -132,14 +132,14 @@ export const HorizontalBarList: React.FC<{
                 className={`w-full text-left space-y-1 ${onSelect ? 'cursor-pointer group' : ''}`}
                 title={d.detail ? `${d.label}: ${formatValue(d.value)} · ${d.detail}` : `${d.label}: ${formatValue(d.value)}`}
               >
-                <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+                <div className="flex items-baseline justify-between gap-2 text-[11px]">
                   <span className={`font-semibold text-slate-700 truncate ${onSelect ? 'group-hover:text-slate-950' : ''}`}>{d.label}</span>
-                  <span className="font-semibold text-slate-900 whitespace-nowrap">{formatValue(d.value)}</span>
+                  <span className="font-bold text-slate-900 whitespace-nowrap">{formatValue(d.value)}</span>
                 </div>
                 <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
                   <div className={`h-full rounded-full ${BAR_COLOR}`} style={{ width: `${Math.max(2, (d.value / max) * 100)}%` }} />
                 </div>
-                {d.detail && <div className="text-[11.5px] text-slate-500 truncate">{d.detail}</div>}
+                {d.detail && <div className="text-[10px] text-slate-500 truncate">{d.detail}</div>}
               </Row>
             </li>
           );
@@ -161,10 +161,10 @@ export interface HeatDay {
 // Escala secuencial de un solo tono (claro → oscuro) para la ocupación.
 const HEAT_STEPS = [
   { min: 0, cls: 'bg-slate-100 text-slate-500' },
-  { min: 1, cls: 'bg-brand-100 text-brand-900' },
-  { min: 25, cls: 'bg-brand-200 text-brand-950' },
-  { min: 50, cls: 'bg-brand-400 text-white' },
-  { min: 75, cls: 'bg-brand-600 text-white' },
+  { min: 1, cls: 'bg-indigo-100 text-indigo-900' },
+  { min: 25, cls: 'bg-indigo-200 text-indigo-950' },
+  { min: 50, cls: 'bg-indigo-400 text-white' },
+  { min: 75, cls: 'bg-indigo-600 text-white' },
 ];
 const heatClass = (pct: number) => [...HEAT_STEPS].reverse().find((s) => pct >= s.min)!.cls;
 
@@ -188,13 +188,13 @@ export const OccupancyHeatStrip: React.FC<{ title: string; days: HeatDay[]; onSe
               onSelect ? 'cursor-pointer' : 'cursor-default'
             }`}
           >
-            <div className="text-[10.5px] font-semibold uppercase opacity-80">{d.weekday}</div>
-            <div className="text-sm font-semibold leading-tight">{d.dayNum}</div>
-            <div className="text-[10.5px] font-semibold">{d.pct}%</div>
+            <div className="text-[9px] font-semibold uppercase opacity-80">{d.weekday}</div>
+            <div className="text-sm font-extrabold leading-tight">{d.dayNum}</div>
+            <div className="text-[9px] font-bold">{d.pct}%</div>
           </button>
         ))}
       </div>
-      <div id={legendId} className="flex items-center gap-1.5 text-[11.5px] text-slate-500">
+      <div id={legendId} className="flex items-center gap-1.5 text-[10px] text-slate-500">
         <span>Libre</span>
         {HEAT_STEPS.map((s) => (
           <span key={s.min} className={`w-4 h-2.5 rounded-sm ${s.cls.split(' ')[0]}`} aria-hidden />
@@ -225,15 +225,15 @@ export const StatTile: React.FC<{
       } ${onClick ? 'cursor-pointer hover:border-slate-300 hover:shadow-xs transition' : ''}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11.5px] font-semibold uppercase tracking-wider text-slate-500 leading-tight">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 leading-tight">{label}</span>
         {icon && <span className="text-slate-400 shrink-0">{icon}</span>}
       </div>
-      <div className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight break-words leading-tight">{value}</div>
-      <div className="flex flex-wrap items-center gap-1.5 text-[12.5px] min-h-[16px]">
+      <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words leading-tight">{value}</div>
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-h-[16px]">
         {delta != null && Number.isFinite(delta) && (
           <span
-            className={`font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap ${
-              delta > 0 ? 'bg-emerald-50 text-emerald-700' : delta < 0 ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-600'
+            className={`font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap ${
+              delta > 0 ? 'bg-emerald-50 text-emerald-700' : delta < 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'
             }`}
           >
             {delta > 0 ? '▲' : delta < 0 ? '▼' : '='} {Math.abs(Math.round(delta))}%
@@ -252,7 +252,7 @@ export const ActionQueue: React.FC<{
   const pending = items.filter((i) => i.count > 0);
   if (pending.length === 0) {
     return (
-      <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[12.5px] font-semibold text-emerald-800">
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
         <span aria-hidden>✓</span> Todo al día: no hay tareas pendientes.
       </div>
     );
@@ -272,10 +272,10 @@ export const ActionQueue: React.FC<{
               {i.icon}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-xs font-semibold text-slate-900 truncate">{i.label}</span>
-              <span className="block text-[11.5px] text-slate-500 truncate">{i.hint}</span>
+              <span className="block text-xs font-bold text-slate-900 truncate">{i.label}</span>
+              <span className="block text-[10px] text-slate-500 truncate">{i.hint}</span>
             </span>
-            <span className="text-sm font-semibold text-slate-900">{i.count}</span>
+            <span className="text-sm font-extrabold text-slate-900">{i.count}</span>
             <span className="text-slate-400" aria-hidden>→</span>
           </button>
         </li>

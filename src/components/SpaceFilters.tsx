@@ -1,445 +1,294 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { Search, SlidersHorizontal, X, LayoutGrid, Sun, Building2, ChevronDown, Check } from 'lucide-react';
+import React from 'react';
+import {
+  Search,
+  MapPin,
+  Building,
+  Laptop,
+  PartyPopper,
+  Camera,
+  Warehouse,
+  RotateCcw,
+  Sun,
+  Building2,
+  Clock,
+  Layers,
+  SlidersHorizontal,
+  X,
+  Maximize2
+} from 'lucide-react';
 import { SPACE_CATEGORIES } from '../utils/spaceCategories.ts';
 
 export type RateFilter = 'all' | 'hour' | 'day' | 'month';
-export type EnvironmentFilter = 'all' | 'abierto' | 'cerrado';
 
-export const ALL_COMMUNES = 'Todas las comunas';
-
-const RATES: { id: RateFilter; label: string }[] = [
-  { id: 'all', label: 'Cualquiera' },
-  { id: 'hour', label: 'Por hora' },
-  { id: 'day', label: 'Por día' },
-  { id: 'month', label: 'Por mes' },
-];
-
-/* ------------------------------------------------------------------ */
-/* Buscador principal                                                  */
-/* ------------------------------------------------------------------ */
-
-interface HeroSearchProps {
+interface SpaceFiltersProps {
   searchTerm: string;
-  onSearchChange: (v: string) => void;
-  commune: string;
-  communes: string[];
-  onCommuneChange: (v: string) => void;
-  rate: RateFilter;
-  onRateChange: (v: RateFilter) => void;
-  onSubmit: () => void;
+  onSearchChange: (value: string) => void;
+  selectedCategory: string;
+  onCategoryChange: (category: string) => void;
+  selectedEnvironment: 'all' | 'abierto' | 'cerrado';
+  onEnvironmentChange: (env: 'all' | 'abierto' | 'cerrado') => void;
+  selectedRateModality: RateFilter;
+  onRateModalityChange: (rate: RateFilter) => void;
+  selectedCommune: string;
+  onCommuneChange: (commune: string) => void;
+  maxPriceClp?: number;
+  onMaxPriceChange?: (price: number) => void;
+  minSurfaceM2: number;
+  onMinSurfaceChange: (m2: number) => void;
+  onReset: () => void;
 }
 
-/** Píldora de búsqueda: qué · dónde · cómo · buscar. En móvil se apila. */
-export const HeroSearch: React.FC<HeroSearchProps> = ({
+const CATEGORIES: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'all', label: 'Todos los espacios', icon: Building },
+  ...SPACE_CATEGORIES.map((c) => ({ id: c.id, label: c.plural, icon: c.icon })),
+];
+
+const COMMUNES = [
+  'Todas las comunas',
+  'Las Condes',
+  'Providencia',
+  'Santiago Centro',
+  'Ñuñoa',
+  'Vitacura',
+  'Lo Barnechea',
+  'Macul',
+];
+
+export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
   searchTerm,
   onSearchChange,
-  commune,
-  communes,
+  selectedCategory,
+  onCategoryChange,
+  selectedEnvironment,
+  onEnvironmentChange,
+  selectedRateModality,
+  onRateModalityChange,
+  selectedCommune,
   onCommuneChange,
-  rate,
-  onRateChange,
-  onSubmit,
+  minSurfaceM2,
+  onMinSurfaceChange,
+  onReset,
 }) => {
-  const [focused, setFocused] = useState<string | null>(null);
-  const segment = (id: string) =>
-    `relative block flex-1 min-w-0 rounded-2xl md:rounded-full px-5 py-2.5 md:px-6 md:py-3 text-left transition-colors duration-200 ${
-      focused === id ? 'bg-white shadow-lg' : 'hover:bg-slate-100'
-    }`;
+  // Contar filtros activos distintos a los valores por defecto
+  const activeFiltersCount = [
+    searchTerm.trim() !== '',
+    selectedCategory !== 'all',
+    selectedEnvironment !== 'all',
+    selectedRateModality !== 'all',
+    selectedCommune !== 'Todas las comunas',
+    minSurfaceM2 > 10,
+  ].filter(Boolean).length;
 
   return (
-    <form
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-      className={`w-full rounded-[1.75rem] border border-slate-200 p-2 shadow-md transition-colors duration-200 md:flex md:items-center md:rounded-full md:p-1.5 ${
-        focused ? 'bg-slate-100' : 'bg-white'
-      }`}
-    >
-      <label className={segment('q')}>
-        <span className="block text-[12px] font-semibold text-slate-900">Qué buscas</span>
-        <input
-          type="search"
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onFocus={() => setFocused('q')}
-          onBlur={() => setFocused(null)}
-          placeholder="Oficina, sala, estudio, quincho…"
-          className="block w-full bg-transparent text-[15px] text-slate-900 placeholder:text-slate-500 outline-none [&::-webkit-search-cancel-button]:hidden"
-        />
-      </label>
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
+      {/* 1. FILA SUPERIOR: Búsqueda de texto, Selector de Comuna y Botón de Limpiar Filtros */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+        {/* Input de Búsqueda */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            id="search-space-input"
+            type="text"
+            placeholder="Buscar por nombre, dirección o amenidad (ej. Fibra, Terraza)..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 transition shadow-2xs"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition cursor-pointer"
+              title="Limpiar búsqueda"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
 
-      <span className="hidden h-8 w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
-
-      <label className={segment('where')}>
-        <span className="block text-[12px] font-semibold text-slate-900">Dónde</span>
-        <span className="relative flex items-center">
+        {/* Selector de Comuna */}
+        <div className="relative min-w-[200px] md:w-64">
+          <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <select
-            value={commune}
+            id="select-commune-filter"
+            value={selectedCommune}
             onChange={(e) => onCommuneChange(e.target.value)}
-            onFocus={() => setFocused('where')}
-            onBlur={() => setFocused(null)}
-            className="block w-full appearance-none bg-transparent pr-6 text-[15px] text-slate-900 outline-none cursor-pointer"
+            aria-label="Filtrar por comuna"
+            className="w-full pl-10 pr-8 py-3 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-rose-500 transition shadow-2xs appearance-none cursor-pointer"
           >
-            {[ALL_COMMUNES, ...communes].map((c) => (
-              <option key={c} value={c}>
-                {c === ALL_COMMUNES ? 'Todo Chile' : c}
+            {COMMUNES.map((commune) => (
+              <option key={commune} value={commune}>
+                {commune}
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-0 h-4 w-4 text-slate-400" />
-        </span>
-      </label>
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs font-bold">
+            ▼
+          </div>
+        </div>
 
-      <span className="hidden h-8 w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
+        {/* Botón Restablecer si hay filtros activos */}
+        {activeFiltersCount > 0 ? (
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-4 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-rose-200 shadow-2xs cursor-pointer whitespace-nowrap"
+            title="Limpiar todos los filtros"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Restablecer ({activeFiltersCount})</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-4 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-800 text-xs font-medium transition flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer whitespace-nowrap"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Limpiar</span>
+          </button>
+        )}
+      </div>
 
-      <div
-        className={`${segment('rate')} md:flex-[1.25]`}
-        onFocus={() => setFocused('rate')}
-        onBlur={() => setFocused(null)}
-      >
-        <span className="block text-[12px] font-semibold text-slate-900" id="hero-rate-label">
-          Cómo arriendas
-        </span>
-        <div className="-ml-2.5 mt-0.5 flex gap-1" role="radiogroup" aria-labelledby="hero-rate-label">
-          {RATES.filter((r) => r.id !== 'all').map((r) => {
-            const active = rate === r.id;
-            return (
+      {/* 2. FILA INTERMEDIA: Grid perfectamente alineado de 3 columnas (Modalidad, Entorno, Superficie) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-slate-100">
+        {/* Columna A: Modalidad de Tarifa (5 cols) */}
+        <div className="md:col-span-5 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 flex flex-col justify-between gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-rose-500" />
+              Modalidad de cobro:
+            </span>
+            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+              {selectedRateModality === 'all' ? 'Todas' : selectedRateModality === 'hour' ? 'Por hora' : selectedRateModality === 'day' ? 'Por Día' : 'Por Mes'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+            {[
+              { id: 'all', label: 'Todas' },
+              { id: 'hour', label: 'Por hora' },
+              { id: 'day', label: 'Por Día' },
+              { id: 'month', label: 'Por Mes' },
+            ].map((item) => (
               <button
-                key={r.id}
+                key={item.id}
                 type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => onRateChange(active ? 'all' : r.id)}
-                className={`relative rounded-full px-2.5 py-0.5 text-[13.5px] transition-colors duration-200 cursor-pointer ${
-                  active ? 'text-white' : 'text-slate-600 hover:text-slate-950'
+                onClick={() => onRateModalityChange(item.id as RateFilter)}
+                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition text-center cursor-pointer truncate ${
+                  selectedRateModality === item.id
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                {active && (
-                  <motion.span
-                    layoutId="hero-rate-pill"
-                    className="absolute inset-0 rounded-full bg-slate-950"
-                    transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
-                  />
-                )}
-                <span className="relative">{r.label}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Columna B: Tipo de Entorno (4 cols) */}
+        <div className="md:col-span-4 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 flex flex-col justify-between gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-indigo-500" />
+              Entorno:
+            </span>
+            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+              {selectedEnvironment === 'all' ? 'Todos' : selectedEnvironment === 'abierto' ? 'Abierto' : 'Cerrado'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => onEnvironmentChange('all')}
+              className={`py-1.5 px-1 rounded-lg text-xs font-bold transition text-center cursor-pointer truncate ${
+                selectedEnvironment === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => onEnvironmentChange('abierto')}
+              className={`py-1.5 px-1 rounded-lg text-xs font-bold transition text-center cursor-pointer flex items-center justify-center gap-1 truncate ${
+                selectedEnvironment === 'abierto'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-amber-800 hover:bg-slate-50'
+              }`}
+            >
+              <Sun className="w-3 h-3 shrink-0" />
+              <span className="truncate">Abierto</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onEnvironmentChange('cerrado')}
+              className={`py-1.5 px-1 rounded-lg text-xs font-bold transition text-center cursor-pointer flex items-center justify-center gap-1 truncate ${
+                selectedEnvironment === 'cerrado'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Building2 className="w-3 h-3 shrink-0" />
+              <span className="truncate">Techado</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Columna C: Superficie Mínima (3 cols) */}
+        <div className="md:col-span-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 flex flex-col justify-between gap-2">
+          <div className="flex items-center justify-between">
+            <label htmlFor="surface-range-slider" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <Maximize2 className="w-3.5 h-3.5 text-emerald-600" />
+              Superficie mínima:
+            </label>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
+              {minSurfaceM2} m²
+            </span>
+          </div>
+
+          <div className="py-1 px-1 flex items-center">
+            <input
+              id="surface-range-slider"
+              type="range"
+              min="10"
+              max="500"
+              step="10"
+              value={minSurfaceM2}
+              onChange={(e) => onMinSurfaceChange(Number(e.target.value))}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. FILA INFERIOR: Categorías de Inmuebles con diseño tipo Pills horizontales elegantes */}
+      <div className="pt-2 border-t border-slate-100">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => onCategoryChange(cat.id)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 cursor-pointer shrink-0 ${
+                  isSelected
+                    ? 'bg-slate-900 text-white shadow-xs ring-1 ring-slate-900'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-rose-400' : 'text-slate-500'}`} />
+                <span>{cat.label}</span>
               </button>
             );
           })}
         </div>
       </div>
-
-      <button
-        type="submit"
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3.5 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 md:mt-0 md:ml-1 md:w-auto md:py-4 cursor-pointer"
-      >
-        <Search className="h-[18px] w-[18px]" strokeWidth={2.5} />
-        <span>Buscar</span>
-      </button>
-    </form>
-  );
-};
-
-/* ------------------------------------------------------------------ */
-/* Riel de categorías                                                  */
-/* ------------------------------------------------------------------ */
-
-interface CategoryRailProps {
-  selected: string;
-  onChange: (id: string) => void;
-  counts?: Record<string, number>;
-}
-
-const RAIL = [{ id: 'all', label: 'Todos', icon: LayoutGrid }, ...SPACE_CATEGORIES.map((c) => ({ id: c.id, label: c.plural, icon: c.icon }))];
-
-export const CategoryRail: React.FC<CategoryRailProps> = ({ selected, onChange, counts }) => {
-  const scroller = useRef<HTMLDivElement>(null);
-  // Mantiene visible la categoría elegida cuando se cambia desde otro lugar.
-  useEffect(() => {
-    // Solo desplaza el riel en horizontal (scrollIntoView movería la página).
-    const box = scroller.current;
-    const el = box?.querySelector<HTMLElement>(`[data-cat="${selected}"]`);
-    if (!box || !el) return;
-    const left = el.offsetLeft - box.offsetLeft;
-    if (left < box.scrollLeft) box.scrollTo({ left: left - 24, behavior: 'smooth' });
-    else if (left + el.offsetWidth > box.scrollLeft + box.clientWidth)
-      box.scrollTo({ left: left + el.offsetWidth - box.clientWidth + 24, behavior: 'smooth' });
-  }, [selected]);
-
-  return (
-    <div ref={scroller} className="no-scrollbar fade-x -mx-1 flex gap-1 overflow-x-auto px-1" role="tablist" aria-label="Tipos de espacio">
-      {RAIL.filter((c) => c.id === 'all' || !counts || (counts[c.id] ?? 0) > 0).map((c) => {
-        const Icon = c.icon;
-        const active = selected === c.id;
-        return (
-          <button
-            key={c.id}
-            data-cat={c.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(c.id)}
-            className={`group relative flex shrink-0 flex-col items-center gap-1.5 px-3 pb-3 pt-2 transition-colors duration-200 cursor-pointer ${
-              active ? 'text-slate-950' : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Icon
-              className={`h-6 w-6 transition-transform duration-200 ease-[var(--ease-out)] ${active ? '' : 'group-hover:-translate-y-0.5'}`}
-              strokeWidth={active ? 2 : 1.6}
-            />
-            <span className="whitespace-nowrap text-[12.5px] font-medium">{c.label}</span>
-            {active ? (
-              <motion.span
-                layoutId="category-underline"
-                className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-slate-950"
-                transition={{ type: 'spring', duration: 0.4, bounce: 0.1 }}
-              />
-            ) : (
-              <span className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
-            )}
-          </button>
-        );
-      })}
     </div>
   );
 };
-
-/* ------------------------------------------------------------------ */
-/* Panel de filtros                                                    */
-/* ------------------------------------------------------------------ */
-
-interface FilterPanelProps {
-  environment: EnvironmentFilter;
-  onEnvironmentChange: (v: EnvironmentFilter) => void;
-  rate: RateFilter;
-  onRateChange: (v: RateFilter) => void;
-  minSurfaceM2: number;
-  onMinSurfaceChange: (v: number) => void;
-  instantOnly: boolean;
-  onInstantOnlyChange: (v: boolean) => void;
-  activeCount: number;
-  resultCount: number;
-  onReset: () => void;
-}
-
-const SURFACE_DEFAULT = 10;
-
-export const FilterButton: React.FC<FilterPanelProps> = (props) => {
-  const [open, setOpen] = useState(false);
-  const { activeCount } = props;
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition-colors cursor-pointer ${
-          activeCount > 0 ? 'border-slate-950 bg-slate-50 text-slate-950' : 'border-slate-200 text-slate-800 hover:border-slate-400'
-        }`}
-      >
-        <SlidersHorizontal className="h-4 w-4" />
-        Filtros
-        {activeCount > 0 && (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-950 px-1.5 text-[12.5px] text-white tabular">
-            {activeCount}
-          </span>
-        )}
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
-            <motion.div
-              className="absolute inset-0 bg-slate-950/40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setOpen(false)}
-            />
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="filters-title"
-              initial={{ y: '100%', opacity: 0.6 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: '100%', opacity: 0.6 }}
-              transition={{ type: 'tween', duration: 0.42, ease: [0.32, 0.72, 0, 1] }}
-              className="relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] bg-white shadow-2xl sm:max-w-xl sm:rounded-[1.75rem]"
-            >
-              <FilterPanelBody {...props} onClose={() => setOpen(false)} />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-};
-
-const Segmented = <T extends string>({
-  value,
-  options,
-  onChange,
-  name,
-}: {
-  value: T;
-  options: { id: T; label: string; icon?: React.ComponentType<{ className?: string }> }[];
-  onChange: (v: T) => void;
-  name: string;
-}) => (
-  <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }} role="radiogroup" aria-label={name}>
-    {options.map((o) => {
-      const active = value === o.id;
-      const Icon = o.icon;
-      return (
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={active}
-          onClick={() => onChange(o.id)}
-          className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-[13.5px] font-medium transition-colors cursor-pointer ${
-            active ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 text-slate-700 hover:border-slate-400'
-          }`}
-        >
-          {Icon && <Icon className="h-4 w-4" />}
-          {o.label}
-        </button>
-      );
-    })}
-  </div>
-);
-
-const FilterPanelBody: React.FC<FilterPanelProps & { onClose: () => void }> = ({
-  environment,
-  onEnvironmentChange,
-  rate,
-  onRateChange,
-  minSurfaceM2,
-  onMinSurfaceChange,
-  instantOnly,
-  onInstantOnlyChange,
-  resultCount,
-  onReset,
-  onClose,
-}) => (
-  <>
-    <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-      <button type="button" onClick={onClose} aria-label="Cerrar filtros" className="rounded-full p-1.5 hover:bg-slate-100 cursor-pointer">
-        <X className="h-5 w-5" />
-      </button>
-      <h2 id="filters-title" className="text-[15px] font-semibold">
-        Filtros
-      </h2>
-      <span className="w-8" />
-    </header>
-
-    <div className="flex-1 space-y-8 overflow-y-auto px-6 py-6">
-      <section className="space-y-3">
-        <h3 className="text-[17px] font-semibold text-slate-950">Modalidad de arriendo</h3>
-        <Segmented name="Modalidad de arriendo" value={rate} onChange={onRateChange} options={RATES} />
-      </section>
-
-      <section className="space-y-3">
-        <h3 className="text-[17px] font-semibold text-slate-950">Entorno</h3>
-        <Segmented
-          name="Entorno"
-          value={environment}
-          onChange={onEnvironmentChange}
-          options={[
-            { id: 'all', label: 'Todos' },
-            { id: 'cerrado', label: 'Interior', icon: Building2 },
-            { id: 'abierto', label: 'Aire libre', icon: Sun },
-          ]}
-        />
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h3 className="text-[17px] font-semibold text-slate-950">Superficie mínima</h3>
-          <span className="text-[15px] font-semibold text-slate-950 tabular">{minSurfaceM2} m²</span>
-        </div>
-        <input
-          type="range"
-          min={SURFACE_DEFAULT}
-          max={300}
-          step={5}
-          value={minSurfaceM2}
-          onChange={(e) => onMinSurfaceChange(Number(e.target.value))}
-          aria-label="Superficie mínima en metros cuadrados"
-          className="w-full accent-slate-950 cursor-pointer"
-        />
-        <div className="flex justify-between text-[12px] text-slate-500 tabular">
-          <span>{SURFACE_DEFAULT} m²</span>
-          <span>300 m²</span>
-        </div>
-      </section>
-
-      <section>
-        <label className="flex items-center justify-between gap-4 cursor-pointer">
-          <span>
-            <span className="block text-[17px] font-semibold text-slate-950">Reserva inmediata</span>
-            <span className="block text-[13.5px] text-slate-500">Espacios que se confirman al pagar, sin esperar al anfitrión.</span>
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={instantOnly}
-            onClick={() => onInstantOnlyChange(!instantOnly)}
-            className={`relative h-8 w-[52px] shrink-0 rounded-full transition-colors duration-200 cursor-pointer ${
-              instantOnly ? 'bg-slate-950' : 'bg-slate-300'
-            }`}
-          >
-            <motion.span
-              layout
-              transition={{ type: 'spring', duration: 0.3, bounce: 0.2 }}
-              className={`absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow ${instantOnly ? 'right-1' : 'left-1'}`}
-            >
-              {instantOnly && <Check className="h-3.5 w-3.5 text-slate-950" strokeWidth={3} />}
-            </motion.span>
-          </button>
-        </label>
-      </section>
-    </div>
-
-    <footer className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
-      <button type="button" onClick={onReset} className="text-[15px] font-semibold text-slate-950 underline cursor-pointer">
-        Quitar todo
-      </button>
-      <button
-        type="button"
-        onClick={onClose}
-        className="rounded-xl bg-slate-950 px-6 py-3 text-[15px] font-semibold text-white hover:bg-slate-800 cursor-pointer tabular"
-      >
-        Mostrar {resultCount} {resultCount === 1 ? 'espacio' : 'espacios'}
-      </button>
-    </footer>
-  </>
-);
-
-export const countActiveFilters = (f: {
-  environment: EnvironmentFilter;
-  rate: RateFilter;
-  minSurfaceM2: number;
-  instantOnly: boolean;
-}) =>
-  (f.environment !== 'all' ? 1 : 0) +
-  (f.rate !== 'all' ? 1 : 0) +
-  (f.minSurfaceM2 > SURFACE_DEFAULT ? 1 : 0) +
-  (f.instantOnly ? 1 : 0);
-
-export { SURFACE_DEFAULT };

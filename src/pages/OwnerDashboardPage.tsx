@@ -135,15 +135,15 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     return (
       <div className="max-w-3xl mx-auto py-16 px-4">
         <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 text-center shadow-lg space-y-6">
-          <div className="w-16 h-16 bg-brand-600 text-white rounded-3xl flex items-center justify-center mx-auto shadow-md">
+          <div className="w-16 h-16 bg-rose-600 text-white rounded-3xl flex items-center justify-center mx-auto shadow-md">
             <Building className="w-8 h-8" />
           </div>
 
           <div className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
               Panel de anfitriones y propietarios
             </span>
-            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               Publica y administra tus inmuebles en Chile
             </h2>
             <p className="text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
@@ -154,13 +154,13 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => onOpenAuth?.('login', 'Inicia sesión como Propietario para administrar tus recintos.')}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-semibold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
             >
               Iniciar sesión
             </button>
             <button
               onClick={() => onOpenAuth?.('register', 'Regístrate con rol de Propietario para comenzar a publicar.')}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
             >
               Registrarme como Propietario
             </button>
@@ -175,11 +175,11 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     return (
       <div className="max-w-xl mx-auto py-16 px-4">
         <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm space-y-5">
-          <div className="w-14 h-14 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto">
+          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
             <ShieldCheck className="w-7 h-7" />
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-xl font-semibold text-slate-900">Sesión de administrador activa</h2>
+            <h2 className="text-xl font-bold text-slate-900">Sesión de administrador activa</h2>
             <p className="text-xs text-slate-500 leading-relaxed">
               El rol de Administrador supervisa la plataforma desde el Panel de Administración y no publica ni arrienda propiedades a título personal.
             </p>
@@ -199,10 +199,10 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           </div>
 
           <div className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
               Acceso restringido • perfil de arrendatario
             </span>
-            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               No tienes habilitado el perfil de Propietario
             </h2>
             <p className="text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
@@ -213,7 +213,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={onOpenOwnerUpgrade}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-brand-600 hover:from-brand-700 hover:to-amber-700 text-white font-semibold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
             >
               Aceptar términos y convertirme en propietario
             </button>
@@ -551,7 +551,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`px-2.5 py-0.5 rounded-full text-[12.5px] font-semibold flex items-center gap-1 whitespace-nowrap ${
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 whitespace-nowrap ${
               currentUser.verificationStatus === 'verified'
                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                 : 'bg-amber-100 text-amber-800'
@@ -566,7 +566,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
               Pagos habilitados Webpay / stripe
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900 mt-1.5 tracking-tight">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 mt-1.5 tracking-tight">
             Panel de control de propietario
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5 max-w-3xl">
@@ -577,7 +577,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 shrink-0 w-full lg:w-auto">
           <button
             onClick={() => setActiveTab('finances')}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-2xl font-semibold text-xs border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-2xl font-bold text-xs border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
             title="Configuración de cuentas bancarias y liquidaciones"
           >
             <Settings className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -587,7 +587,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           <button
             id="owner-publish-space-btn"
             onClick={handleOpenPublishModal}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl font-semibold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap bg-brand-600 hover:bg-brand-700 text-white hover:shadow"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl font-bold text-xs shadow-sm transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap bg-rose-600 hover:bg-rose-700 text-white hover:shadow"
           >
             <PlusCircle className="w-4 h-4 shrink-0" />
             <span>Publicar nuevo espacio</span>
@@ -608,7 +608,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'overview'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -617,7 +617,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           <TrendingUp className="w-4 h-4" />
           Resumen
           {pendingValidBookings.length > 0 && (
-            <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[11.5px] font-semibold">
+            <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-extrabold">
               {pendingValidBookings.length}
             </span>
           )}
@@ -625,7 +625,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
         <button
           onClick={() => setActiveTab('calendar')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'calendar'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -637,7 +637,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
         <button
           onClick={() => setActiveTab('spaces')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'spaces'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -649,7 +649,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
         <button
           onClick={() => setActiveTab('bookings')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'bookings'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -661,7 +661,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
         <button
           onClick={() => setActiveTab('finances')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'finances'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -673,7 +673,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
         <button
           onClick={() => setActiveTab('visits')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === 'visits'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -707,13 +707,13 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           {mySpaces.length === 0 ? (
             <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
               <Building className="w-12 h-12 text-slate-300 mx-auto" />
-              <h3 className="text-base font-semibold text-slate-800">Aún no has publicado ningún espacio</h3>
+              <h3 className="text-base font-bold text-slate-800">Aún no has publicado ningún espacio</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 Comienza publicando tu primera oficina, estudio o sala para empezar a recibir solicitudes de clientes en Chile.
               </p>
               <button
                 onClick={handleOpenPublishModal}
-                className="mt-2 px-5 py-2.5 bg-brand-600 text-white font-semibold text-xs rounded-xl hover:bg-brand-700 transition inline-flex items-center gap-2"
+                className="mt-2 px-5 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition inline-flex items-center gap-2"
               >
                 <PlusCircle className="w-4 h-4" /> Publicar mi primer espacio
               </button>
@@ -733,7 +733,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                     />
                     <div className="absolute top-2 left-2 flex items-center gap-1.5">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[11.5px] font-semibold ${
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           space.status === 'active'
                             ? 'bg-emerald-500 text-white'
                             : space.status === 'pending_approval'
@@ -754,14 +754,14 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                     <div className="min-w-0">
                       <div className="text-xs text-slate-500 flex items-center justify-between gap-2">
                         <span className="flex items-center gap-1 truncate">
-                          <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                           <span className="truncate">{space.commune}</span>
                         </span>
-                        <span className="text-[12.5px] text-slate-400 font-medium whitespace-nowrap shrink-0">
+                        <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap shrink-0">
                           {space.capacity} pers · {space.surfaceM2} m²
                         </span>
                       </div>
-                      <h4 className="text-sm font-semibold text-slate-900 mt-1 line-clamp-1">
+                      <h4 className="text-sm font-bold text-slate-900 mt-1 line-clamp-1">
                         {space.title}
                       </h4>
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
@@ -775,14 +775,14 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                           const rate = getSpaceRateInfo(space);
                           return (
                             <div className="truncate">
-                              <span className="font-semibold text-slate-900 text-sm">
+                              <span className="font-extrabold text-slate-900 text-sm">
                                 {formatClp(rate.amount)}
                               </span>
                               <span className="text-slate-400 font-medium"> {rate.unitLabel}</span>
                             </div>
                           );
                         })()}
-                        <span className="text-[12.5px] text-slate-500 whitespace-nowrap">
+                        <span className="text-[11px] text-slate-500 whitespace-nowrap">
                           Garantía mensual: <strong className="text-slate-700">{space.securityDeposit && space.securityDeposit > 0 ? formatClp(space.securityDeposit) : 'No pide'}</strong>
                         </span>
                       </div>
@@ -793,15 +793,15 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                             setSelectedSpaceId(space.id);
                             setActiveTab('calendar');
                           }}
-                          className="flex-1 min-w-[115px] px-2.5 py-1.5 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-900 font-semibold text-[12.5px] flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
+                          className="flex-1 min-w-[115px] px-2.5 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
                           title="Gestionar disponibilidad y solicitudes de este recinto en el calendario"
                         >
-                          <Calendar className="w-3 h-3 text-brand-600 shrink-0" />
+                          <Calendar className="w-3 h-3 text-indigo-600 shrink-0" />
                           <span>Calendario</span>
                         </button>
                         <button
                           onClick={() => handleStartEdit(space)}
-                          className="flex-1 min-w-[95px] px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold text-[12.5px] flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
+                          className="flex-1 min-w-[95px] px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
                           title="Modificar precio, descripción y datos del espacio"
                         >
                           <Pencil className="w-3 h-3 text-slate-600 shrink-0" />
@@ -813,7 +813,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                               status: space.status === 'active' ? 'paused' : 'active',
                             })
                           }
-                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-[12.5px] cursor-pointer whitespace-nowrap"
+                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-[11px] cursor-pointer whitespace-nowrap"
                         >
                           {space.status === 'active' ? 'Pausar' : 'Activar'}
                         </button>
@@ -823,7 +823,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                             setDeleteError(null);
                             setSpaceToDelete(space);
                           }}
-                          className="px-2.5 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-semibold text-[12.5px] flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                          className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
                           title="Eliminar esta publicación"
                         >
                           <Trash2 className="w-3 h-3 shrink-0" />
@@ -845,10 +845,10 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-900">
                   Solicitudes recibidas de arrendatarios
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[11.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Aprobación: Hoy ({todayIso}) en adelante
                 </span>
               </div>
@@ -859,14 +859,14 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
             {/* Selector para filtrar reservas por recinto específico */}
             <div className="flex items-center gap-2">
-              <label htmlFor="filter-bookings-space" className="text-xs font-semibold text-slate-500 whitespace-nowrap">
+              <label htmlFor="filter-bookings-space" className="text-xs font-bold text-slate-500 whitespace-nowrap">
                 Filtrar por recinto:
               </label>
               <select
                 id="filter-bookings-space"
                 value={selectedSpaceId || ''}
                 onChange={(e) => setSelectedSpaceId(e.target.value)}
-                className="text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+                className="text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer"
               >
                 <option value="">Todos mis recintos ({mySpaces.length})</option>
                 {mySpaces.map((s) => (
@@ -880,11 +880,11 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
           {/* Barra de filtros de estado: Por Aprobar (Vigentes), Todas, Confirmadas, Expiradas/Pasadas */}
           <div className="px-5 py-3 bg-slate-50/70 border-b border-slate-100 flex items-center gap-2 overflow-x-auto">
-            <span className="text-[12.5px] font-semibold text-slate-500 whitespace-nowrap mr-1">Estado:</span>
+            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap mr-1">Estado:</span>
             <button
               type="button"
               onClick={() => setBookingListStatusFilter('pending_valid')}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 bookingListStatusFilter === 'pending_valid'
                   ? 'bg-amber-500 text-white shadow-2xs'
                   : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
@@ -895,7 +895,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             <button
               type="button"
               onClick={() => setBookingListStatusFilter('all')}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 bookingListStatusFilter === 'all'
                   ? 'bg-slate-900 text-white shadow-2xs'
                   : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
@@ -906,7 +906,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             <button
               type="button"
               onClick={() => setBookingListStatusFilter('confirmed')}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 bookingListStatusFilter === 'confirmed'
                   ? 'bg-emerald-600 text-white shadow-2xs'
                   : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
@@ -917,7 +917,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             <button
               type="button"
               onClick={() => setBookingListStatusFilter('past')}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 bookingListStatusFilter === 'past'
                   ? 'bg-slate-700 text-white shadow-2xs'
                   : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
@@ -961,16 +961,16 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                     <div key={res.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-semibold text-slate-400">#{res.id.slice(-6)}</span>
+                          <span className="font-mono text-xs font-bold text-slate-400">#{res.id.slice(-6)}</span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11.5px] font-semibold ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               res.status === 'confirmed'
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : res.status === 'pending'
                                 ? isPast
                                   ? 'bg-slate-100 text-slate-700 border border-slate-300'
                                   : 'bg-amber-100 text-amber-800'
-                                : 'bg-brand-100 text-brand-800'
+                                : 'bg-rose-100 text-rose-800'
                             }`}
                           >
                             {res.status === 'confirmed'
@@ -983,13 +983,13 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                           </span>
 
                           {/* Etiqueta explícita del recinto solicitado */}
-                          <span className="px-2.5 py-0.5 rounded-lg bg-brand-50 text-brand-800 border border-brand-200 text-xs font-semibold flex items-center gap-1">
-                            <Building className="w-3.5 h-3.5 text-brand-600" />
+                          <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200 text-xs font-bold flex items-center gap-1">
+                            <Building className="w-3.5 h-3.5 text-indigo-600" />
                             <span>Recinto: {res.spaceTitle}</span>
                           </span>
 
                           {isPast && (
-                            <span className="text-[11.5px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
+                            <span className="text-[10px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
                               Fecha pasada
                             </span>
                           )}
@@ -1001,7 +1001,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                           <span>
                             Fechas: <strong>{res.startDate}</strong> al <strong>{res.endDate}</strong> ({res.durationUnits ? `${res.durationUnits} hrs` : `${res.totalDays} días`})
                           </span>
-                          <span>Subtotal propietario: <strong className="text-emerald-700 font-semibold">{formatClp(res.subtotalClp)}</strong></span>
+                          <span>Subtotal propietario: <strong className="text-emerald-700 font-bold">{formatClp(res.subtotalClp)}</strong></span>
                           {res.intendedUse && (
                             <span className="w-full text-slate-500 italic mt-0.5">
                               Uso previsto: "{res.intendedUse}"
@@ -1013,20 +1013,20 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <button
                           onClick={() => downloadReservationDocument(res)}
-                          className="px-3 py-2 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-800 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                          className="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
                           title="Descargar comprobante de reserva"
                         >
-                          <Download className="w-3.5 h-3.5 text-brand-600" />
+                          <Download className="w-3.5 h-3.5 text-indigo-600" />
                           <span>Descargar reserva</span>
                         </button>
 
                         {/* Botón para ver el contrato legal digital siempre accesible */}
                         <button
                           onClick={() => handleViewReservationContract(res)}
-                          className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-semibold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                           title="Ver y revisar el contrato legal digital (Ley 18.101 & 19.799)"
                         >
-                          <FileText className="w-4 h-4 text-brand-600" />
+                          <FileText className="w-4 h-4 text-rose-600" />
                           <span>Ver contrato</span>
                         </button>
 
@@ -1041,7 +1041,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                             }
 alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se generan y firman al momento de reservar.');
                           }}
-                          className="px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                          className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
                           title="Descargar contrato digital"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -1074,7 +1074,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                                     }
                                     changeReservationStatus(res.id, 'confirmed');
                                   }}
-                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1 transition shadow-xs cursor-pointer"
+                                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition shadow-xs cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>Aceptar arriendo</span>
@@ -1087,7 +1087,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                                     }
                                     changeReservationStatus(res.id, 'rejected');
                                   }}
-                                  className="px-3.5 py-2 rounded-xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
+                                  className="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
                                 >
                                   <XCircle className="w-3.5 h-3.5" />
                                   <span>Rechazar</span>
@@ -1120,7 +1120,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 p-6 space-y-5 shadow-xs">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">
+                <h3 className="text-base font-bold text-slate-900">
                   Desglose real de ganancias y liquidaciones (CLP)
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1133,33 +1133,33 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                   <span className="text-xs text-slate-600">
                     Total Facturación Bruta Arriendos ({financialMetrics.confirmedCount} reservas confirmadas)
                   </span>
-                  <span className="text-sm font-semibold text-slate-900">{formatClp(financialMetrics.grossIncome)}</span>
+                  <span className="text-sm font-bold text-slate-900">{formatClp(financialMetrics.grossIncome)}</span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
                   <span className="text-xs text-slate-600">Comisión Spotly retenida (5%)</span>
-                  <span className="text-sm font-semibold text-brand-600">-{formatClp(financialMetrics.platformFeesPaid)}</span>
+                  <span className="text-sm font-bold text-rose-600">-{formatClp(financialMetrics.platformFeesPaid)}</span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
                   <span className="text-xs text-slate-600">Garantías de arrendatarios en custodia</span>
-                  <span className="text-sm font-semibold text-brand-600">{formatClp(financialMetrics.depositsHeld)}</span>
+                  <span className="text-sm font-bold text-indigo-600">{formatClp(financialMetrics.depositsHeld)}</span>
                 </div>
                 <div className="flex justify-between items-center p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
                   <div>
-                    <span className="text-xs font-semibold text-emerald-950 block">Ganancia neta real acumulada</span>
-                    <span className="text-[12.5px] text-emerald-700">Suma neta real de todos tus lugares arrendados</span>
+                    <span className="text-xs font-bold text-emerald-950 block">Ganancia neta real acumulada</span>
+                    <span className="text-[11px] text-emerald-700">Suma neta real de todos tus lugares arrendados</span>
                   </div>
-                  <span className="text-xl font-semibold text-emerald-700">{formatClp(financialMetrics.netPayout)}</span>
+                  <span className="text-xl font-extrabold text-emerald-700">{formatClp(financialMetrics.netPayout)}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
-              <h3 className="text-sm font-semibold text-slate-900">Régimen tributario & cumplimiento</h3>
+              <h3 className="text-sm font-bold text-slate-900">Régimen tributario & cumplimiento</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 De acuerdo con la Circular N° 37 del SII y la Ley 18.101, los arriendos de inmuebles amoblados o con instalaciones que permitan el ejercicio de una actividad comercial están afectos al Impuesto al Valor Agregado (IVA - 19%).
               </p>
               <div className="p-3.5 bg-slate-50 rounded-2xl text-xs space-y-1 text-slate-700">
-                <div className="font-semibold text-slate-900">Emisión de boleta/Factura:</div>
+                <div className="font-bold text-slate-900">Emisión de boleta/Factura:</div>
                 <div>RUT Emisor: {formatRut(currentUser.rut)}</div>
                 <div>Titular: {currentUser.fullName}</div>
               </div>
@@ -1171,7 +1171,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
           {/* Desglose Real por cada Lugar del Propietario */}
           <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">
+              <h3 className="text-base font-bold text-slate-900">
                 Ganancias reales por lugar / recinto
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -1187,14 +1187,14 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-900">{spMetric.spaceTitle}</h4>
-                      <p className="text-[12.5px] text-slate-500">
+                      <h4 className="text-sm font-bold text-slate-900">{spMetric.spaceTitle}</h4>
+                      <p className="text-[11px] text-slate-500">
                         {spMetric.commune} • {spMetric.confirmedCount} reservas confirmadas
                         {spMetric.pendingCount > 0 ? ` • ${spMetric.pendingCount} por aprobar` : ''}
                       </p>
                     </div>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[11.5px] font-semibold ${
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         spMetric.status === 'active'
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-amber-100 text-amber-800'
@@ -1206,16 +1206,16 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
 
                   <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-xs">
                     <div>
-                      <span className="text-[11.5px] text-slate-400 block">Bruto</span>
-                      <span className="font-semibold text-slate-800">{formatClp(spMetric.grossIncome)}</span>
+                      <span className="text-[10px] text-slate-400 block">Bruto</span>
+                      <span className="font-bold text-slate-800">{formatClp(spMetric.grossIncome)}</span>
                     </div>
                     <div>
-                      <span className="text-[11.5px] text-slate-400 block">Comisión (5%)</span>
-                      <span className="font-semibold text-brand-600">-{formatClp(spMetric.platformFeesPaid)}</span>
+                      <span className="text-[10px] text-slate-400 block">Comisión (5%)</span>
+                      <span className="font-bold text-rose-600">-{formatClp(spMetric.platformFeesPaid)}</span>
                     </div>
                     <div>
-                      <span className="text-[11.5px] text-slate-400 block">Ganancia neta</span>
-                      <span className="font-semibold text-emerald-700">{formatClp(spMetric.netPayout)}</span>
+                      <span className="text-[10px] text-slate-400 block">Ganancia neta</span>
+                      <span className="font-extrabold text-emerald-700">{formatClp(spMetric.netPayout)}</span>
                     </div>
                   </div>
                 </div>
@@ -1235,20 +1235,20 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
               {/* Fila 1: Etiquetas de estado del recinto */}
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <label htmlFor="owner-space-selector" className="text-[12.5px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <label htmlFor="owner-space-selector" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     Recinto en gestión
                   </label>
-                  <span className="px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold bg-brand-50 text-brand-700 border border-brand-200 whitespace-nowrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap">
                     {spaceModalityLabel}
                   </span>
                   {selectedSpace && (
-                    <span className="px-2 py-0.5 rounded-full text-[11.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
                       ● Activo
                     </span>
                   )}
                 </div>
                 {selectedSpace && (
-                  <span className="text-[12.5px] text-slate-500 font-medium truncate">
+                  <span className="text-[11px] text-slate-500 font-medium truncate">
                     {selectedSpace.address}, {selectedSpace.commune}
                   </span>
                 )}
@@ -1262,7 +1262,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                     value={selectedSpace?.id || ''}
                     onChange={(e) => setSelectedSpaceId(e.target.value)}
                     disabled={mySpaces.length === 0}
-                    className="w-full truncate text-sm sm:text-base font-semibold text-slate-900 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-9 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full truncate text-sm sm:text-base font-bold text-slate-900 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl px-3.5 py-2.5 pr-9 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {mySpaces.length === 0 ? (
                       <option value="">Sin espacios publicados aún</option>
@@ -1280,7 +1280,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
                   {ownerSelectedDate < todayIso ? (
                     <span
-                      className="flex-1 sm:flex-initial justify-center px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 font-semibold text-xs flex items-center gap-1.5 cursor-not-allowed whitespace-nowrap"
+                      className="flex-1 sm:flex-initial justify-center px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 font-bold text-xs flex items-center gap-1.5 cursor-not-allowed whitespace-nowrap"
                       title="Estás visualizando una fecha pasada. Solo puedes bloquear o modificar desde la fecha actual hacia adelante."
                     >
                       <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1293,7 +1293,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                         setMaintenanceDate(ownerSelectedDate >= todayIso ? ownerSelectedDate : todayIso);
                         setIsMaintenanceModalOpen(true);
                       }}
-                      className="flex-1 sm:flex-initial justify-center px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer whitespace-nowrap"
+                      className="flex-1 sm:flex-initial justify-center px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer whitespace-nowrap"
                     >
                       <Wrench className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span>Bloquear horas / días / mes</span>
@@ -1303,9 +1303,9 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                     <button
                       type="button"
                       onClick={() => handleStartEdit(selectedSpace)}
-                      className="flex-1 sm:flex-initial justify-center px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer whitespace-nowrap"
+                      className="flex-1 sm:flex-initial justify-center px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer whitespace-nowrap"
                     >
-                      <Pencil className="w-3.5 h-3.5 text-brand-400 shrink-0" />
+                      <Pencil className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                       <span>Editar tarifas y ficha</span>
                     </button>
                   )}
@@ -1391,7 +1391,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
             ) : (
               <div className="bg-white rounded-3xl border border-slate-200 p-10 text-center space-y-3 shadow-xs">
                 <Building className="w-10 h-10 text-slate-300 mx-auto" />
-                <h4 className="text-sm font-semibold text-slate-900">
+                <h4 className="text-sm font-bold text-slate-900">
                   Aún no tienes recintos publicados para mostrar en el calendario
                 </h4>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -1402,7 +1402,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                   onClick={() => {
                     handleOpenPublishModal();
                   }}
-                  className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Publicar nuevo espacio</span>
@@ -1421,10 +1421,10 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                   /> : <div aria-hidden="true" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-100 border border-slate-200 shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm sm:text-base font-semibold text-slate-900 truncate">
+                      <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                         {selectedSpace.title}
                       </h4>
-                      <span className="px-2 py-0.5 rounded-full text-[11.5px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
                         Activo
                       </span>
                     </div>
@@ -1442,7 +1442,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
                   <button
                     onClick={() => handleStartEdit(selectedSpace)}
-                    className="flex-1 sm:flex-initial justify-center px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer whitespace-nowrap"
+                    className="flex-1 sm:flex-initial justify-center px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition shadow-2xs cursor-pointer whitespace-nowrap"
                   >
                     <Pencil className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                     <span>Editar ficha</span>
@@ -1468,12 +1468,12 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-semibold text-slate-900">Solicitudes por aprobar</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[11.5px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
+                    <h3 className="text-sm font-extrabold text-slate-900">Solicitudes por aprobar</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
                       {pendingValidBookings.length} Vigentes
                     </span>
                   </div>
-                  <p className="text-[12.5px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     Solo solicitudes válidas del día actual hacia adelante ({todayIso} en adelante).
                   </p>
                 </div>
@@ -1481,7 +1481,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
 
               {/* Filtro rápido: Todas vs Solo del recinto seleccionado */}
               {selectedSpace && (
-                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl text-[12.5px] font-semibold text-slate-600">
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl text-[11px] font-bold text-slate-600">
                   <button
                     onClick={() => setPendingFilter('all')}
                     className={`py-1.5 px-2 rounded-lg transition text-center cursor-pointer whitespace-nowrap ${
@@ -1527,52 +1527,52 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                     <div
                       key={res.id}
                       onClick={() => handleNavigateToBookingInCalendar(res)}
-                      className="p-4 rounded-2xl bg-slate-50/90 border border-slate-200 hover:border-brand-300 hover:shadow-md hover:bg-brand-50/20 transition space-y-3 cursor-pointer group overflow-hidden"
+                      className="p-4 rounded-2xl bg-slate-50/90 border border-slate-200 hover:border-indigo-300 hover:shadow-md hover:bg-indigo-50/20 transition space-y-3 cursor-pointer group overflow-hidden"
                       title="Haz clic para ver esta solicitud en el calendario de disponibilidad del recinto"
                     >
                       {/* DESTACADO CLAVE: Recinto al que postula + Badge */}
                       <div className="flex items-center justify-between gap-2 min-w-0">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-brand-100 text-brand-900 border border-brand-200 text-xs font-semibold min-w-0 flex-1 group-hover:bg-brand-600 group-hover:text-white transition">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold min-w-0 flex-1 group-hover:bg-indigo-600 group-hover:text-white transition">
                           <Building className="w-3.5 h-3.5 shrink-0" />
                           <span className="truncate">{res.spaceTitle}</span>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[11.5px] font-semibold bg-red-100 text-red-700 whitespace-nowrap shrink-0">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 whitespace-nowrap shrink-0">
                           Expira en 4h
                         </span>
                       </div>
 
                       {/* Datos del Cliente */}
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-slate-900 text-white font-semibold text-xs flex items-center justify-center shrink-0 group-hover:bg-brand-900 transition">
+                        <div className="w-9 h-9 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0 group-hover:bg-indigo-900 transition">
                           {res.tenantName.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-semibold text-slate-900 truncate">{res.tenantName}</h4>
-                          <p className="text-[12.5px] text-slate-500 truncate">
+                          <h4 className="text-xs font-bold text-slate-900 truncate">{res.tenantName}</h4>
+                          <p className="text-[11px] text-slate-500 truncate">
                             RUT: {formatRut(res.tenantRut)} • {res.tenantEmail}
                           </p>
                         </div>
                       </div>
 
                       {/* Detalles del Arriendo Solicitado */}
-                      <div className="p-3 rounded-xl bg-white text-[12.5px] space-y-1.5 text-slate-700 border border-slate-100 shadow-2xs group-hover:border-brand-100 transition">
+                      <div className="p-3 rounded-xl bg-white text-[11px] space-y-1.5 text-slate-700 border border-slate-100 shadow-2xs group-hover:border-indigo-100 transition">
                         <div className="flex items-center justify-between gap-1.5 font-semibold text-slate-900">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <CalendarIcon className="w-3.5 h-3.5 text-brand-600 shrink-0" />
-                            <span className="font-semibold truncate">
+                            <CalendarIcon className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span className="font-bold truncate">
                               {res.startDate} {res.durationUnits ? `• ${res.durationUnits} hrs (${res.hourStart ?? 9}:00-${res.hourEnd ?? (res.hourStart ?? 9) + (res.durationUnits || 4)}:00)` : `• ${res.totalDays} días`}
                             </span>
                           </div>
-                          <span className="text-[11.5px] font-semibold text-brand-600 whitespace-nowrap shrink-0">
+                          <span className="text-[10px] font-bold text-indigo-600 whitespace-nowrap shrink-0">
                             Ver fecha
                           </span>
                         </div>
                         <p className="text-slate-600 line-clamp-2">
                           <strong className="text-slate-800">Motivo:</strong> {res.intendedUse}
                         </p>
-                        <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between font-semibold">
+                        <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between font-bold">
                           <span className="text-slate-500 font-medium">Monto neto anfitrión:</span>
-                          <span className="text-emerald-700 font-semibold text-xs">
+                          <span className="text-emerald-700 font-extrabold text-xs">
                             {formatClp(res.subtotalClp - (res.platformFeeClp || 0))}
                           </span>
                         </div>
@@ -1587,10 +1587,10 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                               e.stopPropagation();
                               handleViewReservationContract(res);
                             }}
-                            className="py-2 px-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-semibold text-[12.5px] flex items-center justify-center gap-1 transition shadow-2xs cursor-pointer whitespace-nowrap"
+                            className="py-2 px-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 transition shadow-2xs cursor-pointer whitespace-nowrap"
                             title="Ver contrato digital formal para este arriendo"
                           >
-                            <FileText className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                            <FileText className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                             <span>Ver contrato</span>
                           </button>
                           <button
@@ -1604,7 +1604,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                                 spaceTitle: res.spaceTitle,
                               });
                             }}
-                            className="py-2 px-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-[12.5px] flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
+                            className="py-2 px-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap"
                             title="Contactar al arrendatario"
                           >
                             <MessageSquare className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -1621,7 +1621,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                             }
                             changeReservationStatus(res.id, 'confirmed');
                           }}
-                          className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[12.5px] flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer whitespace-nowrap"
+                          className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer whitespace-nowrap"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                           <span>Aprobar solicitud ahora</span>
@@ -1637,15 +1637,15 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
             <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-xs">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                     <Users className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-semibold text-slate-900">Visitas técnicas (Scouting)</h3>
-                    <p className="text-[11.5px] text-slate-500">Vigentes desde hoy ({todayIso}) en adelante</p>
+                    <h3 className="text-xs font-bold text-slate-900">Visitas técnicas (Scouting)</h3>
+                    <p className="text-[10px] text-slate-500">Vigentes desde hoy ({todayIso}) en adelante</p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[11.5px] font-semibold bg-brand-50 text-brand-700 border border-brand-200">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                   {upcomingVisitRequests.length} {upcomingVisitRequests.length === 1 ? 'Agendada' : 'Agendadas'}
                 </span>
               </div>
@@ -1663,21 +1663,21 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-slate-900">{visit.tenantName}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[11.5px] font-semibold bg-emerald-100 text-emerald-800">
+                        <span className="font-bold text-slate-900">{visit.tenantName}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
                           Gratuita (30m)
                         </span>
                       </div>
-                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11.5px] font-semibold text-slate-700">
-                        <MapPin className="w-3 h-3 text-brand-500" />
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-700">
+                        <MapPin className="w-3 h-3 text-rose-500" />
                         <span>{visit.spaceTitle}</span>
                       </div>
-                      <div className="text-[12.5px] text-slate-600 flex items-center gap-2">
+                      <div className="text-[11px] text-slate-600 flex items-center gap-2">
                         <Clock className="w-3 h-3 text-slate-400" />
                         <span>{visit.visitDate} • {visit.visitTimeSlot}</span>
                       </div>
                       {visit.notes && (
-                        <p className="text-[12.5px] text-slate-500 italic bg-white p-2 rounded-xl border border-slate-100">
+                        <p className="text-[11px] text-slate-500 italic bg-white p-2 rounded-xl border border-slate-100">
                           "{visit.notes}"
                         </p>
                       )}
@@ -1691,7 +1691,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                               spaceTitle: visit.spaceTitle,
                             })
                           }
-                          className="flex-1 py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-black text-white font-semibold text-[11.5px] text-center transition cursor-pointer"
+                          className="flex-1 py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-[10px] text-center transition cursor-pointer"
                         >
                           Contactar por WhatsApp
                         </button>
@@ -1710,13 +1710,13 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                     <Banknote className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-semibold text-slate-900">Ganancias reales por lugar</h3>
-                    <p className="text-[11.5px] text-slate-500">Ingresos netos reales según reservas confirmadas</p>
+                    <h3 className="text-xs font-bold text-slate-900">Ganancias reales por lugar</h3>
+                    <p className="text-[10px] text-slate-500">Ingresos netos reales según reservas confirmadas</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setActiveTab('finances')}
-                  className="text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline cursor-pointer"
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
                 >
                   Ver detalle
                 </button>
@@ -1739,12 +1739,12 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                         }`}
                       >
                         <div className="min-w-0 pr-2">
-                          <p className="font-semibold text-slate-900 truncate">{spMetric.spaceTitle}</p>
-                          <p className="text-[11.5px] text-slate-500">
+                          <p className="font-bold text-slate-900 truncate">{spMetric.spaceTitle}</p>
+                          <p className="text-[10px] text-slate-500">
                             {spMetric.commune} • {spMetric.confirmedCount} {spMetric.confirmedCount === 1 ? 'reserva confirmada' : 'reservas confirmadas'}
                           </p>
                         </div>
-                        <span className="font-semibold text-emerald-700 shrink-0">
+                        <span className="font-extrabold text-emerald-700 shrink-0">
                           {formatClp(spMetric.netPayout)}
                         </span>
                       </div>
@@ -1755,7 +1755,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
 
               <div className="p-3 rounded-xl bg-slate-900 text-white text-xs flex items-center justify-between">
                 <span className="font-semibold text-slate-300">Total neto acumulado:</span>
-                <span className="font-semibold text-emerald-400 text-sm">
+                <span className="font-extrabold text-emerald-400 text-sm">
                   {formatClp(financialMetrics.netPayout)}
                 </span>
               </div>
@@ -1768,8 +1768,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
       {activeTab === 'visits' && (
         <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
           <div className="p-5 border-b border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-brand-600" />
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-indigo-600" />
               Solicitudes de visita recibidas
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -1801,15 +1801,15 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       )}
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-semibold text-slate-400">#{visit.id.slice(-6)}</span>
+                          <span className="font-mono text-xs font-bold text-slate-400">#{visit.id.slice(-6)}</span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11.5px] font-semibold ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               visit.status === 'confirmed'
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : visit.status === 'pending'
                                 ? 'bg-amber-100 text-amber-800'
                                 : visit.status === 'cancelled'
-                                ? 'bg-red-100 text-red-800'
+                                ? 'bg-rose-100 text-rose-800'
                                 : 'bg-slate-100 text-slate-700'
                             }`}
                           >
@@ -1823,7 +1823,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                           </span>
                         </div>
 
-                        <div className="text-sm font-semibold text-slate-900">{visit.spaceTitle}</div>
+                        <div className="text-sm font-bold text-slate-900">{visit.spaceTitle}</div>
                         <div className="text-xs text-slate-500">{visit.spaceAddress}</div>
 
                         <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -1840,8 +1840,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                         </div>
 
                         {visit.notes && (
-                          <div className="text-[12.5px] text-slate-500 bg-slate-50 rounded-lg p-2 border border-slate-200">
-                            <span className="font-semibold text-slate-700">Nota del visitante:</span> {visit.notes}
+                          <div className="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2 border border-slate-200">
+                            <span className="font-bold text-slate-700">Nota del visitante:</span> {visit.notes}
                           </div>
                         )}
                       </div>
@@ -1869,12 +1869,12 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 ✕
               </button>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[11.5px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/40">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                   {editingSpace ? 'Modificación de inmueble' : 'Alta de inmuebles en Chile'}
                 </span>
-                <span className="text-[11.5px] text-slate-400 font-mono">Ley N° 18.101</span>
+                <span className="text-[10px] text-slate-400 font-mono">Ley N° 18.101</span>
               </div>
-              <h2 className="text-xl font-semibold">
+              <h2 className="text-xl font-bold">
                 {editingSpace ? `Modificar Espacio: ${editingSpace.title}` : 'Publicar nuevo espacio en Spotly'}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
@@ -1925,11 +1925,11 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
               aria-labelledby="delete-space-title"
             >
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 id="delete-space-title" className="text-sm font-semibold text-slate-900">
+                  <h3 id="delete-space-title" className="text-sm font-bold text-slate-900">
                     ¿Eliminar "{spaceToDelete.title}"?
                   </h3>
                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
@@ -1939,7 +1939,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 </div>
               </div>
               {deleteError && (
-                <div className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-[12.5px] font-semibold text-red-800" role="alert">
+                <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-800" role="alert">
                   {deleteError}
                 </div>
               )}
@@ -1960,7 +1960,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       updateSpace(spaceToDelete.id, { status: 'paused' });
                       setSpaceToDelete(null);
                     }}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 cursor-pointer disabled:opacity-50"
                   >
                     Solo pausar
                   </button>
@@ -1969,7 +1969,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                   type="button"
                   disabled={isDeletingSpace}
                   onClick={handleConfirmDeleteSpace}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isDeletingSpace ? 'Eliminando…' : 'Sí, eliminar'}
                 </button>
@@ -1990,10 +1990,10 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-100">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-900">
                   {selectedDayInfo.date}
                 </h3>
-                <p className="text-[12.5px] text-slate-500">{selectedSpace?.title}</p>
+                <p className="text-[11px] text-slate-500">{selectedSpace?.title}</p>
               </div>
               <button
                 onClick={() => setSelectedDayInfo(null)}
@@ -2010,44 +2010,44 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 if (booking) {
                   const isPastBooking = booking.startDate < todayIso;
                   return (
-                    <div className="p-4 rounded-2xl bg-brand-50/90 border border-brand-200 space-y-3">
+                    <div className="p-4 rounded-2xl bg-rose-50/90 border border-rose-200 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className={`px-2 py-0.5 rounded-full text-[11.5px] font-semibold uppercase ${
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                           booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                         }`}>
                           {booking.status === 'confirmed' ? 'Reserva confirmada' : 'Solicitud pendiente'}
                         </span>
-                        <span className="font-semibold text-brand-700 text-sm">{formatClp(booking.subtotalClp)}</span>
+                        <span className="font-extrabold text-rose-700 text-sm">{formatClp(booking.subtotalClp)}</span>
                       </div>
 
                       {/* DETALLE EXACTO DE DÍA, HORA O MES SOLICITADO */}
-                      <div className="p-3 bg-white rounded-xl border border-brand-100 space-y-2">
-                        <div className="text-[12.5px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <div className="p-3 bg-white rounded-xl border border-rose-100 space-y-2">
+                        <div className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
                           {booking.rentalModality === 'por_hora' || booking.hourStart !== undefined ? (
                             <>
-                              <Clock className="w-3.5 h-3.5 text-brand-600" />
+                              <Clock className="w-3.5 h-3.5 text-indigo-600" />
                               <span>Horario solicitado: <strong>{booking.hourStart ?? 10}:00 a {booking.hourEnd ?? 14}:00 hrs</strong> ({booking.durationUnits || booking.totalDays || 4} hrs)</span>
                             </>
                           ) : booking.rentalModality === 'mensual' ? (
                             <>
-                              <Building2 className="w-3.5 h-3.5 text-brand-600" />
+                              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
                               <span>Mes solicitado: <strong>{booking.rentalMonth || 'Septiembre 2026'}</strong></span>
                             </>
                           ) : (
                             <>
-                              <CalendarIcon className="w-3.5 h-3.5 text-brand-600" />
+                              <CalendarIcon className="w-3.5 h-3.5 text-indigo-600" />
                               <span>Jornada completa: <strong>{booking.startDate} al {booking.endDate}</strong> ({booking.totalDays} {booking.totalDays === 1 ? 'día' : 'días'})</span>
                             </>
                           )}
                         </div>
 
-                        <div className="flex items-start gap-1 text-[11.5px] font-semibold text-emerald-700 bg-emerald-50 p-2 rounded-lg">
+                        <div className="flex items-start gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 p-2 rounded-lg">
                           <Lock className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
                           <span>Bloqueo Activo: Esta franja/fecha está bloqueada en la plataforma para evitar dobles reservas con otros clientes.</span>
                         </div>
                       </div>
 
-                      <div className="space-y-1 text-[12.5px] text-slate-700">
+                      <div className="space-y-1 text-[11px] text-slate-700">
                         <p>Cliente: <strong>{booking.tenantName}</strong> (RUT: {booking.tenantRut || '18.345.678-9'})</p>
                         <p>Destino: <em>"{booking.intendedUse}"</em></p>
                       </div>
@@ -2058,14 +2058,14 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                             setSelectedDayInfo(null);
                             handleViewReservationContract(booking);
                           }}
-                          className="w-full py-2 rounded-xl bg-white border border-brand-200 text-brand-800 font-semibold text-xs hover:bg-brand-100 transition cursor-pointer"
+                          className="w-full py-2 rounded-xl bg-white border border-rose-200 text-rose-800 font-bold text-xs hover:bg-rose-100 transition cursor-pointer"
                         >
                           Ver contrato digital Ley 18.101
                         </button>
 
                         {booking.status === 'pending' && (
                           isPastBooking ? (
-                            <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 font-semibold text-[12.5px] text-center flex items-center justify-center gap-1.5">
+                            <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 font-bold text-[11px] text-center flex items-center justify-center gap-1.5">
                               <Lock className="w-3.5 h-3.5 text-slate-400" />
                               <span>Registro Histórico • Sin modificaciones permitidas</span>
                             </div>
@@ -2080,7 +2080,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                                   changeReservationStatus(booking.id, 'confirmed');
                                   setSelectedDayInfo(null);
                                 }}
-                                className="py-2 px-2 rounded-xl font-semibold text-xs transition cursor-pointer text-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                                className="py-2 px-2 rounded-xl font-bold text-xs transition cursor-pointer text-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                               >
                                 Aprobar reserva
                               </button>
@@ -2093,7 +2093,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                                   changeReservationStatus(booking.id, 'rejected');
                                   setSelectedDayInfo(null);
                                 }}
-                                className="py-2 px-2 rounded-xl bg-white border border-red-300 text-red-700 hover:bg-red-50 font-semibold text-xs transition cursor-pointer text-center"
+                                className="py-2 px-2 rounded-xl bg-white border border-rose-300 text-rose-700 hover:bg-rose-50 font-bold text-xs transition cursor-pointer text-center"
                               >
                                 Rechazar
                               </button>
@@ -2107,8 +2107,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
 
                 if (visit) {
                   return (
-                    <div className="p-3.5 rounded-2xl bg-brand-50 border border-brand-200 space-y-1.5">
-                      <span className="font-semibold text-brand-900">Visita técnica agendada</span>
+                    <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-1.5">
+                      <span className="font-bold text-indigo-900">Visita técnica agendada</span>
                       <p className="text-slate-700">Cliente: <strong>{visit.tenantName}</strong></p>
                       <p className="text-slate-600">Horario: {visit.visitTimeSlot}</p>
                     </div>
@@ -2120,10 +2120,10 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 if (maintenance) {
                   return (
                     <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 space-y-1.5">
-                      <span className="font-semibold text-slate-900">Bloqueo: {describeBlock(maintenance)}</span>
+                      <span className="font-bold text-slate-900">Bloqueo: {describeBlock(maintenance)}</span>
                       <p className="text-slate-600">{maintenance.reason}</p>
                       {isSelectedModalDayPast ? (
-                        <span className="text-slate-400 font-semibold text-[12.5px] flex items-center gap-1 pt-1">
+                        <span className="text-slate-400 font-semibold text-[11px] flex items-center gap-1 pt-1">
                           <Lock className="w-3 h-3" />
                           Fecha pasada (Solo lectura)
                         </span>
@@ -2133,7 +2133,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                             handleRemoveMaintenanceBlock(maintenance.id);
                             setSelectedDayInfo(null);
                           }}
-                          className="text-red-600 font-semibold hover:underline"
+                          className="text-rose-600 font-bold hover:underline"
                         >
                           Eliminar bloqueo
                         </button>
@@ -2144,14 +2144,14 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
 
                 return (
                   <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
-                    <p className="font-semibold text-emerald-900">
+                    <p className="font-bold text-emerald-900">
                       {isSelectedModalDayPast ? 'Fecha pasada (Sin reservas)' : 'Día 100% disponible'}
                     </p>
-                    <p className="text-[12.5px] text-emerald-700">
+                    <p className="text-[11px] text-emerald-700">
                       Tarifa vigente: {formatClp(selectedSpace?.pricePerHour || selectedSpace?.pricePerDay || 45000)}
                     </p>
                     {isSelectedModalDayPast ? (
-                      <div className="w-full py-2 px-3 rounded-xl bg-slate-200 text-slate-500 font-semibold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed">
+                      <div className="w-full py-2 px-3 rounded-xl bg-slate-200 text-slate-500 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed">
                         <Lock className="w-3.5 h-3.5" />
                         <span>Historial (No bloqueable)</span>
                       </div>
@@ -2162,7 +2162,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                           setSelectedDayInfo(null);
                           setIsMaintenanceModalOpen(true);
                         }}
-                        className="w-full py-2 rounded-xl bg-slate-900 hover:bg-black text-white font-semibold text-xs transition"
+                        className="w-full py-2 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs transition"
                       >
                         Bloquear este día
                       </button>

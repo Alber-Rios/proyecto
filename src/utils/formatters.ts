@@ -5,9 +5,9 @@ import { RentalModality, Space } from '../types.ts';
  */
 
 export function formatClp(amount: number): string {
-  if (isNaN(amount)) return '$0';
+  if (isNaN(amount)) return 'CLP 0';
   const rounded = Math.round(amount);
-  return `$${rounded.toLocaleString('es-CL')}`;
+  return `CLP ${rounded.toLocaleString('es-CL')}`;
 }
 
 export function cleanRut(rut: string): string {

@@ -15,6 +15,7 @@ import { recordSpaceView } from '../lib/dataAccess.ts';
 import { SpaceDetailBookingWidget } from '../components/SpaceDetailBookingWidget.tsx';
 import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import { motion, AnimatePresence } from 'motion/react';
+import { Reveal, EASE_LUXE } from '../components/motion/Motion.tsx';
 import { ChevronLeft as GalleryPrev, ChevronRight as GalleryNext } from 'lucide-react';
 import {
   MapPin,
@@ -45,9 +46,6 @@ import {
   Bath,
   Check,
   CheckCheck,
-  Star,
-  Zap,
-  Hourglass,
 } from 'lucide-react';
 
 interface SpaceDetailPageProps {
@@ -182,13 +180,13 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
     return (
       <div className="max-w-4xl mx-auto py-16 px-4 text-center space-y-4">
         <Building className="w-16 h-16 text-slate-300 mx-auto" />
-        <h2 className="text-2xl font-semibold text-slate-800">Espacio no encontrado</h2>
+        <h2 className="text-2xl font-bold text-slate-800">Espacio no encontrado</h2>
         <p className="text-xs text-slate-500">
           El espacio que buscas no existe o ha sido pausado por su propietario.
         </p>
         <button
           onClick={() => onNavigate('home')}
-          className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold transition inline-flex items-center gap-2 cursor-pointer"
+          className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" /> Volver al catálogo
         </button>
@@ -252,436 +250,427 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
   const amenities = space.amenities || [];
   const rules = space.rules || [];
 
-
-  const schedule = parseOpeningHours(space.openingHours);
-  const facts = [
-    { icon: Users, title: `Hasta ${space.capacity} ${space.capacity === 1 ? 'persona' : 'personas'}`, text: 'Capacidad máxima del espacio' },
-    { icon: Maximize2, title: `${space.surfaceM2} m²`, text: 'Superficie aproximada' },
-    {
-      icon: Clock,
-      title: space.openingHours ? schedule.hoursLabel : 'Horario a convenir',
-      text: space.openingHours ? schedule.daysLabel : 'Coordina el horario con el anfitrión',
-    },
-    space.spaceEnvironment === 'abierto'
-      ? { icon: Sun, title: 'Al aire libre', text: 'Espacio abierto o con patio' }
-      : { icon: Building2, title: 'Interior', text: 'Espacio techado y cerrado' },
-  ];
-  const sideImages = imagesList.slice(1, 5);
-
-  const modalityLabels = getSpaceAvailableModalities(space)
-    .map((m) => (m === 'por_hora' ? 'por hora' : m === 'mensual' ? 'por mes' : 'por día'))
-    .join(', ');
-
-  const bookingWidget = (
-    <SpaceDetailBookingWidget
-      space={space}
-      activeModality={activeModality}
-      onModalityChange={setActiveModality}
-      startDate={startDate}
-      onStartDateChange={setStartDate}
-      endDate={endDate}
-      onEndDateChange={setEndDate}
-      selectedMonth={selectedMonth}
-      onMonthChange={setSelectedMonth}
-      hourStart={hourStart}
-      onHourStartChange={setHourStart}
-      hourEnd={hourEnd}
-      onHourEndChange={setHourEnd}
-      intendedUse={intendedUse}
-      onIntendedUseChange={setIntendedUse}
-      existingVisit={existingVisit}
-      onStartBooking={handleStartBooking}
-      onStartVisit={handleStartVisit}
-      onOpenAuth={onOpenAuth}
-    />
-  );
+  // Título con sufijo cuando es mensual (como en la captura 2)
+  const displayTitle = activeModality === 'mensual'
+    ? `${space.title} — Modalidad Residencia Permanente`
+    : space.title;
 
   return (
-    <div className="mx-auto max-w-[1180px] pb-28 pt-2 sm:pt-4 lg:pb-16">
-      {/* Volver */}
-      <button
-        type="button"
-        onClick={() => onNavigate('home')}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-full py-1 pr-2 text-[14px] font-medium text-slate-700 hover:text-slate-950 cursor-pointer"
-      >
-        <ArrowLeft className="h-4 w-4" /> Espacios
-      </button>
+    <div className="space-y-6 sm:space-y-8 pb-20 max-w-7xl mx-auto">
+      {/* 1. TOP BREADCRUMB & TAGS (IDÉNTICO A LA REFERENCIA) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase bg-slate-900 text-white tracking-wider shadow-2xs">
+            {getCategoryLabel(space.category)}
+          </span>
 
-      {/* Título */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1
-            className="text-[1.75rem] font-semibold leading-tight tracking-[-0.03em] text-slate-950 sm:text-[2.1rem]"
-          >
-            {space.title}
-          </h1>
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14.5px] text-slate-700">
-            {space.rating > 0 && (
-              <>
-                <span className="flex items-center gap-1 font-semibold text-slate-950 tabular">
-                  <Star className="h-3.5 w-3.5 fill-slate-950" />
-                  {space.rating.toFixed(1).replace('.', ',')}
-                </span>
-                <a href="#resenas" className="underline">
-                  {space.reviewsCount} {space.reviewsCount === 1 ? 'reseña' : 'reseñas'}
-                </a>
-                <span aria-hidden="true">·</span>
-              </>
-            )}
-            <span>{getCategoryLabel(space.category)}</span>
-            <span aria-hidden="true">·</span>
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5 text-slate-500" />
-              {space.commune}, {space.region}
-            </span>
-            {space.isVerified && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="flex items-center gap-1 text-brand-700">
-                  <ShieldCheck className="h-4 w-4" /> Verificado
-                </span>
-              </>
-            )}
-          </p>
+          <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Espacio verificado</span>
+          </span>
+
+          <span className="text-xs text-slate-500 hidden md:inline">
+            • {space.address ? `${space.address.split(',')[0]}, ` : ''}{space.commune}
+          </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1 self-start sm:self-auto">
+
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             type="button"
             onClick={handleShare}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-semibold text-slate-900 underline-offset-4 hover:bg-slate-100 cursor-pointer"
+            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
           >
-            {copiedLink ? <Check className="h-4 w-4 text-emerald-600" /> : <Share2 className="h-4 w-4" />}
-            <span className="underline">{copiedLink ? 'Enlace copiado' : 'Compartir'}</span>
+            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-slate-500" />}
+            <span className="text-xs">{copiedLink ? '¡Enlace copiado!' : 'Compartir'}</span>
           </button>
+
           {currentUser && (
-            <motion.button
+            <button
               type="button"
-              whileTap={{ scale: 0.92 }}
               onClick={() => toggleFavoriteSpace(space.id)}
-              aria-pressed={isLiked}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-semibold text-slate-900 hover:bg-slate-100 cursor-pointer"
+              className={`p-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer ${
+                isLiked
+                  ? 'bg-rose-50 border-rose-200 text-rose-600'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
             >
-              <motion.span key={String(isLiked)} initial={{ scale: isLiked ? 0.5 : 1 }} animate={{ scale: 1 }} transition={{ type: 'spring', duration: 0.4, bounce: 0.5 }}>
-                <Heart className={`h-4 w-4 ${isLiked ? 'fill-brand-600 text-brand-600' : ''}`} />
-              </motion.span>
-              <span className="underline">{isLiked ? 'Guardado' : 'Guardar'}</span>
-            </motion.button>
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-500'}`} />
+              <span className="text-xs">{isLiked ? 'Guardado en favoritos' : 'Guardar'}</span>
+            </button>
           )}
         </div>
       </div>
 
-      {/* Galería: foto principal (carrusel) + mosaico en escritorio */}
-      <div className="mt-5 grid gap-2 sm:mt-6 md:grid-cols-4 md:grid-rows-2 md:h-[28rem] lg:h-[30rem]">
-        <div
-          onMouseEnter={() => setGalleryPaused(true)}
-          onMouseLeave={() => setGalleryPaused(false)}
-          onFocusCapture={() => setGalleryPaused(true)}
-          onBlurCapture={() => setGalleryPaused(false)}
-          aria-roledescription="carrusel"
-          aria-label={`Fotos de ${space.title}`}
-          style={{ viewTransitionName: `space-photo-${space.id}`, viewTransitionClass: 'space-photo' } as React.CSSProperties}
-          className={`group relative -mx-4 aspect-[4/3] overflow-hidden bg-slate-100 sm:mx-0 sm:rounded-[1.25rem] md:aspect-auto ${
-            sideImages.length > 0 ? 'md:col-span-2 md:row-span-2 md:rounded-r-md' : 'md:col-span-4 md:row-span-2'
-          }`}
-        >
-          {imagesList.length > 0 ? (
-            <AnimatePresence initial={false} custom={galleryDirection}>
-              <motion.img
-                key={activeImageIndex}
-                src={imagesList[activeImageIndex]}
-                alt={`${space.title} — foto ${activeImageIndex + 1} de ${imagesList.length}`}
-                custom={galleryDirection}
-                variants={{
-                  enter: (dir: number) => ({ x: `${dir * 100}%` }),
-                  center: { x: '0%' },
-                  exit: (dir: number) => ({ x: `${dir * -30}%`, opacity: 0.5 }),
-                }}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ type: 'spring', duration: 0.6, bounce: 0 }}
-                drag={imagesList.length > 1 ? 'x' : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(_, info) => {
-                  if (info.offset.x < -60) nextImage();
-                  else if (info.offset.x > 60) prevImage();
-                }}
-                className="absolute inset-0 h-full w-full object-cover touch-pan-y"
-                draggable={false}
-              />
-            </AnimatePresence>
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-slate-400" aria-label="Este espacio no tiene fotografías">
-              <Building className="h-10 w-10" strokeWidth={1.25} />
-            </div>
-          )}
+      {/* 2. TÍTULO PRINCIPAL Y UBICACIÓN */}
+      <Reveal className="space-y-2" y={18}>
+        <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl leading-[1.05] text-slate-900 tracking-tight">
+          {displayTitle}
+        </h1>
+        <p className="text-slate-600 text-xs sm:text-sm flex items-center gap-1.5">
+          <MapPin className="w-4 h-4 text-rose-600 shrink-0" />
+          <span className="font-semibold text-slate-800">{space.address || `${space.commune}, ${space.region}`}</span>
+          {space.address && <span className="text-slate-500 hidden sm:inline">• {space.commune}, {space.region}</span>}
+        </p>
+      </Reveal>
 
-          {imagesList.length > 1 && (
-            <>
-              <button
-                type="button"
-                aria-label="Foto anterior"
-                onClick={prevImage}
-                className="absolute left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition-opacity duration-200 hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
-              >
-                <GalleryPrev className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Foto siguiente"
-                onClick={nextImage}
-                className="absolute right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition-opacity duration-200 hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
-              >
-                <GalleryNext className="h-4 w-4" />
-              </button>
-              <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
-                {imagesList.map((_, idx) => (
+      {/* 3. ESTRUCTURA PRINCIPAL EN DOS COLUMNAS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* =========================================================
+            COLUMNA IZQUIERDA (62% ANCHO): GALERÍA, SPECS, DETALLES,
+            AMENIDADES, REGLAS, ANFITRIÓN, CALENDARIO Y MAPA
+            ========================================================= */}
+        <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 lg:col-span-8 space-y-7">
+          {/* A. GALERÍA DE FOTOGRAFÍAS */}
+          <div className="space-y-3">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.985 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.9, ease: EASE_LUXE }}
+              onMouseEnter={() => setGalleryPaused(true)}
+              onMouseLeave={() => setGalleryPaused(false)}
+              onFocusCapture={() => setGalleryPaused(true)}
+              onBlurCapture={() => setGalleryPaused(false)}
+              aria-roledescription="carrusel"
+              aria-label={`Fotos de ${space.title}`}
+              className="relative aspect-16/9 sm:aspect-21/10 rounded-[2rem] overflow-hidden bg-stone-950 shadow-[0_40px_80px_-35px_rgba(12,10,9,0.55)] group"
+            >
+              {imagesList.length > 0 ? (
+                <AnimatePresence initial={false} custom={galleryDirection}>
+                  <motion.img
+                    key={activeImageIndex}
+                    src={imagesList[activeImageIndex]}
+                    alt={`${space.title} — foto ${activeImageIndex + 1} de ${imagesList.length}`}
+                    custom={galleryDirection}
+                    variants={{
+                      enter: (dir: number) => ({ x: `${dir * 100}%`, opacity: 0.6 }),
+                      center: { x: '0%', opacity: 1 },
+                      exit: (dir: number) => ({ x: `${dir * -100}%`, opacity: 0.6 }),
+                    }}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.7, ease: EASE_LUXE }}
+                    drag={imagesList.length > 1 ? 'x' : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.2}
+                    onDragEnd={(_, info) => {
+                      if (info.offset.x < -60) nextImage();
+                      else if (info.offset.x > 60) prevImage();
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover touch-pan-y"
+                  />
+                </AnimatePresence>
+              ) : <div className="w-full h-full" aria-label="Este espacio no tiene fotografías" />}
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20" />
+
+              {imagesList.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Foto anterior"
+                    onClick={prevImage}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-stone-900 shadow-lg backdrop-blur-md transition duration-300 hover:bg-white hover:scale-105 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
+                  >
+                    <GalleryPrev className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Foto siguiente"
+                    onClick={nextImage}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-stone-900 shadow-lg backdrop-blur-md transition duration-300 hover:bg-white hover:scale-105 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
+                  >
+                    <GalleryNext className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+
+              {/* Badges superiores flotantes */}
+              <div className="absolute top-4 left-4 flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10 flex items-center gap-1.5">
+                  <Maximize2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{space.surfaceM2} m²</span>
+                </span>
+                <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10 flex items-center gap-1.5">
+                  {space.spaceEnvironment === 'abierto' ? <Sun className="w-3.5 h-3.5 text-amber-300" /> : <Building2 className="w-3.5 h-3.5 text-emerald-400" />}
+                  <span>{space.spaceEnvironment === 'abierto' ? 'Al aire libre' : 'Techado'}</span>
+                </span>
+              </div>
+
+              {/* Badge inferior de contador */}
+              {imagesList.length > 0 && <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold shadow-md border border-white/10" aria-live="polite">
+                Fotografía {activeImageIndex + 1} de {imagesList.length}
+              </div>}
+
+              {/* Indicadores del carrusel con barra de progreso del avance automático */}
+              {imagesList.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
+                  {imagesList.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImageIndex(idx)}
+                      aria-label={`Ir a la foto ${idx + 1}`}
+                      className={`relative h-1.5 rounded-full overflow-hidden bg-white/40 transition-all duration-500 cursor-pointer ${
+                        idx === activeImageIndex ? 'w-8' : 'w-1.5 hover:bg-white/70'
+                      }`}
+                    >
+                      {idx === activeImageIndex && (
+                        <motion.span
+                          key={`${activeImageIndex}-${galleryRunning}`}
+                          className="absolute inset-y-0 left-0 bg-white rounded-full"
+                          initial={{ width: galleryRunning ? '0%' : '100%' }}
+                          animate={{ width: '100%' }}
+                          transition={{ duration: galleryRunning ? 4.5 : 0, ease: 'linear' }}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Miniaturas de la galería */}
+            {imagesList.length > 1 && (
+              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar p-1">
+                {imagesList.map((img, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setActiveImageIndex(idx)}
-                    aria-label={`Ir a la foto ${idx + 1}`}
-                    className={`relative h-1.5 overflow-hidden rounded-full bg-white/50 transition-[width] duration-300 ease-[var(--ease-out)] cursor-pointer ${
-                      idx === activeImageIndex ? 'w-7' : 'w-1.5 hover:bg-white/80'
+                    aria-label={`Ver foto ${idx + 1}`}
+                    aria-current={activeImageIndex === idx}
+                    className={`relative w-24 sm:w-28 h-16 sm:h-18 rounded-2xl overflow-hidden shrink-0 transition duration-500 cursor-pointer ${
+                      activeImageIndex === idx ? 'opacity-100' : 'opacity-60 hover:opacity-100'
                     }`}
                   >
-                    {idx === activeImageIndex && (
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    {activeImageIndex === idx && (
                       <motion.span
-                        key={`${activeImageIndex}-${galleryRunning}`}
-                        className="absolute inset-y-0 left-0 rounded-full bg-white"
-                        initial={{ width: galleryRunning ? '0%' : '100%' }}
-                        animate={{ width: '100%' }}
-                        transition={{ duration: galleryRunning ? 4.5 : 0, ease: 'linear' }}
+                        layoutId="gallery-active-thumb"
+                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                        className="absolute inset-0 rounded-2xl ring-2 ring-inset ring-rose-500"
                       />
                     )}
                   </button>
                 ))}
               </div>
-              <span className="absolute bottom-3 right-3 z-10 rounded-full bg-slate-950/60 px-2.5 py-1 text-[12px] font-medium text-white backdrop-blur-sm tabular md:hidden" aria-live="polite">
-                {activeImageIndex + 1} / {imagesList.length}
+            )}
+          </div>
+
+          {/* B. BARRA DE KEY SPECS (4 FICHAS HORIZONTALES) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                {rateLabel}
               </span>
-            </>
-          )}
-        </div>
-
-        {sideImages.map((img, k) => {
-          const idx = k + 1;
-          const corner = k === 1 ? 'md:rounded-tr-[1.25rem]' : k === 3 || (sideImages.length === 2 && k === 1) ? 'md:rounded-br-[1.25rem]' : '';
-          return (
-            <button
-              key={img + idx}
-              type="button"
-              onClick={() => setActiveImageIndex(idx)}
-              aria-label={`Ver foto ${idx + 1}`}
-              aria-current={activeImageIndex === idx}
-              className={`group/thumb relative hidden overflow-hidden rounded-md bg-slate-100 md:block cursor-pointer ${corner} ${
-                sideImages.length < 3 ? 'md:row-span-1 md:col-span-2' : ''
-              }`}
-            >
-              <img src={img} alt="" className="h-full w-full object-cover transition-[transform,filter] duration-500 ease-[var(--ease-out)] group-hover/thumb:scale-[1.04] group-hover/thumb:brightness-95" loading="lazy" />
-              {activeImageIndex === idx && (
-                <motion.span layoutId="gallery-active-thumb" className="absolute inset-0 ring-[3px] ring-inset ring-white" transition={{ type: 'spring', duration: 0.35, bounce: 0.1 }} />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Contenido + reserva */}
-      <div className="mt-8 grid grid-cols-1 gap-10 lg:mt-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-16 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="min-w-0">
-          {/* Anfitrión resumido */}
-          <div className="flex items-center justify-between gap-4 pb-7">
-            <div className="min-w-0">
-              <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-slate-950">
-                {getCategoryLabel(space.category)} de {space.ownerName.split(' ')[0]}
-              </h2>
-              <p className="mt-0.5 text-[15px] text-slate-600 tabular">
-                {space.capacity} {space.capacity === 1 ? 'persona' : 'personas'} · {space.surfaceM2} m² · {modalityLabels}
-              </p>
+              <div className="text-lg sm:text-xl font-bold text-rose-600 leading-tight">
+                {formatClp(displayPrice)}
+                <span className="text-xs font-normal text-slate-500">{unitSuffix}</span>
+              </div>
+              <span className="text-[10px] text-slate-400 block">{subRateLabel}</span>
             </div>
-            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[17px] font-semibold text-white">
-              {space.ownerName.charAt(0)}
-              {space.ownerVerified && (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 ring-2 ring-white">
-                  <ShieldCheck className="h-3 w-3" />
-                </span>
-              )}
+
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                CAPACIDAD MÁX
+              </span>
+              <div className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
+                <Users className="w-4 h-4 text-slate-400" />
+                {space.capacity} pers.
+              </div>
+              <span className="text-[10px] text-slate-400 block">Capacidad máxima</span>
+            </div>
+
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                SUPERFICIE TOTAL
+              </span>
+              <div className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
+                <Maximize2 className="w-4 h-4 text-slate-400" />
+                {space.surfaceM2} m²
+              </div>
+              <span className="text-[10px] text-slate-400 block">Superficie aproximada</span>
+            </div>
+
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                HORARIO
+              </span>
+              {(() => {
+                const schedule = parseOpeningHours(space.openingHours);
+                return (
+                  <>
+                    <div className="text-sm sm:text-base font-extrabold text-slate-900 flex items-start gap-1.5 leading-tight">
+                      <Clock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <span>{space.openingHours ? schedule.hoursLabel : 'A convenir'}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block">
+                      {space.openingHours ? schedule.daysLabel : 'Días y horas disponibles'}
+                    </span>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
-          {/* Datos clave */}
-          <ul className="grid gap-5 border-y border-slate-200 py-7 sm:grid-cols-2">
-            {facts.map((f) => (
-              <li key={f.title} className="flex items-start gap-4">
-                <f.icon className="mt-0.5 h-6 w-6 shrink-0 text-slate-800" strokeWidth={1.5} />
-                <span>
-                  <span className="block text-[15px] font-semibold text-slate-950">{f.title}</span>
-                  <span className="block text-[14px] text-slate-500">{f.text}</span>
-                </span>
-              </li>
-            ))}
-            {space.instantBooking !== false ? (
-              <li className="flex items-start gap-4 sm:col-span-2">
-                <Zap className="mt-0.5 h-6 w-6 shrink-0 text-brand-600" strokeWidth={1.5} />
-                <span>
-                  <span className="block text-[15px] font-semibold text-slate-950">Reserva inmediata</span>
-                  <span className="block text-[14px] text-slate-500">Tu reserva queda confirmada en cuanto se aprueba el pago.</span>
-                </span>
-              </li>
-            ) : (
-              <li className="flex items-start gap-4 sm:col-span-2">
-                <Hourglass className="mt-0.5 h-6 w-6 shrink-0 text-slate-800" strokeWidth={1.5} />
-                <span>
-                  <span className="block text-[15px] font-semibold text-slate-950">El anfitrión aprueba cada solicitud</span>
-                  <span className="block text-[14px] text-slate-500">Pagas al reservar y quedas en lista de espera; si no la acepta, se te devuelve el total.</span>
-                </span>
-              </li>
-            )}
-          </ul>
-
-          {/* Descripción */}
-          <section className="border-b border-slate-200 py-8">
-            <h2 className="sr-only">Descripción</h2>
+          {/* C. DESCRIPCIÓN (escrita por el propietario) */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-rose-600" />
+              <span>Descripción</span>
+            </h2>
             {space.description?.trim() ? (
-              <p className="max-w-[68ch] whitespace-pre-line text-[16px] leading-relaxed text-slate-700">{space.description}</p>
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">{space.description}</p>
             ) : (
-              <p className="text-[15px] text-slate-500">El anfitrión aún no agregó una descripción.</p>
+              <p className="text-xs text-slate-500">El propietario aún no agregó una descripción.</p>
             )}
-          </section>
+          </div>
 
-          {/* Comodidades */}
+          {/* D. COMODIDADES (elegidas por el propietario) */}
           {amenities.length > 0 && (
-            <section className="border-b border-slate-200 py-8">
-              <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-slate-950">Lo que ofrece este espacio</h2>
-              <ul className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>Lo que ofrece este espacio</span>
+                </h2>
+                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  {amenities.length}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {amenities.map((name) => {
                   const IconComponent = amenityIcon(name);
                   return (
-                    <li key={name} className="flex items-center gap-4 text-[15.5px] text-slate-800">
-                      <IconComponent className="h-6 w-6 shrink-0 text-slate-700" strokeWidth={1.5} />
+                    <div
+                      key={name}
+                      className="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/90 text-xs font-semibold text-slate-800"
+                    >
+                      <IconComponent className="w-4 h-4 text-slate-600 shrink-0" />
                       <span>{name}</span>
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
-            </section>
+              </div>
+            </div>
           )}
 
-          {/* Reglas */}
+          {/* E. REGLAS (definidas por el propietario) */}
           {rules.length > 0 && (
-            <section className="border-b border-slate-200 py-8">
-              <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-slate-950">Reglas del espacio</h2>
-              <ul className="mt-4 space-y-2.5">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+                <span>Reglas del espacio</span>
+              </h2>
+              <ul className="bg-rose-50/40 border border-rose-200/80 rounded-2xl p-4 text-xs text-slate-700 space-y-2.5">
                 {rules.map((rule) => (
-                  <li key={rule} className="flex items-start gap-3 text-[15.5px] text-slate-700">
-                    <span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-slate-500" />
+                  <li key={rule} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0" />
                     <span>{rule}</span>
                   </li>
                 ))}
               </ul>
-            </section>
+            </div>
           )}
 
-          {/* Condiciones del arriendo mensual */}
+          {/* F. CONDICIONES DEL ARRIENDO MENSUAL */}
           {activeModality === 'mensual' && (
-            <section className="border-b border-slate-200 py-8">
-              <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-slate-950">Condiciones del arriendo mensual</h2>
-              <ul className="mt-4 space-y-3 text-[15.5px] text-slate-700">
-                <li className="flex items-start gap-3">
-                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                <span>Condiciones del arriendo mensual</span>
+              </h2>
+              <ul className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-700 space-y-2">
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
                   <span>Se cobra por bloques de 30 días desde la fecha de inicio, con contrato digital firmado al reservar.</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
                   <span>
                     {space.securityDeposit && space.securityDeposit > 0
-                      ? `El anfitrión pide una garantía de ${formatClp(space.securityDeposit)}, que se paga una vez al inicio y se devuelve al terminar el arriendo.`
-                      : 'El anfitrión no pide garantía.'}
+                      ? `El propietario pide una garantía de ${formatClp(space.securityDeposit)}, que se paga una vez al inicio y se devuelve al terminar el arriendo.`
+                      : 'El propietario no pide garantía.'}
                   </span>
                 </li>
               </ul>
-            </section>
+            </div>
           )}
+        </div>
 
-          {/* Reserva en móvil: aparece aquí, en el flujo */}
-          <div className="py-8 lg:hidden" id="reservar">
-            {bookingWidget}
-          </div>
+        <div className="order-2 lg:order-none lg:col-start-9 lg:row-start-1 lg:col-span-4 lg:row-span-2 space-y-6">
+          <SpaceDetailBookingWidget
+            space={space}
+            activeModality={activeModality}
+            onModalityChange={setActiveModality}
+            startDate={startDate}
+            onStartDateChange={setStartDate}
+            endDate={endDate}
+            onEndDateChange={setEndDate}
+            selectedMonth={selectedMonth}
+            onMonthChange={setSelectedMonth}
+            hourStart={hourStart}
+            onHourStartChange={setHourStart}
+            hourEnd={hourEnd}
+            onHourEndChange={setHourEnd}
+            intendedUse={intendedUse}
+            onIntendedUseChange={setIntendedUse}
+            existingVisit={existingVisit}
+            onStartBooking={handleStartBooking}
+            onStartVisit={handleStartVisit}
+            onOpenAuth={onOpenAuth}
+          />
+        </div>
 
-          {/* Anfitrión */}
-          <section className="border-b border-slate-200 py-8 lg:border-t-0">
-            <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-slate-950">Conoce al anfitrión</h2>
-            <div className="mt-5 flex flex-col gap-5 rounded-[1.25rem] border border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-900 text-2xl font-semibold text-white">
-                  {space.ownerName.charAt(0)}
+        <div className="order-3 lg:order-none lg:col-start-1 lg:row-start-2 lg:col-span-8 space-y-7">
+
+          {/* H. FICHA DEL ANFITRIÓN VERIFICADO */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-[#1e293b] text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
+                {space.ownerName.charAt(0)}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-bold text-slate-900">{space.ownerName}</h3>
                   {space.ownerVerified && (
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 ring-2 ring-white">
-                      <ShieldCheck className="h-3.5 w-3.5" />
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Anfitrión verificado</span>
                     </span>
                   )}
                 </div>
-                <div>
-                  <p className="text-[17px] font-semibold text-slate-950">{space.ownerName}</p>
-                  <p className="text-[14px] text-slate-500">
-                    {space.ownerVerified ? 'Identidad verificada por Spotly' : 'Identidad en verificación'}
-                    {space.ownerRut ? ` · RUT ${formatRut(space.ownerRut)}` : ''}
-                  </p>
-                </div>
+                {space.ownerRut && (
+                  <p className="text-xs text-slate-500 mt-0.5">RUT: {formatRut(space.ownerRut)}</p>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={handleStartVisit}
-                className="rounded-xl border border-slate-900 px-5 py-2.5 text-[14.5px] font-semibold text-slate-950 hover:bg-slate-50 cursor-pointer"
-              >
-                Contactar o agendar visita
-              </button>
             </div>
-          </section>
 
-          {/* Ubicación */}
-          <section className="border-b border-slate-200 py-8">
-            <SpaceLocationMap address={space.address} commune={space.commune} region={space.region} />
-          </section>
+            <button
+              type="button"
+              onClick={handleStartVisit}
+              className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition shadow-2xs self-start sm:self-auto cursor-pointer"
+            >
+              Contactar
+            </button>
+          </div>
 
-          {/* Reseñas */}
-          <section id="resenas" className="scroll-mt-24 py-8">
-            <SpaceReviews space={space} onOpenAuth={onOpenAuth} />
-          </section>
+          {/* J. UBICACIÓN Y ENTORNO (MAPA ESTILIZADO CON CONECTIVIDAD Y METRO) */}
+          <SpaceLocationMap
+            address={space.address}
+            commune={space.commune}
+            region={space.region}
+          />
+
+          {/* K. VALORACIONES (RF-29) */}
+          <SpaceReviews space={space} onOpenAuth={onOpenAuth} />
 
           {currentUser && currentUser.id !== space.ownerId && (
-            <div className="flex justify-start">
+            <div className="flex justify-end">
               <ReportDialog targetType="space" targetSpaceId={space.id} targetLabel={space.title} />
             </div>
           )}
         </div>
 
-        {/* Columna de reserva fija (escritorio) */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-24">{bookingWidget}</div>
-        </aside>
-      </div>
-
-      {/* Barra inferior en móvil */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl lg:hidden">
-        <div className="min-w-0">
-          <p className="text-[15px] text-slate-950 tabular">
-            <span className="font-semibold">{formatClp(displayPrice)}</span> <span className="text-slate-600">{unitSuffix.replace('/ ', 'por ').replace('hr', 'hora').replace('mes', 'mes')}</span>
-          </p>
-          <p className="text-[12.5px] text-slate-500">{subRateLabel}</p>
-        </div>
-        <a
-          href="#reservar"
-          onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('reservar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }}
-          className="shrink-0 rounded-xl bg-brand-600 px-6 py-3 text-[15px] font-semibold text-white hover:bg-brand-700"
-        >
-          Ver horarios
-        </a>
       </div>
 
       {/* MODAL DE RESERVA FORMAL Y PAGO */}

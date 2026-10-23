@@ -179,8 +179,8 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Ingresos netos por mes</h3>
-            <span className="text-[11.5px] text-slate-500">Últimos 6 meses · después de comisión</span>
+            <h3 className="text-sm font-bold text-slate-900">Ingresos netos por mes</h3>
+            <span className="text-[10px] text-slate-500">Últimos 6 meses · después de comisión</span>
           </div>
           <VerticalBarChart
             title="Ingresos netos por mes"
@@ -193,7 +193,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">Pendientes</h3>
+          <h3 className="text-sm font-bold text-slate-900">Pendientes</h3>
           <ActionQueue
             items={[
               { key: 'pending', label: 'Solicitudes por aprobar', count: pendingBookings.length, hint: 'Acepta o rechaza a tiempo', icon: <Clock className="w-4 h-4" />, onClick: () => onGoTab('bookings'), urgent: true },
@@ -209,11 +209,11 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Ocupación de los próximos 14 días</h3>
-            <span className="text-[11.5px] text-slate-500">Reservas + bloqueos · todos tus espacios activos</span>
+            <h3 className="text-sm font-bold text-slate-900">Ocupación de los próximos 14 días</h3>
+            <span className="text-[10px] text-slate-500">Reservas + bloqueos · todos tus espacios activos</span>
           </div>
           {activeSpaces.length === 0 ? (
-            <p className="text-[12.5px] text-slate-400 py-4 text-center">Cuando tengas espacios activos verás aquí su ocupación.</p>
+            <p className="text-[11px] text-slate-400 py-4 text-center">Cuando tengas espacios activos verás aquí su ocupación.</p>
           ) : (
             <OccupancyHeatStrip
               title="Ocupación diaria próximos 14 días"
@@ -224,7 +224,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">Tus espacios que más generan</h3>
+          <h3 className="text-sm font-bold text-slate-900">Tus espacios que más generan</h3>
           <HorizontalBarList
             title="Ingresos netos por espacio"
             data={ranking}
@@ -237,23 +237,23 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
 
       <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">Próximas reservas</h3>
-          <button type="button" onClick={() => onGoTab('bookings')} className="text-[12.5px] font-semibold text-brand-600 hover:text-brand-700 cursor-pointer">
+          <h3 className="text-sm font-bold text-slate-900">Próximas reservas</h3>
+          <button type="button" onClick={() => onGoTab('bookings')} className="text-[11px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer">
             Ver todas →
           </button>
         </div>
         {upcoming.length === 0 ? (
-          <p className="text-[12.5px] text-slate-400 py-3 text-center">No tienes reservas próximas.</p>
+          <p className="text-[11px] text-slate-400 py-3 text-center">No tienes reservas próximas.</p>
         ) : (
           <div className="overflow-x-auto -mx-1">
-            <table className="w-full text-[12.5px] min-w-[520px]">
+            <table className="w-full text-[11px] min-w-[520px]">
               <thead>
-                <tr className="text-left text-[11.5px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                  <th className="py-2 px-1 font-semibold">Fecha</th>
-                  <th className="py-2 px-1 font-semibold">Espacio</th>
-                  <th className="py-2 px-1 font-semibold">Arrendatario</th>
-                  <th className="py-2 px-1 font-semibold text-right">Neto</th>
-                  <th className="py-2 px-1 font-semibold text-right">Estado</th>
+                <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                  <th className="py-2 px-1 font-bold">Fecha</th>
+                  <th className="py-2 px-1 font-bold">Espacio</th>
+                  <th className="py-2 px-1 font-bold">Arrendatario</th>
+                  <th className="py-2 px-1 font-bold text-right">Neto</th>
+                  <th className="py-2 px-1 font-bold text-right">Estado</th>
                 </tr>
               </thead>
               <tbody>
@@ -273,10 +273,10 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
                     </td>
                     <td className="py-2 px-1 text-slate-700 truncate max-w-[180px]">{r.spaceTitle}</td>
                     <td className="py-2 px-1 text-slate-600 truncate max-w-[140px]">{r.tenantName}</td>
-                    <td className="py-2 px-1 text-right font-semibold text-slate-900">{formatClp(netOf(r))}</td>
+                    <td className="py-2 px-1 text-right font-bold text-slate-900">{formatClp(netOf(r))}</td>
                     <td className="py-2 px-1 text-right">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[11.5px] font-semibold ${
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           r.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'
                         }`}
                       >

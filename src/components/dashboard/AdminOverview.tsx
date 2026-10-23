@@ -151,8 +151,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Volumen transado por mes</h3>
-            <span className="text-[11.5px] text-slate-500">Reservas confirmadas y completadas</span>
+            <h3 className="text-sm font-bold text-slate-900">Volumen transado por mes</h3>
+            <span className="text-[10px] text-slate-500">Reservas confirmadas y completadas</span>
           </div>
           <VerticalBarChart
             title="Volumen transado por mes"
@@ -165,7 +165,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">Requiere tu atención</h3>
+          <h3 className="text-sm font-bold text-slate-900">Requiere tu atención</h3>
           <ActionQueue
             items={[
               { key: 'kyc', label: 'Verificaciones KYC', count: kycPending, hint: 'Identidades por revisar', icon: <ShieldCheck className="w-4 h-4" />, onClick: () => onGoTab('kyc'), urgent: true },
@@ -180,8 +180,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Usuarios nuevos por mes</h3>
-            <span className="text-[11.5px] text-slate-500">Arrendatarios y propietarios</span>
+            <h3 className="text-sm font-bold text-slate-900">Usuarios nuevos por mes</h3>
+            <span className="text-[10px] text-slate-500">Arrendatarios y propietarios</span>
           </div>
           <VerticalBarChart
             title="Usuarios nuevos por mes"
@@ -192,12 +192,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">Comunas con más volumen</h3>
+          <h3 className="text-sm font-bold text-slate-900">Comunas con más volumen</h3>
           <HorizontalBarList title="Volumen por comuna" data={topCommunes} formatValue={compactClp} emptyText="Aún no hay reservas confirmadas." />
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">Espacios con más volumen</h3>
+          <h3 className="text-sm font-bold text-slate-900">Espacios con más volumen</h3>
           <HorizontalBarList
             title="Volumen por espacio"
             data={topSpaces}
@@ -210,8 +210,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
 
       <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">Reservas por estado</h3>
-          <span className="text-[11.5px] text-slate-500">{reservations.length} en total</span>
+          <h3 className="text-sm font-bold text-slate-900">Reservas por estado</h3>
+          <span className="text-[10px] text-slate-500">{reservations.length} en total</span>
         </div>
         <HorizontalBarList title="Reservas por estado" data={statusBreakdown} formatValue={(v) => String(v)} emptyText="Aún no hay reservas." />
       </section>

@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Check } from 'lucide-react';
-import { useApp } from '../context/AppContext.tsx';
-import { HeroBookingDemo, HERO_SCENES, useHeroScene } from './HeroBookingDemo.tsx';
+import { EASE_LUXE } from './motion/Motion.tsx';
 
 interface AuthLayoutProps {
   title: string;
@@ -13,62 +12,80 @@ interface AuthLayoutProps {
   children: React.ReactNode;
 }
 
-/** Marco común de iniciar sesión / crear cuenta: formulario + panel con la reserva en vivo. */
-export const AuthLayout: React.FC<AuthLayoutProps> = ({ title, description, points, formTitle, formDescription, children }) => {
+/** Marco común de iniciar sesión / crear cuenta: panel de marca oscuro + formulario. */
+export const AuthLayout: React.FC<AuthLayoutProps> = ({
+  title,
+  description,
+  points,
+  formTitle,
+  formDescription,
+  children,
+}) => {
   const reduce = useReducedMotion();
-  const { spaces } = useApp();
-  const sceneIndex = useHeroScene(HERO_SCENES.length);
-  const scene = HERO_SCENES[sceneIndex];
-  const sceneSpace = useMemo(
-    () => spaces.find((s) => s.status === 'active' && scene.categories.includes(s.category) && Boolean(s.pricePerHour)),
-    [spaces, scene]
-  );
   const enter = (delay: number) => ({
-    initial: reduce ? false : { opacity: 0, y: 12 },
+    initial: reduce ? false : { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.45, ease: [0.23, 1, 0.32, 1] as const, delay },
+    transition: { duration: 0.8, ease: EASE_LUXE, delay },
   });
 
   return (
-    <div className="mx-auto max-w-6xl py-4 sm:py-8">
-      <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-2 lg:gap-6">
-        {/* Formulario */}
-        <div className="flex flex-col justify-center lg:py-10 lg:pr-10">
-          <div className="mx-auto w-full max-w-md space-y-7">
-            <motion.div {...enter(0)} className="space-y-2">
-              <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.035em] text-slate-950 sm:text-[2.4rem]">{formTitle}</h1>
-              <p className="text-[15px] text-slate-600">{formDescription}</p>
+    <div className="max-w-5xl mx-auto py-2 sm:py-6">
+      <motion.div
+        initial={reduce ? false : { opacity: 0, y: 24, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.9, ease: EASE_LUXE }}
+        className="grid grid-cols-1 lg:grid-cols-12 bg-white rounded-[2rem] border border-stone-200/80 shadow-[0_40px_90px_-40px_rgba(12,10,9,0.45)] overflow-hidden"
+      >
+        {/* Panel de marca */}
+        <div className="grain lg:col-span-5 bg-stone-950 text-white p-7 sm:p-9 lg:p-10 flex flex-col justify-between relative overflow-hidden min-h-[17rem] lg:min-h-[38rem]">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <div className="aurora-a absolute -top-1/3 -right-1/2 h-[28rem] w-[28rem] rounded-full bg-rose-600/35 blur-[100px]" />
+            <div className="aurora-b absolute -bottom-1/3 -left-1/3 h-[24rem] w-[24rem] rounded-full bg-amber-500/20 blur-[110px]" />
+          </div>
+
+          <div className="relative z-10 space-y-8">
+            <motion.div {...enter(0.1)} className="flex items-baseline gap-1.5">
+              <span className="font-display text-3xl leading-none">Spotly</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden="true" />
             </motion.div>
-            <motion.div {...enter(0.06)} className="space-y-5">
+
+            <div className="space-y-3">
+              <motion.h2 {...enter(0.2)} className="font-display text-3xl sm:text-4xl leading-[1.08] tracking-tight">
+                {title}
+              </motion.h2>
+              <motion.p {...enter(0.3)} className="text-sm text-stone-300 leading-relaxed max-w-sm">
+                {description}
+              </motion.p>
+            </div>
+
+            <ul className="hidden sm:block space-y-3 text-sm text-stone-200">
+              {points.map((point, i) => (
+                <motion.li key={point} {...enter(0.4 + i * 0.08)} className="flex items-center gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10">
+                    <Check className="h-3.5 w-3.5 text-rose-300" />
+                  </span>
+                  <span>{point}</span>
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="relative z-10 hidden lg:block text-xs text-stone-500 pt-6">© 2026 Spotly · Santiago de Chile</p>
+        </div>
+
+        {/* Formulario */}
+        <div className="lg:col-span-7 p-6 sm:p-9 lg:p-12 flex flex-col justify-center">
+          <div className="max-w-md w-full mx-auto space-y-6">
+            <motion.div {...enter(0.15)} className="space-y-1.5">
+              <h1 className="font-display text-4xl tracking-tight text-stone-900">{formTitle}</h1>
+              <p className="text-sm text-stone-500">{formDescription}</p>
+            </motion.div>
+            <motion.div {...enter(0.25)} className="space-y-5">
               {children}
             </motion.div>
           </div>
         </div>
-
-        {/* Panel visual */}
-        <motion.aside
-          initial={reduce ? false : { opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1], delay: 0.1 }}
-          className="relative hidden overflow-hidden rounded-[2rem] bg-slate-50 bg-[radial-gradient(28rem_20rem_at_100%_0%,var(--color-brand-100),transparent_70%)] p-10 lg:flex lg:flex-col lg:justify-between"
-        >
-          <div className="relative space-y-3">
-            <h2 className="text-[1.6rem] font-semibold leading-tight tracking-[-0.03em] text-slate-950">{title}</h2>
-            <p className="max-w-sm text-[15px] leading-relaxed text-slate-600">{description}</p>
-            <ul className="space-y-2 pt-2 text-[14px] text-slate-700">
-              {points.map((point) => (
-                <li key={point} className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 shrink-0 text-brand-600" strokeWidth={2.5} />
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="relative mt-10">
-            <HeroBookingDemo scene={scene} sceneIndex={sceneIndex} space={sceneSpace} />
-          </div>
-        </motion.aside>
-      </div>
+      </motion.div>
     </div>
   );
 };

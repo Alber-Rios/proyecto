@@ -82,7 +82,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('home')}
-            className="inline-flex min-h-12 min-w-64 items-center justify-center gap-2 rounded-full bg-brand-600 px-8 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
+            className="inline-flex min-h-12 min-w-64 items-center justify-center gap-2 rounded-full bg-rose-600 px-8 py-3 text-base font-bold text-white shadow-sm transition hover:bg-rose-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-rose-200"
           >
             Regresar a Spotly <ArrowRight className="h-4 w-4" />
           </button>
