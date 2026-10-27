@@ -66,6 +66,8 @@ import type { ChangeSignal, RealtimeTable } from '../lib/realtime.ts';
 
 interface AppContextType {
   currentUser: UserProfile | null;
+  /** true cuando ya se sabe si hay una sesión activa (evita mostrar "Inicia sesión" mientras carga). */
+  authReady: boolean;
   allUsers: UserProfile[];
   profilesLoadError: string | null;
   spaces: Space[];
@@ -210,6 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isSupabaseConfigured() ? null : 'Supabase no está configurado para esta aplicación.'
   );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [contracts, setContracts] = useState<DigitalContract[]>([]);
@@ -412,23 +415,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isMounted = true;
 
     async function initializeSupabaseData() {
-      if (!isSupabaseConfigured()) return;
+      if (!isSupabaseConfigured()) {
+        setAuthReady(true);
+        return;
+      }
 
       try {
         // 1. Verificar sesión activa de Supabase Auth
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData?.session?.user && isMounted) {
-          const userId = sessionData.session.user.id;
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        let sessionData: Awaited<ReturnType<typeof supabase.auth.getSession>>['data'] | null = null;
+        try {
+          sessionData = (await supabase.auth.getSession()).data;
+          if (sessionData?.session?.user && isMounted) {
+            const userId = sessionData.session.user.id;
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .single();
 
-          if (profile && isMounted) {
-            const loadedUser = profileRowToUser(profile);
-            setCurrentUser(loadedUser);
+            if (profile && isMounted) {
+              const loadedUser = profileRowToUser(profile);
+              setCurrentUser(loadedUser);
+            }
           }
+        } finally {
+          if (isMounted) setAuthReady(true);
         }
 
         // 2. Cargar tablas desde Supabase DB
@@ -1930,6 +1941,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         currentUser,
+        authReady,
         allUsers,
         profilesLoadError,
         spaces: visibleSpaces,

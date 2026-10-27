@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthLayout } from '../components/AuthLayout.tsx';
 import { useApp } from '../context/AppContext.tsx';
+import { useGuestOnly } from '../hooks/useGuestOnly.ts';
 import {
   LogIn,
   Mail,
@@ -17,6 +18,7 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const { login } = useApp();
+  const { submitting, finish, redirecting } = useGuestOnly();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -36,22 +38,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     }
 
     setLoading(true);
+    submitting.current = true;
     try {
       const res = await login(identifier, password);
       if (res.success) {
         setSuccess('¡Inicio de sesión exitoso! Redirigiendo...');
-        setTimeout(() => {
-          onNavigate('home');
-        }, 600);
+        setTimeout(() => finish(), 500);
       } else {
+        submitting.current = false;
         setError(res.message || 'Credenciales no válidas. Revisa tu RUT o correo.');
       }
     } catch (err: any) {
+      submitting.current = false;
       setError(err.message || 'Error al conectar con el servidor.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (redirecting) return null;
 
   return (
     <AuthLayout

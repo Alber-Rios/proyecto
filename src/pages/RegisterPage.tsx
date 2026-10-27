@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthLayout } from '../components/AuthLayout.tsx';
 import { useApp } from '../context/AppContext.tsx';
+import { useGuestOnly } from '../hooks/useGuestOnly.ts';
 import { validateRut, formatRut, capitalizeInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import { UserGender } from '../types.ts';
@@ -24,6 +25,7 @@ interface RegisterPageProps {
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const { register } = useApp();
+  const { submitting, finish, redirecting } = useGuestOnly();
 
   const [firstNames, setFirstNames] = useState('');
   const [surnames, setSurnames] = useState('');
@@ -91,6 +93,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
     setLoading(true);
     try {
+      submitting.current = true;
       const res = await register({
         firstNames: capitalizeInitial(firstNames).trim(),
         surnames: capitalizeInitial(surnames).trim(),
@@ -107,26 +110,25 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
       if (res.success) {
         if (res.requiresEmailConfirmation) {
+          submitting.current = false;
           setSuccess(res.message || 'Confirma tu correo y después inicia sesión.');
           return;
         }
         setSuccess('¡Cuenta creada exitosamente! Redirigiendo...');
-        setTimeout(() => {
-          if (role === 'owner') {
-            onNavigate('owner');
-          } else {
-            onNavigate('home');
-          }
-        }, 800);
+        setTimeout(() => finish(role === 'owner' ? '/owner' : undefined), 600);
       } else {
+        submitting.current = false;
         setError(res.message || 'No fue posible completar el registro.');
       }
     } catch (err: any) {
+      submitting.current = false;
       setError(err.message || 'Error al conectar con el servidor.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (redirecting) return null;
 
   return (
     <AuthLayout

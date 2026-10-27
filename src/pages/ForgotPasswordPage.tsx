@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useGuestOnly } from '../hooks/useGuestOnly.ts';
 import {
   KeyRound,
   Mail,
@@ -15,6 +16,7 @@ interface ForgotPasswordPageProps {
 }
 
 export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigate }) => {
+  const { redirecting } = useGuestOnly();
   const [emailOrRut, setEmailOrRut] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -35,6 +37,8 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNaviga
       setSent(true);
     }, 900);
   };
+
+  if (redirecting) return null;
 
   return (
     <div className="max-w-xl mx-auto py-4 sm:py-8">

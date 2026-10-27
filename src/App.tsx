@@ -5,6 +5,7 @@ import { Header } from './components/Header.tsx';
 import { HomePage } from './pages/HomePage.tsx';
 import { Space } from './types.ts';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { authReturnPath, isAuthPath } from './utils/authRedirect.ts';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { PageTransition, ScrollProgress } from './components/motion/Motion.tsx';
 import { CookieBanner } from './components/CookieBanner.tsx';
@@ -27,19 +28,30 @@ const OwnerUpgradeModal = lazy(() => import('./components/OwnerUpgradeModal.tsx'
 const WalletPage = lazy(() => import('./pages/WalletPage.tsx').then((m) => ({ default: m.WalletPage })));
 const SiteMapPage = lazy(() => import('./pages/SiteMapPage.tsx').then((m) => ({ default: m.SiteMapPage })));
 
+// Páginas que dependen de la sesión: mientras se comprueba si hay sesión activa
+// se muestra un aviso de carga en vez de la pantalla "Inicia sesión".
+const PROTECTED_PREFIXES = ['/my-bookings', '/owner', '/admin', '/onboarding', '/profile', '/favorites', '/support', '/billetera'];
+const isProtectedPath = (path: string) => PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+
 function AppContent() {
-  const { currentUser, spaces } = useApp();
+  const { currentUser, spaces, authReady } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const [isOwnerUpgradeModalOpen, setIsOwnerUpgradeModalOpen] = useState(false);
   
+  // Página a la que se vuelve después de iniciar sesión o registrarse.
+  const currentPath = `${location.pathname}${location.search}`;
+  const returnTarget = isAuthPath(location.pathname)
+    ? authReturnPath(location.state)
+    : currentPath;
+
   const handleOpenAuth = (mode: 'login' | 'register', notice?: string) => {
-    if (mode === 'login') {
-      navigate('/login', { state: { notice } });
-    } else {
-      navigate('/register', { state: { notice } });
-    }
+    // Entre login y registro se reemplaza la entrada para que "atrás" no rebote entre ambas.
+    navigate(mode === 'login' ? '/login' : '/register', {
+      state: { notice, from: returnTarget },
+      replace: isAuthPath(location.pathname),
+    });
   };
 
   const handleOpenOwnerUpgrade = () => {
@@ -55,7 +67,12 @@ function AppContent() {
     setIsOwnerUpgradeModalOpen(true);
   };
 
-  const handleNavigate = (view: string) => {
+  const handleNavigate = (view: string, options?: { replace?: boolean }) => {
+    if (view === 'login' || view === 'register') {
+      handleOpenAuth(view);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (view === 'owner' && currentUser && currentUser.role === 'tenant' && !currentUser.ownerTermsAccepted) {
       setIsOwnerUpgradeModalOpen(true);
       return;
@@ -84,7 +101,11 @@ function AppContent() {
       'wallet': '/billetera'
     };
     
-    navigate(routes[view] || '/');
+    navigate(routes[view] || '/', {
+      // Desde login o registro se reemplaza para que "atrás" no vuelva al formulario.
+      replace: options?.replace || isAuthPath(location.pathname),
+      state: view === 'forgot-password' ? { from: returnTarget } : undefined,
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -118,6 +139,9 @@ function AppContent() {
         <Suspense fallback={<div className="min-h-[100vh] py-24 text-center text-sm text-slate-500" role="status">Cargando…</div>}>
         <AnimatePresence mode="wait" initial={false}>
         <PageTransition key={location.pathname}>
+        {!authReady && isProtectedPath(location.pathname) ? (
+          <div className="min-h-[60vh] py-24 text-center text-sm text-slate-500" role="status">Cargando tu sesión…</div>
+        ) : (
         <Routes location={location}>
           <Route path="/" element={
             <HomePage
@@ -209,6 +233,7 @@ function AppContent() {
 
           <Route path="*" element={<NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} />} />
         </Routes>
+        )}
         </PageTransition>
         </AnimatePresence>
         </Suspense>

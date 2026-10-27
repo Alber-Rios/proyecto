@@ -30,7 +30,7 @@ import { capitalizeInitial, formatRut, getNameInitial } from '../utils/formatter
 
 interface HeaderProps {
   currentView: string;
-  onNavigate: (view: string) => void;
+  onNavigate: (view: string, options?: { replace?: boolean }) => void;
   onOpenOwnerUpgrade: () => void;
   onOpenAuth: (mode: 'login' | 'register', notice?: string) => void;
 }
@@ -818,7 +818,8 @@ export const Header: React.FC<HeaderProps> = ({
                               onClick={() => {
                                 logout();
                                 setShowUserMenu(false);
-                                onNavigate('home');
+                                // Se reemplaza la página actual: "atrás" no vuelve a una vista privada.
+                                onNavigate('home', { replace: true });
                               }}
                               className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl hover:bg-rose-50/80 text-rose-600 transition group cursor-pointer"
                             >
