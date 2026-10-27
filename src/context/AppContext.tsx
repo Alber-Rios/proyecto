@@ -89,7 +89,7 @@ interface AppContextType {
   payWithWalletCard: (reservationId: string, cardId: string) => Promise<void>;
   // Role & Session actions
   switchUser: (userId: string | null) => void;
-  login: (email: string, password?: string, remember?: boolean) => Promise<{ success: boolean; message?: string; code?: string }>;
+  login: (email: string, password?: string, remember?: boolean) => Promise<{ success: boolean; message?: string; code?: string; status?: number }>;
   logout: () => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<{ success: boolean; message?: string }>;
   resendVerificationCode: (email: string) => Promise<{ success: boolean; message?: string }>;
@@ -534,9 +534,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     email: string,
     password?: string,
     remember = true
-  ): Promise<{ success: boolean; message?: string; code?: string }> => {
+  ): Promise<{ success: boolean; message?: string; code?: string; status?: number }> => {
     if (!isSupabaseConfigured()) {
-      return { success: false, message: 'La plataforma no está conectada a la base de datos.' };
+      return { success: false, message: 'La plataforma no está conectada a la base de datos.', status: 503 };
     }
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail.includes('@') || !password) {
@@ -549,8 +549,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const user = await loadSessionProfile(r.session.user.id);
       return { success: true, message: user ? `¡Bienvenido nuevamente, ${user.fullName.split(' ')[0]}!` : undefined };
     } catch (err) {
-      if (err instanceof AuthApiError) return { success: false, message: err.message, code: err.code };
-      return { success: false, message: 'No se pudo iniciar sesión. Inténtalo nuevamente.' };
+      if (err instanceof AuthApiError) return { success: false, message: err.message, code: err.code, status: err.status };
+      return { success: false, message: 'No se pudo iniciar sesión. Inténtalo nuevamente.', status: 0 };
     }
   };
 

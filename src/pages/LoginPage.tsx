@@ -48,12 +48,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     try {
       const res = await login(identifier, password, rememberMe);
       if (res.success) {
-        setSuccess('¡Inicio de sesión exitoso! Redirigiendo...');
+        setSuccess('¡Inicio de sesión con éxito! Te estamos llevando a tu cuenta…');
         setTimeout(() => finish(), 500);
       } else {
         submitting.current = false;
-        if (res.code === 'EMAIL_NOT_CONFIRMED') setUnverifiedEmail(identifier.trim().toLowerCase());
-        setError(res.message || 'Credenciales no válidas. Revisa tu correo o contraseña.');
+        if (res.code === 'EMAIL_NOT_CONFIRMED') {
+          setUnverifiedEmail(identifier.trim().toLowerCase());
+          setError(res.message || 'Tu correo aún no está verificado.');
+        } else if (res.status === 429 || (res.status === 403 && res.message)) {
+          // Bloqueo por intentos fallidos o cuenta suspendida: se muestra el motivo.
+          setError(res.message || 'Acceso bloqueado temporalmente.');
+        } else if (!res.status || res.status >= 500 || res.status === 404) {
+          setError('No pudimos conectar con el servidor de inicio de sesión. Inténtalo nuevamente en unos minutos.');
+        } else {
+          setError('Credenciales inválidas. Revisa tu correo electrónico o contraseña.');
+        }
       }
     } catch (err: any) {
       submitting.current = false;
