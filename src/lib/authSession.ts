@@ -53,7 +53,13 @@ export async function authRequest<T = any>(action: string, body: unknown = {}, w
     /* respuesta sin JSON */
   }
   if (!response.ok || payload.success === false) {
-    throw new AuthApiError(payload.message || 'No se pudo completar la solicitud.', response.status, payload.code);
+    const fallback =
+      response.status >= 500
+        ? `El servidor de inicio de sesión no respondió correctamente (error ${response.status}). Inténtalo en unos minutos.`
+        : response.status === 404
+          ? 'El servicio de inicio de sesión no está disponible (error 404). Revisa que la API esté desplegada.'
+          : `No se pudo completar la solicitud (error ${response.status}).`;
+    throw new AuthApiError(payload.message || fallback, response.status, payload.code);
   }
   return payload as T;
 }

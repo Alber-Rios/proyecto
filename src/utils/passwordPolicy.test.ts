@@ -23,3 +23,13 @@ describe('política de contraseñas', () => {
     expect(passwordScore('Una-Clave-Muy-Larga-2026')).toBe(4);
   });
 });
+
+describe('el servidor aplica la misma política', () => {
+  it('passwordProblem de /api/auth coincide con la del formulario', async () => {
+    const server = await import('../../api/auth.ts');
+    const samples = ['', 'corta1A', 'sinmayuscula1', 'SINMINUSCULA1', 'SinNumeros', 'Segura2026x', 'Password1', 'Albert2026x', 'Aa1' + 'x'.repeat(80), 'Una-Clave-Muy-Larga-2026'];
+    for (const s of samples) {
+      expect(server.__test.passwordProblem(s, { names: ['Albert Ríos'] })).toBe(passwordProblem(s, { names: ['Albert Ríos'] }));
+    }
+  });
+});

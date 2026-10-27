@@ -19,8 +19,114 @@
 // · Todas las acciones exigen la cabecera X-Spotly-Request y un Origin del mismo sitio (anti-CSRF).
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
-import { passwordProblem } from '../src/utils/passwordPolicy.ts';
-import { emailSenderConfigured, resetEmail, sendEmail, verificationEmail } from './_email.ts';
+
+// IMPORTANTE: este archivo no importa otros archivos locales. Vercel compila cada
+// función por separado y una importación de un .ts local falla al ejecutarse
+// ("Cannot find module"), lo que dejaba sin inicio de sesión. Por eso la política de
+// contraseñas (copia de src/utils/passwordPolicy.ts, verificada por una prueba) y
+// los correos viven aquí mismo.
+
+// ---------- Política de contraseñas (igual a src/utils/passwordPolicy.ts) ----------
+const PASSWORD_MIN = 8;
+// bcrypt solo considera los primeros 72 bytes; más largo daría una falsa sensación de seguridad.
+const PASSWORD_MAX = 72;
+
+interface PasswordCheck {
+  id: 'length' | 'lower' | 'upper' | 'digit' | 'personal' | 'common';
+  label: string;
+  ok: boolean;
+}
+
+const COMMON = new Set([
+  'password', 'password1', 'contraseña', 'contrasena', '12345678', '123456789', '1234567890',
+  'qwerty123', 'qwertyui', 'abc12345', 'abcd1234', 'spotly123', 'spotly2026', 'iloveyou', 'admin123',
+  'chile123', 'chile2026', 'aaaaaaaa', '11111111', '00000000', 'passw0rd', 'Password1',
+]);
+
+function checkPassword(password: string, personal: { email?: string; names?: string[]; rut?: string } = {}): PasswordCheck[] {
+  const p = password || '';
+  const lower = p.toLowerCase();
+  const pieces = [
+    (personal.email || '').split('@')[0],
+    ...(personal.names || []).flatMap((n) => n.split(/\s+/)),
+    (personal.rut || '').replace(/[^0-9kK]/g, '').slice(0, -1),
+  ]
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => x.length >= 4);
+  return [
+    { id: 'length', label: `Entre ${PASSWORD_MIN} y ${PASSWORD_MAX} caracteres`, ok: p.length >= PASSWORD_MIN && new TextEncoder().encode(p).length <= PASSWORD_MAX },
+    { id: 'lower', label: 'Una letra minúscula', ok: /[a-zñáéíóú]/.test(p) },
+    { id: 'upper', label: 'Una letra mayúscula', ok: /[A-ZÑÁÉÍÓÚ]/.test(p) },
+    { id: 'digit', label: 'Un número', ok: /\d/.test(p) },
+    { id: 'personal', label: 'No incluye tu nombre, correo ni RUT', ok: !pieces.some((x) => lower.includes(x)) },
+    { id: 'common', label: 'No es una contraseña común', ok: !COMMON.has(lower) && !COMMON.has(p) },
+  ];
+}
+
+function passwordProblem(password: string, personal?: Parameters<typeof checkPassword>[1]): string | null {
+  const failed = checkPassword(password, personal).find((c) => !c.ok);
+  return failed ? `La contraseña debe cumplir: ${failed.label.toLowerCase()}.` : null;
+}
+
+/** 0 a 4, para la barra de seguridad del formulario. */
+
+// ---------- Correos transaccionales (Resend) ----------
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+const emailSenderConfigured = () => Boolean(process.env.RESEND_API_KEY);
+
+function layout(title: string, body: string): string {
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head>
+<body style="margin:0;padding:0;background:#f5f5f4;font-family:Arial,Helvetica,sans-serif;color:#0f172a">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f4;padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e7e5e4">
+<tr><td style="padding:28px 32px 8px;font-size:26px;font-weight:700;letter-spacing:-1px;color:#0f172a">sp<span style="color:#e11d48">&#9673;</span>tly</td></tr>
+<tr><td style="padding:8px 32px 32px;font-size:15px;line-height:1.6">${body}</td></tr>
+<tr><td style="padding:18px 32px;background:#fafaf9;border-top:1px solid #e7e5e4;font-size:12px;color:#78716c;line-height:1.5">
+Recibiste este correo porque alguien usó esta dirección en Spotly. Si no fuiste tú, puedes ignorarlo: nadie podrá entrar a tu cuenta sin este mensaje.<br>Spotly nunca te pedirá tu contraseña por correo.
+</td></tr></table></td></tr></table></body></html>`;
+}
+
+function verificationEmail(name: string, code: string, minutes: number) {
+  const digits = code.split('').map((d) => `<span style="display:inline-block;min-width:34px;padding:10px 0;margin:0 3px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;font-size:26px;font-weight:700;color:#be123c;text-align:center">${escapeHtml(d)}</span>`).join('');
+  const html = layout('Tu código de verificación de Spotly', `
+<h1 style="margin:0 0 8px;font-size:21px">Confirma tu correo</h1>
+<p style="margin:0 0 20px">Hola${name ? ` ${escapeHtml(name)}` : ''}, escribe este código en Spotly para terminar de crear tu cuenta:</p>
+<p style="margin:0 0 20px;text-align:center;white-space:nowrap">${digits}</p>
+<p style="margin:0;color:#57534e;font-size:13px">El código vence en ${minutes} minutos y solo se puede usar una vez.</p>`);
+  const text = `Tu código de verificación de Spotly es ${code}. Vence en ${minutes} minutos. Si no fuiste tú, ignora este correo.`;
+  return { subject: `${code} es tu código de verificación de Spotly`, html, text };
+}
+
+function resetEmail(link: string, minutes: number) {
+  const safe = escapeHtml(link);
+  const html = layout('Restablece tu contraseña de Spotly', `
+<h1 style="margin:0 0 8px;font-size:21px">Restablece tu contraseña</h1>
+<p style="margin:0 0 22px">Recibimos una solicitud para cambiar la contraseña de tu cuenta. Presiona el botón para elegir una nueva:</p>
+<p style="margin:0 0 22px;text-align:center"><a href="${safe}" style="display:inline-block;background:#e11d48;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:12px">Crear nueva contraseña</a></p>
+<p style="margin:0 0 6px;color:#57534e;font-size:13px">El enlace vence en ${minutes} minutos y solo funciona una vez. Si el botón no abre, copia esta dirección en tu navegador:</p>
+<p style="margin:0;word-break:break-all;font-size:12px;color:#be123c">${safe}</p>`);
+  const text = `Para crear una nueva contraseña de Spotly abre este enlace (vence en ${minutes} minutos): ${link}\nSi no lo pediste, ignora este correo.`;
+  return { subject: 'Restablece tu contraseña de Spotly', html, text };
+}
+
+async function sendEmail(to: string, msg: { subject: string; html: string; text: string }): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  const from = process.env.EMAIL_FROM || 'Spotly <onboarding@resend.dev>';
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject: msg.subject, html: msg.html, text: msg.text }),
+  });
+  if (!r.ok) {
+    console.error('Resend rechazó el correo', r.status, (await r.text().catch(() => '')).slice(0, 300));
+    return false;
+  }
+  return true;
+}
+
 
 const GENERIC_ERROR = 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.';
 const REFRESH_COOKIE = 'spotly_rt';
@@ -529,3 +635,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ success: false, message: 'Ocurrió un error en el servidor. Inténtalo nuevamente.' });
   }
 }
+export const __test = { passwordProblem };
