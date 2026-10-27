@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabase.ts';
+import { supabase, isSupabaseConfigured, currentSessionUserId } from './supabase.ts';
 
 /**
  * Convierte un dataUrl en formato Base64 a un objeto Blob
@@ -62,8 +62,7 @@ export async function uploadSpaceImage(
     }
 
     // Las políticas de Storage exigen que la primera carpeta sea el id del usuario.
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user.id;
+    const userId = currentSessionUserId();
     if (!userId) {
       return typeof fileOrBase64 === 'string' ? fileOrBase64 : URL.createObjectURL(fileOrBase64);
     }

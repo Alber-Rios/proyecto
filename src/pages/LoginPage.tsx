@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AuthLayout } from '../components/AuthLayout.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { useGuestOnly } from '../hooks/useGuestOnly.ts';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LogIn,
   Mail,
@@ -18,7 +19,11 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const { login } = useApp();
-  const { submitting, finish, redirecting } = useGuestOnly();
+  const { submitting, finish, redirecting, target } = useGuestOnly();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const notice = (location.state as { notice?: string } | null)?.notice;
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -32,21 +37,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     e.preventDefault();
     setError(null);
 
-    if (!identifier.trim()) {
-      setError('Por favor ingresa tu Correo Electrónico o RUT.');
+    setUnverifiedEmail(null);
+    if (!identifier.trim() || !identifier.includes('@')) {
+      setError('Ingresa el correo electrónico con el que te registraste.');
       return;
     }
 
     setLoading(true);
     submitting.current = true;
     try {
-      const res = await login(identifier, password);
+      const res = await login(identifier, password, rememberMe);
       if (res.success) {
         setSuccess('¡Inicio de sesión exitoso! Redirigiendo...');
         setTimeout(() => finish(), 500);
       } else {
         submitting.current = false;
-        setError(res.message || 'Credenciales no válidas. Revisa tu RUT o correo.');
+        if (res.code === 'EMAIL_NOT_CONFIRMED') setUnverifiedEmail(identifier.trim().toLowerCase());
+        setError(res.message || 'Credenciales no válidas. Revisa tu correo o contraseña.');
       }
     } catch (err: any) {
       submitting.current = false;
@@ -68,10 +75,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     >
 
             {/* Mensajes de Alerta */}
+            {notice && !error && !success && (
+              <div className="p-3.5 bg-sky-50 border border-sky-200 text-sky-900 text-xs rounded-xl flex items-center gap-2 font-medium" role="status">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-sky-600" />
+                <span>{notice}</span>
+              </div>
+            )}
+
             {error && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2 font-medium">
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex flex-wrap items-center gap-2 font-medium" role="alert">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>{error}</span>
+                <span className="flex-1 min-w-0">{error}</span>
+                {unverifiedEmail && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/verificar-correo', { replace: true, state: { email: unverifiedEmail, from: target, resend: true } })}
+                    className="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-bold hover:bg-rose-700 cursor-pointer"
+                  >
+                    Verificar mi correo
+                  </button>
+                )}
               </div>
             )}
 
@@ -83,7 +106,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             )}
 
             {/* Formulario Estándar */}
-            <form onSubmit={handleSubmit} className="space-y-4 pt-1" autoComplete="off">
+            <form onSubmit={handleSubmit} className="space-y-4 pt-1">
               <div>
                 <label className="block text-sm font-medium text-stone-700 mb-1.5">
                   Correo electrónico
@@ -91,14 +114,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
-                    type="text"
-                    name="spotly_login_id"
+                    type="email"
+                    name="email"
                     required
-                    autoComplete="off"
-                    data-temp-mail-org="0"
-                    data-lpignore="true"
-                    data-1p-ignore="true"
-                    data-form-type="other"
+                    autoComplete="username"
+                    inputMode="email"
+                    maxLength={254}
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
@@ -123,7 +144,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="password"
                     required
+                    autoComplete="current-password"
+                    maxLength={72}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"

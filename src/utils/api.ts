@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.ts';
+import { getAccessToken } from '../lib/authSession.ts';
 
 // Base del backend (Vercel Functions o server.ts). Vacía = mismo origen.
 export function apiUrl(path: string): string {
@@ -7,49 +7,9 @@ export function apiUrl(path: string): string {
   return `${cleanBase}${path}`;
 }
 
-export type ServerLoginResult =
-  | { kind: 'session'; session: { access_token: string; refresh_token: string } }
-  | { kind: 'error'; message: string }
-  | { kind: 'unavailable' };
-
-// Inicio de sesión mediante el backend (RNF-04): aplica bloqueo por intentos y
-// suspensión de cuentas antes de entregar la sesión. "unavailable" solo cuando el
-// backend no está configurado (por ejemplo, desarrollo local sin service role).
-export async function loginThroughServer(email: string, password: string): Promise<ServerLoginResult> {
-  let response: Response;
-  try {
-    response = await fetch(apiUrl('/api/auth?action=login'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-  } catch {
-    return { kind: 'error', message: 'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.' };
-  }
-
-  let payload: any = {};
-  try {
-    payload = await response.json();
-  } catch {
-    // Respuesta no JSON (por ejemplo, el backend no está desplegado).
-  }
-
-  if (response.status === 503 && payload.code === 'NOT_CONFIGURED') {
-    return { kind: 'unavailable' };
-  }
-  if (response.status === 404 && !payload.message) {
-    return { kind: 'unavailable' };
-  }
-  if (!response.ok || !payload.session) {
-    return { kind: 'error', message: payload.message || 'No se pudo iniciar sesión.' };
-  }
-  return { kind: 'session', session: payload.session };
-}
-
 // Llamada autenticada al backend con el JWT de la sesión de Supabase.
 export async function callApi<T>(path: string, body: unknown): Promise<T> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  const token = await getAccessToken();
   if (!token) {
     throw new Error('Tu sesión expiró. Inicia sesión nuevamente.');
   }

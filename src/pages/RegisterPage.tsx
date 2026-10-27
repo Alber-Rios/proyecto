@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { AuthLayout } from '../components/AuthLayout.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { useGuestOnly } from '../hooks/useGuestOnly.ts';
+import { useNavigate } from 'react-router-dom';
+import { PasswordStrength } from '../components/PasswordStrength.tsx';
+import { passwordProblem } from '../utils/passwordPolicy.ts';
 import { validateRut, formatRut, capitalizeInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import { UserGender } from '../types.ts';
@@ -25,7 +28,8 @@ interface RegisterPageProps {
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const { register } = useApp();
-  const { submitting, finish, redirecting } = useGuestOnly();
+  const { submitting, redirecting, target } = useGuestOnly();
+  const navigate = useNavigate();
 
   const [firstNames, setFirstNames] = useState('');
   const [surnames, setSurnames] = useState('');
@@ -66,8 +70,9 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
       return;
     }
 
-    if (!password || password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres para resguardar la seguridad de tu cuenta.');
+    const pwdProblem = passwordProblem(password, { email, names: [firstNames, surnames], rut });
+    if (pwdProblem) {
+      setError(pwdProblem);
       return;
     }
 
@@ -109,13 +114,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
       });
 
       if (res.success) {
-        if (res.requiresEmailConfirmation) {
-          submitting.current = false;
-          setSuccess(res.message || 'Confirma tu correo y después inicia sesión.');
-          return;
-        }
-        setSuccess('¡Cuenta creada exitosamente! Redirigiendo...');
-        setTimeout(() => finish(role === 'owner' ? '/owner' : undefined), 600);
+        // La cuenta todavía no está activa: falta ingresar el código enviado al correo.
+        submitting.current = false;
+        navigate('/verificar-correo', {
+          replace: true,
+          state: { email: email.trim().toLowerCase(), from: role === 'owner' ? '/owner' : target },
+        });
       } else {
         submitting.current = false;
         setError(res.message || 'No fue posible completar el registro.');
@@ -190,10 +194,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               {/* Nombres y fecha de nacimiento */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  <label htmlFor="reg-first" className="block text-sm font-medium text-stone-700 mb-1.5">
                     Nombres
                   </label>
-                  <input
+                  <input id="reg-first"
                     type="text"
                     required
                     autoComplete="given-name"
@@ -205,10 +209,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  <label htmlFor="reg-birth" className="block text-sm font-medium text-stone-700 mb-1.5">
                     Fecha de nacimiento
                   </label>
-                  <input
+                  <input id="reg-birth"
                     type="date"
                     required
                     max={getAdultBirthDateLimit()}
@@ -222,12 +226,12 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Apellidos</label>
-                  <input type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium" />
+                  <label htmlFor="reg-last" className="block text-sm font-medium text-stone-700 mb-1.5">Apellidos</label>
+                  <input id="reg-last" type="text" required autoComplete="family-name" value={surnames} onChange={(e) => setSurnames(capitalizeInitial(e.target.value))} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Género</label>
-                  <select value={gender} onChange={(e) => setGender(e.target.value as UserGender)} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium">
+                  <label htmlFor="reg-gender" className="block text-sm font-medium text-stone-700 mb-1.5">Género</label>
+                  <select id="reg-gender" value={gender} onChange={(e) => setGender(e.target.value as UserGender)} className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium">
                     <option value="femenino">Femenino</option>
                     <option value="masculino">Masculino</option>
                     <option value="no_binario">No binario</option>
@@ -240,10 +244,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               {/* RUT y Teléfono */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  <label htmlFor="reg-rut" className="block text-sm font-medium text-stone-700 mb-1.5">
                     RUT chileno
                   </label>
-                  <input
+                  <input id="reg-rut"
                     type="text"
                     required
                     autoComplete="off"
@@ -253,10 +257,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  <label htmlFor="reg-phone" className="block text-sm font-medium text-stone-700 mb-1.5">
                     Teléfono móvil (+56)
                   </label>
-                  <input
+                  <input id="reg-phone"
                     type="tel"
                     inputMode="numeric"
                     pattern="9[0-9]{8}"
@@ -273,19 +277,16 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
 
               {/* Correo Electrónico */}
               <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                <label htmlFor="reg-email" className="block text-sm font-medium text-stone-700 mb-1.5">
                   Correo electrónico
                 </label>
-                <input
-                  type="text"
+                <input id="reg-email"
+                  type="email"
                   inputMode="email"
-                  name="spotly_reg_contact"
+                  name="email"
                   required
-                  autoComplete="off"
-                  data-temp-mail-org="0"
-                  data-lpignore="true"
-                  data-1p-ignore="true"
-                  data-form-type="other"
+                  maxLength={254}
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
@@ -295,25 +296,32 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               {/* Contraseña y Confirmar Contraseña */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  <label htmlFor="reg-password" className="block text-sm font-medium text-stone-700 mb-1.5">
                     Contraseña
                   </label>
-                  <input
+                  <input id="reg-password"
                     type="password"
+                    name="new-password"
                     required
-                    placeholder="Mínimo 6 caracteres"
+                    autoComplete="new-password"
+                    maxLength={72}
+                    aria-describedby="password-rules"
+                    placeholder="Mínimo 8 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  <label htmlFor="reg-password2" className="block text-sm font-medium text-stone-700 mb-1.5">
                     Confirmar contraseña
                   </label>
-                  <input
+                  <input id="reg-password2"
                     type="password"
+                    name="confirm-password"
                     required
+                    autoComplete="new-password"
+                    maxLength={72}
                     placeholder="Repite tu contraseña"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -321,6 +329,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   />
                 </div>
               </div>
+
+              <PasswordStrength id="password-rules" password={password} personal={{ email, names: [firstNames, surnames], rut }} />
 
               {/* Aceptación de Términos */}
               <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">

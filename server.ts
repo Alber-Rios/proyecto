@@ -6,6 +6,7 @@ import cors from 'cors';
 import webpayHandler from './api/webpay.ts';
 import clientIpHandler from './api/client-ip.ts';
 import authHandler from './api/auth.ts';
+import { buildCsp, SECURITY_HEADERS } from './api/_security.ts';
 import walletHandler from './api/wallet.ts';
 
 dotenv.config();
@@ -15,11 +16,16 @@ async function startServer() {
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Habilitar CORS para permitir llamadas tanto locales como desde despliegues (Vercel, etc.)
+  app.disable('x-powered-by');
+  // Por defecto la web y la API comparten dominio y no hace falta CORS. Si la API va
+  // separada, CORS_ORIGIN debe ser el dominio exacto del frontend (nunca "*" con cookies).
+  const corsOrigin = process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== '*' ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()) : false;
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || '*',
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      origin: corsOrigin,
+      credentials: Boolean(corsOrigin),
+      methods: ['GET', 'POST', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Spotly-Request'],
     })
   );
 
@@ -28,13 +34,27 @@ async function startServer() {
   app.use(express.urlencoded({ extended: false }));
 
   // Cabeceras de seguridad (RNF-05). En Vercel se definen en vercel.json.
+  const isProd = process.env.NODE_ENV === 'production';
+  // En producción también se permite el dominio de Supabase configurado (por si no es *.supabase.co).
+  const supabaseOrigin = (() => {
+    try {
+      const u = new URL(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '');
+      return [u.origin, u.origin.replace(/^http/, 'ws')];
+    } catch {
+      return [];
+    }
+  })();
+  const csp = buildCsp({ connect: supabaseOrigin, img: supabaseOrigin.slice(0, 1) });
+  const cspHttp = buildCsp({ connect: supabaseOrigin, img: supabaseOrigin.slice(0, 1), upgrade: false });
   app.use((req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self)');
-    if (process.env.NODE_ENV === 'production') {
-      res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+      if (k === 'Strict-Transport-Security' && !isProd) continue;
+      res.setHeader(k, v);
+    }
+    // En desarrollo Vite inyecta scripts en línea (recarga en caliente): la CSP solo se aplica en producción.
+    if (isProd) {
+      const https = req.secure || String(req.headers['x-forwarded-proto'] || '').startsWith('https');
+      res.setHeader('Content-Security-Policy', https ? csp : cspHttp);
     }
     next();
   });

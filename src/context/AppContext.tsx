@@ -17,7 +17,8 @@ import {
   SpaceBlock,
 } from '../types.ts';
 import { saveAuditLog, getAuditLogs, buildAuditMetadata, fetchClientIp, SERVER_RECORDED_IP } from '../utils/auditLogger.ts';
-import { callApi, loginThroughServer, postToTransbank } from '../utils/api.ts';
+import { callApi, postToTransbank } from '../utils/api.ts';
+import { AuthApiError, authRequest, onSessionChange, purgeLegacyStoredSessions, refreshSession, setSession as setAuthSession, type ClientSession } from '../lib/authSession.ts';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { generateDigitalContract } from '../utils/contractGenerator.ts';
 import { getTodayIso, capitalizeInitial, formatFullName } from '../utils/formatters.ts';
@@ -88,8 +89,12 @@ interface AppContextType {
   payWithWalletCard: (reservationId: string, cardId: string) => Promise<void>;
   // Role & Session actions
   switchUser: (userId: string | null) => void;
-  login: (emailOrRut: string, password?: string) => Promise<{ success: boolean; message?: string }>;
-  logout: () => void;
+  login: (email: string, password?: string, remember?: boolean) => Promise<{ success: boolean; message?: string; code?: string }>;
+  logout: () => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<{ success: boolean; message?: string }>;
+  resendVerificationCode: (email: string) => Promise<{ success: boolean; message?: string }>;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string }>;
+  resetPassword: (link: { token_hash?: string; access_token?: string }, password: string) => Promise<{ success: boolean; message?: string; code?: string }>;
   register: (userData: {
     firstNames: string;
     surnames: string;
@@ -384,8 +389,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Una cuenta suspendida no puede mantener la sesión abierta (RF-32).
   useEffect(() => {
     if (currentUser?.isSuspended) {
-      supabase.auth.signOut().catch(() => undefined);
-      setCurrentUser(null);
+      void logout();
     }
   }, [currentUser?.isSuspended]);
 
@@ -421,11 +425,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       try {
-        // 1. Verificar sesión activa de Supabase Auth
-        let sessionData: Awaited<ReturnType<typeof supabase.auth.getSession>>['data'] | null = null;
+        // 1. Recuperar la sesión desde la cookie HttpOnly (la maneja /api/auth).
+        purgeLegacyStoredSessions();
+        let sessionData: { session: ClientSession | null } | null = null;
         try {
-          sessionData = (await supabase.auth.getSession()).data;
-          if (sessionData?.session?.user && isMounted) {
+          sessionData = { session: await refreshSession() };
+          if (sessionData.session?.user && isMounted) {
+            supabase.realtime.setAuth(sessionData.session.access_token);
             const userId = sessionData.session.user.id;
             const { data: profile } = await supabase
               .from('profiles')
@@ -491,207 +497,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     initializeSupabaseData();
 
-    // 3. Listener en tiempo real de cambios de Auth (Login, Logout, etc.)
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!isMounted) return;
-
-        if (event === 'SIGNED_OUT') {
-          setCurrentUser(null);
-        } else if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profile && isMounted) {
-            setCurrentUser(profileRowToUser(profile));
-          }
-        }
-      }
-    );
+    // 3. Cambios de sesión (renovación del token, sesión vencida o revocada).
+    const unsubscribeSession = onSessionChange((session) => {
+      if (!isMounted) return;
+      supabase.realtime.setAuth(session?.access_token ?? null);
+      if (!session) setCurrentUser(null);
+    });
 
     return () => {
       isMounted = false;
-      authListener?.subscription.unsubscribe();
+      unsubscribeSession();
     };
   }, []);
 
   // Inicio de sesión por Email o RUT (Supabase Auth con Fallback local)
-  const login = async (emailOrRut: string, password?: string): Promise<{ success: boolean; message?: string }> => {
-    const cleanInput = emailOrRut.trim().toLowerCase();
-
-    // 1. Si Supabase está conectado, usamos Supabase Auth
-    if (isSupabaseConfigured() && password) {
-      let targetEmail = cleanInput;
-
-      // Supabase Auth inicia sesión con correo; no se lee la tabla de perfiles desde una sesión anónima para resolver RUT.
-      if (!cleanInput.includes('@')) {
-        return { success: false, message: 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.' };
-      }
-
-      // RNF-04: el inicio de sesión pasa por el backend, que aplica el bloqueo por
-      // intentos fallidos (por correo e IP) y la suspensión antes de entregar la sesión.
-      const serverLogin = await loginThroughServer(targetEmail, password);
-      let data: { user: SupabaseUser | null };
-
-      if (serverLogin.kind === 'error') {
-        return { success: false, message: serverLogin.message };
-      }
-      if (serverLogin.kind === 'session') {
-        const { data: sessionData, error: sessionError } = await supabase.auth.setSession(serverLogin.session);
-        if (sessionError || !sessionData.user) {
-          return { success: false, message: 'No se pudo iniciar la sesión. Inténtalo nuevamente.' };
-        }
-        data = { user: sessionData.user };
-      } else {
-        // Backend sin configurar (entorno de desarrollo): inicio de sesión directo,
-        // sin el bloqueo por intentos que aplica el servidor.
-        console.warn('Inicio de sesión sin backend: el bloqueo por intentos fallidos no está activo.');
-        const { data: directData, error } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
-        if (error) {
-          return {
-            success: false,
-            message: error.message.toLowerCase().includes('email not confirmed')
-              ? 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.'
-              : 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.',
-          };
-        }
-        data = { user: directData.user };
-      }
-
-      if (data.user) {
-        // Cargar datos de perfil desde la tabla profiles
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        const loggedUser: UserProfile = profile
-          ? {
-              id: profile.id,
-              fullName: formatFullName(profile.first_names, profile.surnames, profile.full_name),
-              firstNames: profile.first_names ? capitalizeInitial(profile.first_names) : undefined,
-              surnames: profile.surnames ? capitalizeInitial(profile.surnames) : undefined,
-              email: profile.email,
-              rut: profile.rut || '',
-              phone: profile.phone || '',
-              avatarUrl: profile.avatar_url,
-              gender: profile.gender,
-              birthDate: profile.birth_date,
-              role: profile.role,
-              ownerTermsAccepted: profile.owner_terms_accepted,
-              ownerApplicationDate: profile.owner_application_date,
-              verificationStatus: profile.verification_status,
-              kycRejectionReason: profile.kyc_rejection_reason,
-              kycData: profile.kyc_data,
-              commune: profile.commune,
-              city: profile.city,
-              isSuspended: Boolean(profile.is_suspended),
-              suspendedReason: profile.suspended_reason || undefined,
-              createdAt: profile.created_at,
-            }
-          : {
-              id: data.user.id,
-              fullName: formatFullName(data.user.user_metadata?.first_names, data.user.user_metadata?.surnames, data.user.user_metadata?.full_name || 'Usuario Spotly'),
-              firstNames: data.user.user_metadata?.first_names ? capitalizeInitial(data.user.user_metadata.first_names) : undefined,
-              surnames: data.user.user_metadata?.surnames ? capitalizeInitial(data.user.user_metadata.surnames) : undefined,
-              email: data.user.email || targetEmail,
-              rut: data.user.user_metadata?.rut || '',
-              phone: data.user.user_metadata?.phone || '',
-              role: data.user.user_metadata?.role || 'tenant',
-              ownerTermsAccepted: data.user.user_metadata?.owner_terms_accepted || false,
-              verificationStatus: 'unverified',
-              createdAt: new Date().toISOString(),
-            };
-
-        if (loggedUser.isSuspended) {
-          await supabase.auth.signOut();
-          return {
-            success: false,
-            message: `Tu cuenta está suspendida por administración${
-              loggedUser.suspendedReason ? ` (motivo: ${loggedUser.suspendedReason})` : ''
-            }. Escríbenos desde Ayuda y soporte.`,
-          };
-        }
-
-        setCurrentUser(loggedUser);
-        try {
-          setAllUsers(await getProfilesFromDb());
-          setProfilesLoadError(null);
-        } catch (profileLoadErr) {
-          setProfilesLoadError(profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.');
-        }
-        return {
-          success: true,
-          message: `¡Bienvenido nuevamente, ${loggedUser.fullName.split(' ')[0]}!`,
-        };
-      }
-    }
-
-    // 2. Fallback de desarrollo local si Supabase no está configurado o si no se proporcionó contraseña
-    const found = allUsers.find(
-      (u) =>
-        u.email.toLowerCase() === cleanInput ||
-        u.rut.toLowerCase().replace(/[^0-9k]/g, '') === cleanInput.replace(/[^0-9k]/g, '')
-    );
-
-    if (!found) {
-      return {
-        success: false,
-        message: 'No existe una cuenta registrada con este correo o RUT en Spotly Chile.',
-      };
-    }
-
-    setCurrentUser(found);
-    addAuditRecord('USER_LOGGED_IN', 'security', {
-      userId: found.id,
-      userEmail: found.email,
-      userRole: found.role,
-    });
-
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        userId: found.id,
-        title: `Sesión iniciada como ${found.role === 'admin' ? 'Administrador' : found.role === 'owner' ? 'Propietario' : 'Arrendatario'}`,
-        message: `Hola de nuevo, ${found.fullName}. Has ingresado a tu cuenta.`,
-        type: 'info',
-        timestamp: new Date().toISOString(),
-        read: false,
-      },
-      ...prev,
-    ]);
-
-    return {
-      success: true,
-      message: `¡Bienvenido nuevamente, ${found.fullName.split(' ')[0]}!`,
-    };
-  };
-
-  // Cierre de sesión (Supabase Auth y memoria)
-  const logout = async () => {
-    if (currentUser) {
-      addAuditRecord('USER_LOGGED_OUT', 'info', {
-        userId: currentUser.id,
-        userEmail: currentUser.email,
-      });
-    }
-
-    if (isSupabaseConfigured()) {
+  // Carga el perfil del usuario con sesión y lo deja como usuario actual.
+  const loadSessionProfile = async (userId: string): Promise<UserProfile | null> => {
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (!profile) return null;
+    const user = profileRowToUser(profile);
+    setCurrentUser(user);
+    if (user.role === 'admin') {
       try {
-        await supabase.auth.signOut();
-      } catch (err) {
-        console.warn('Error en supabase.auth.signOut:', err);
+        setAllUsers(await getProfilesFromDb());
+        setProfilesLoadError(null);
+      } catch (profileLoadErr) {
+        setProfilesLoadError(profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.');
       }
     }
-
-    setCurrentUser(null);
+    return user;
   };
 
-  // Registro de nuevo usuario (Supabase Auth + Base de datos)
+  // Inicio de sesión: lo resuelve el servidor (/api/auth), que aplica el bloqueo por
+  // intentos, exige el correo verificado y deja la sesión en una cookie HttpOnly.
+  const login = async (
+    email: string,
+    password?: string,
+    remember = true
+  ): Promise<{ success: boolean; message?: string; code?: string }> => {
+    if (!isSupabaseConfigured()) {
+      return { success: false, message: 'La plataforma no está conectada a la base de datos.' };
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes('@') || !password) {
+      return { success: false, message: 'Ingresa tu correo electrónico y tu contraseña.' };
+    }
+    try {
+      const r = await authRequest<{ session: ClientSession }>('login', { email: cleanEmail, password, remember });
+      setAuthSession(r.session);
+      supabase.realtime.setAuth(r.session.access_token);
+      const user = await loadSessionProfile(r.session.user.id);
+      return { success: true, message: user ? `¡Bienvenido nuevamente, ${user.fullName.split(' ')[0]}!` : undefined };
+    } catch (err) {
+      if (err instanceof AuthApiError) return { success: false, message: err.message, code: err.code };
+      return { success: false, message: 'No se pudo iniciar sesión. Inténtalo nuevamente.' };
+    }
+  };
+
+  // Cierre de sesión: el servidor revoca el token en Supabase y borra la cookie.
+  const logout = async () => {
+    try {
+      await authRequest('logout', {}, true);
+    } catch (err) {
+      console.warn('No se pudo cerrar la sesión en el servidor:', err);
+    }
+    setAuthSession(null);
+    supabase.realtime.setAuth(null);
+    setCurrentUser(null);
+    setAllUsers([]);
+  };
+
+  // Registro: el servidor crea la cuenta SIN activarla y envía un código al correo.
+  // La cuenta solo queda activa (y con sesión) al validar ese código en verifyEmail().
   const register = async (userData: {
     firstNames: string;
     surnames: string;
@@ -708,186 +585,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isAtLeast18(userData.birthDate || '')) {
       return { success: false, message: 'Debes tener 18 años o más para crear una cuenta.' };
     }
-
-    const cleanEmail = userData.email.trim().toLowerCase();
-    const cleanRut = userData.rut.replace(/[^0-9k]/gi, '').toLowerCase();
-
-    // 1. Registro con Supabase Auth si está configurado
-    if (isSupabaseConfigured()) {
-      if (!userData.password) {
-        return { success: false, message: 'Debes ingresar una contraseña.' };
-      }
-      const userPassword = userData.password;
-
-      // Comprobación previa: con la confirmación de correo activa, Supabase Auth no
-      // devuelve error al repetir un correo, así que se consulta antes de crear la cuenta.
-      const { data: availability, error: availabilityError } = await supabase.rpc('check_signup_availability', {
-        p_email: cleanEmail,
-        p_rut: userData.rut,
-      });
-      if (availabilityError) {
-        console.warn('No se pudo verificar la disponibilidad de correo/RUT:', availabilityError.message);
-      } else {
-        const row = Array.isArray(availability) ? availability[0] : availability;
-        if (row?.email_taken) {
-          return { success: false, message: DUPLICATE_EMAIL_MESSAGE };
-        }
-        if (row?.rut_taken) {
-          return { success: false, message: DUPLICATE_RUT_MESSAGE };
-        }
-      }
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: userPassword,
-        options: {
-          data: {
-            full_name: userData.fullName,
-            first_names: userData.firstNames,
-            surnames: userData.surnames,
-            rut: userData.rut,
-            phone: userData.phone,
-            role: userData.role,
-            owner_terms_accepted: userData.role === 'owner' ? userData.agreedTerms : false,
-            gender: userData.gender,
-            birth_date: userData.birthDate,
-          },
-        },
-      });
-
-      if (authError) {
-        console.error('Error al registrar usuario en Supabase Auth:', authError.message);
-        const msg = authError.message.toLowerCase();
-        return {
-          success: false,
-          message: msg.includes('already registered') || msg.includes('already exists')
-            ? DUPLICATE_EMAIL_MESSAGE
-            : msg.includes('database error')
-              // El trigger handle_new_user falla por el índice único de RUT.
-              ? 'No se pudo crear la cuenta: el RUT o el correo ya están registrados en Spotly. Si ya tienes una cuenta, inicia sesión o recupera tu contraseña.'
-              : authError.message,
-        };
-      }
-
-      // Correo ya registrado: Supabase devuelve un usuario "ficticio" sin identidades
-      // y sin error (para no revelar qué correos existen). No es una cuenta nueva.
-      if (authData.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0) {
-        return { success: false, message: DUPLICATE_EMAIL_MESSAGE };
-      }
-
-      if (authData.user && !authData.session) {
-        return {
-          success: true,
-          requiresEmailConfirmation: true,
-          message: 'Cuenta creada. Confirma tu correo electrónico y luego inicia sesión.',
-        };
-      }
-
-      const assignedId = authData.user?.id || `usr-custom-${Date.now()}`;
-      const newUser: UserProfile = {
-        id: assignedId,
-        fullName: userData.fullName,
+    if (!isSupabaseConfigured()) {
+      return { success: false, message: 'La plataforma no está conectada a la base de datos.' };
+    }
+    if (!userData.password) {
+      return { success: false, message: 'Debes ingresar una contraseña.' };
+    }
+    try {
+      const r = await authRequest<{ message?: string }>('signup', {
+        email: userData.email.trim().toLowerCase(),
+        password: userData.password,
         firstNames: userData.firstNames,
         surnames: userData.surnames,
-        email: cleanEmail,
         rut: userData.rut,
         phone: userData.phone,
+        role: userData.role,
+        agreedTerms: userData.agreedTerms,
         gender: userData.gender,
         birthDate: userData.birthDate,
-        avatarUrl: undefined,
-        role: userData.role,
-        ownerTermsAccepted: userData.role === 'owner' ? userData.agreedTerms : false,
-        ownerApplicationDate: userData.role === 'owner' ? new Date().toISOString() : undefined,
-        verificationStatus: 'unverified',
-        createdAt: new Date().toISOString(),
-      };
-
-      // Guardar o actualizar registro en la tabla profiles
-      await updateProfileInDb(assignedId, newUser);
-
-      setAllUsers((prev) => [newUser, ...prev]);
-      setCurrentUser(newUser);
-
-      setNotifications((prev) => [
-        {
-          id: `notif-${Date.now()}`,
-          userId: newUser.id,
-          title: '¡Bienvenido a Spotly Chile!',
-          message: `¡Hola ${newUser.fullName}! Tu cuenta ha sido activada en Supabase Auth. Ya puedes explorar y reservar espacios o verificar tu identidad.`,
-          type: 'success',
-          timestamp: new Date().toISOString(),
-          read: false,
-        },
-        ...prev,
-      ]);
-
-      return {
-        success: true,
-        message: '¡Cuenta registrada con éxito!',
-      };
+      });
+      return { success: true, requiresEmailConfirmation: true, message: r.message };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'No fue posible completar el registro.' };
     }
+  };
 
-    // 2. Fallback de desarrollo en memoria
-    const existing = allUsers.find(
-      (u) =>
-        u.email.toLowerCase() === cleanEmail ||
-        u.rut.replace(/[^0-9k]/gi, '').toLowerCase() === cleanRut
-    );
-
-    if (existing) {
-      return {
-        success: false,
-        message: existing.email.toLowerCase() === cleanEmail ? DUPLICATE_EMAIL_MESSAGE : DUPLICATE_RUT_MESSAGE,
-      };
+  // Valida el código enviado al correo; si es correcto la cuenta queda activa y con sesión.
+  const verifyEmail = async (email: string, code: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const r = await authRequest<{ session: ClientSession }>('verify', { email: email.trim().toLowerCase(), code: code.trim() });
+      setAuthSession(r.session);
+      supabase.realtime.setAuth(r.session.access_token);
+      const user = await loadSessionProfile(r.session.user.id);
+      if (user) {
+        addAuditRecord('USER_REGISTERED', 'security', { userId: user.id, userEmail: user.email, userRole: user.role });
+      }
+      return { success: true, message: '¡Correo verificado! Tu cuenta ya está activa.' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'No se pudo verificar el código.' };
     }
+  };
 
-    const newUser: UserProfile = {
-      id: `usr-custom-${Date.now()}`,
-      fullName: userData.fullName,
-      firstNames: userData.firstNames,
-      surnames: userData.surnames,
-      email: cleanEmail,
-      rut: userData.rut,
-      phone: userData.phone,
-      gender: userData.gender,
-      birthDate: userData.birthDate,
-      avatarUrl: undefined,
-      role: userData.role,
-      ownerTermsAccepted: userData.role === 'owner' ? userData.agreedTerms : false,
-      ownerApplicationDate: userData.role === 'owner' ? new Date().toISOString() : undefined,
-      verificationStatus: 'unverified',
-      createdAt: new Date().toISOString(),
-    };
+  const resendVerificationCode = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const r = await authRequest<{ message?: string }>('resend', { email: email.trim().toLowerCase() });
+      return { success: true, message: r.message };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'No se pudo reenviar el código.' };
+    }
+  };
 
-    setAllUsers((prev) => [newUser, ...prev]);
-    setCurrentUser(newUser);
+  const requestPasswordReset = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const r = await authRequest<{ message?: string }>('forgot', { email: email.trim().toLowerCase() });
+      return { success: true, message: r.message };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'No se pudo enviar el enlace.' };
+    }
+  };
 
-    addAuditRecord('USER_REGISTERED', 'security', {
-      userId: newUser.id,
-      userEmail: newUser.email,
-      userRole: newUser.role,
-      ownerTermsAccepted: newUser.ownerTermsAccepted,
-      gender: newUser.gender,
-      birthDate: newUser.birthDate,
-    });
-
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        userId: newUser.id,
-        title: '¡Bienvenido a Spotly Chile!',
-        message: `¡Hola ${newUser.fullName}! Tu cuenta ha sido activada con éxito. Ya puedes explorar y reservar espacios o verificar tu identidad con tu carnet de identidad.`,
-        type: 'success',
-        timestamp: new Date().toISOString(),
-        read: false,
-      },
-      ...prev,
-    ]);
-
-    return {
-      success: true,
-      message: '¡Cuenta registrada con éxito!',
-    };
+  const resetPassword = async (
+    link: { token_hash?: string; access_token?: string },
+    password: string
+  ): Promise<{ success: boolean; message?: string; code?: string }> => {
+    try {
+      const r = await authRequest<{ message?: string }>('reset', { ...link, password });
+      // Por seguridad el servidor cierra todas las sesiones de la cuenta.
+      setAuthSession(null);
+      setCurrentUser(null);
+      return { success: true, message: r.message };
+    } catch (err) {
+      if (err instanceof AuthApiError) return { success: false, message: err.message, code: err.code };
+      return { success: false, message: 'No se pudo guardar la contraseña.' };
+    }
   };
 
   // Actualizar perfil de usuario (Mi Cuenta y Supabase)
@@ -1963,6 +1733,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         logout,
         register,
+        verifyEmail,
+        resendVerificationCode,
+        requestPasswordReset,
+        resetPassword,
         updateUserProfile,
         updateUserRole,
         upgradeTenantToOwner,

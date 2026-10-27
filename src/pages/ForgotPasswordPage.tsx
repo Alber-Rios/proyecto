@@ -1,128 +1,96 @@
 import React, { useState } from 'react';
+import { ArrowLeft, ArrowRight, KeyRound, Loader2, Mail } from 'lucide-react';
+import { useApp } from '../context/AppContext.tsx';
 import { useGuestOnly } from '../hooks/useGuestOnly.ts';
-import {
-  KeyRound,
-  Mail,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  AlertCircle,
-  Building2,
-  ShieldCheck,
-} from 'lucide-react';
+import { AuthAlert, AuthCard, inputClass, primaryButton } from '../components/AuthCard.tsx';
 
 interface ForgotPasswordPageProps {
   onNavigate: (view: string) => void;
 }
 
+// Paso 1 de la recuperación: se pide el correo y el servidor envía un enlace de un solo uso.
+// La respuesta es la misma exista o no la cuenta, para no revelar qué correos están registrados.
 export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onNavigate }) => {
+  const { requestPasswordReset } = useApp();
   const { redirecting } = useGuestOnly();
-  const [emailOrRut, setEmailOrRut] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (!emailOrRut.trim()) {
-      setError('Por favor ingresa tu correo electrónico o RUT registrado.');
+    const clean = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clean)) {
+      setError('Ingresa el correo electrónico con el que te registraste.');
       return;
     }
-
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSent(true);
-    }, 900);
+    const r = await requestPasswordReset(clean);
+    setLoading(false);
+    if (r.success) setSent(r.message || 'Si el correo está registrado, te enviamos un enlace.');
+    else setError(r.message || 'No se pudo enviar el enlace.');
   };
 
   if (redirecting) return null;
 
   return (
-    <div className="max-w-xl mx-auto py-4 sm:py-8">
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl p-5 sm:p-8 space-y-5">
-        <div className="text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
-            <KeyRound className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Recuperar contraseña</h1>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Ingresa tu correo electrónico o RUT asociado a tu cuenta de Spotly Chile y te enviaremos un enlace seguro para restablecer tu clave.
-          </p>
-        </div>
-
-        {error && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-2xl flex items-center gap-2 font-medium">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {sent ? (
-          <div className="space-y-6 text-center py-4 animate-fadeIn">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-bold text-slate-900">¡Enlace de recuperación enviado!</h3>
-              <p className="text-xs text-slate-600 max-w-xs mx-auto">
-                Hemos enviado un correo a <strong>{emailOrRut}</strong> con las instrucciones para restablecer tu clave. Revisa también tu bandeja de spam.
-              </p>
-            </div>
-            <button
-              onClick={() => onNavigate('login')}
-              className="px-6 py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-2xl transition inline-flex items-center gap-2 cursor-pointer shadow-md"
-            >
+    <AuthCard
+      icon={<KeyRound className="w-7 h-7" />}
+      title="Recuperar contraseña"
+      description="Escribe el correo de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva."
+    >
+      {error && <AuthAlert kind="error">{error}</AuthAlert>}
+      {sent ? (
+        <div className="space-y-5 text-center">
+          <AuthAlert kind="success">
+            {sent}
+            <span className="block mt-1 font-normal">El enlace vence en 1 hora y solo funciona una vez.</span>
+          </AuthAlert>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <button type="button" onClick={() => setSent(null)} className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 cursor-pointer">
+              Usar otro correo
+            </button>
+            <button type="button" onClick={() => onNavigate('login')} className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-black inline-flex items-center justify-center gap-2 cursor-pointer">
               <ArrowLeft className="w-4 h-4" /> Volver a iniciar sesión
             </button>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Correo electrónico o RUT
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  name="spotly_recovery_id"
-                  required
-                  autoComplete="off"
-                  data-temp-mail-org="0"
-                  data-lpignore="true"
-                  data-1p-ignore="true"
-                  data-form-type="other"
-                  value={emailOrRut}
-                  onChange={(e) => setEmailOrRut(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl text-xs text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium !bg-none"
-                />
-              </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <div>
+            <label htmlFor="recovery-email" className="block text-sm font-medium text-stone-700 mb-1.5">
+              Correo electrónico
+            </label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                id="recovery-email"
+                type="email"
+                name="email"
+                required
+                autoComplete="email"
+                inputMode="email"
+                maxLength={254}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`${inputClass} pl-10`}
+              />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>{loading ? 'Enviando enlace...' : 'Enviar instrucciones de recuperación'}</span>
-              <ArrowRight className="w-4 h-4" />
+          </div>
+          <button type="submit" disabled={loading} className={primaryButton}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            <span>{loading ? 'Enviando…' : 'Enviar enlace de recuperación'}</span>
+            {!loading && <ArrowRight className="w-4 h-4" />}
+          </button>
+          <div className="text-center">
+            <button type="button" onClick={() => onNavigate('login')} className="text-xs font-bold text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 cursor-pointer">
+              <ArrowLeft className="w-3.5 h-3.5" /> Volver al inicio de sesión
             </button>
-
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => onNavigate('login')}
-                className="text-xs font-bold text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Volver al inicio de sesión
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+          </div>
+        </form>
+      )}
+    </AuthCard>
   );
 };

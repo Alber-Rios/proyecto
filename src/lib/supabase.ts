@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getAccessToken, getSession } from './authSession.ts';
 import { normalizeCategory } from '../utils/spaceCategories.ts';
 import {
   UserProfile,
@@ -33,17 +34,19 @@ export const isSupabaseConfigured = (): boolean => {
 const fallbackUrl = 'https://placeholder-spotly-supabase.supabase.co';
 const fallbackKey = 'placeholder-anon-key-spotly';
 
+// La sesión la maneja el servidor (/api/auth) con una cookie HttpOnly; el cliente de
+// Supabase solo recibe el token de acceso vigente, que vive en memoria
+// (src/lib/authSession.ts). Sin sesión se usa la llave pública (anon).
 export const supabase: SupabaseClient = createClient(
   isSupabaseConfigured() ? envUrl : fallbackUrl,
   isSupabaseConfigured() ? envKey : fallbackKey,
   {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
+    accessToken: async () => (await getAccessToken()) ?? null,
   }
 );
+
+/** Id del usuario con sesión abierta (o null). */
+export const currentSessionUserId = (): string | null => getSession()?.user.id ?? null;
 
 // ==============================================================================
 // MAPEO Y FUNCIONES DE ACCESO A DATOS (SUPABASE DB CRUD)

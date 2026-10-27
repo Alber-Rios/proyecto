@@ -1,6 +1,6 @@
 // Navegación alrededor del inicio de sesión: a dónde volver y qué rutas son de acceso.
 
-export const AUTH_PATHS = ['/login', '/register', '/forgot-password'];
+export const AUTH_PATHS = ['/login', '/register', '/forgot-password', '/verificar-correo', '/restablecer-contrasena'];
 
 export const isAuthPath = (path: string) => AUTH_PATHS.includes(path);
 

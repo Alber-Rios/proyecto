@@ -12,6 +12,10 @@
 -- de cuentas y mantenimiento automático con pg_cron.
 --
 -- También incluye (octubre 2026):
+--   · Registro con verificación de correo: la cuenta se crea sin activar y se activa
+--     al ingresar el código enviado por correo (/api/auth). Las cuentas sin verificar
+--     se eliminan a las 24 h (purge_unconfirmed_accounts en run_maintenance).
+--     check_signup_availability y auth_account_status solo las ejecuta el backend.
 --   · Registro sin duplicados: RPC check_signup_availability(correo, rut) para el
 --     formulario + índice único de RUT normalizado (12.345.678-5 = 123456785).
 --   · Tiempo real con carga mínima: trigger broadcast_change que avisa
@@ -1008,6 +1012,38 @@ AS $$
       SELECT 1 FROM public.profiles p
       WHERE public.normalize_rut(p.rut) = public.normalize_rut(left(p_rut, 20))
     );
+$$;
+
+-- Estado de la cuenta de Auth para un correo (solo backend). Permite reemplazar un
+-- registro que nunca validó su correo y no enviar enlaces a cuentas inexistentes.
+CREATE FUNCTION public.auth_account_status(p_email TEXT)
+RETURNS TABLE (user_id UUID, email_confirmed BOOLEAN, created_at TIMESTAMPTZ)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT u.id, (u.email_confirmed_at IS NOT NULL), u.created_at
+  FROM auth.users u
+  WHERE lower(u.email) = left(lower(trim(COALESCE(p_email, ''))), 320)
+  LIMIT 1;
+$$;
+
+-- Las cuentas que no validaron su correo en 24 horas se eliminan (y con ellas su
+-- perfil, por ON DELETE CASCADE): un registro sin verificar no queda guardado.
+CREATE FUNCTION public.purge_unconfirmed_accounts()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  DELETE FROM auth.users
+  WHERE email_confirmed_at IS NULL
+    AND created_at < now() - interval '24 hours';
+EXCEPTION WHEN insufficient_privilege THEN
+  RAISE NOTICE 'Sin permiso para depurar auth.users; se omite.';
+END;
 $$;
 
 -- ---------- Guardas de perfil ----------
@@ -2316,6 +2352,7 @@ BEGIN
   PERFORM public.release_expired_payment_holds(NULL);
   PERFORM public.expire_unanswered_requests();
   PERFORM public.purge_old_login_attempts();
+  PERFORM public.purge_unconfirmed_accounts();
   DELETE FROM public.space_views WHERE created_at < now() - interval '400 days';
   DELETE FROM public.notifications WHERE read AND created_at < now() - interval '180 days';
 END;
@@ -3307,7 +3344,8 @@ GRANT EXECUTE ON FUNCTION public.request_ip() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.request_user_agent() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.is_trusted_context() TO anon, authenticated;
 -- RPC públicas de la aplicación.
-GRANT EXECUTE ON FUNCTION public.check_signup_availability(TEXT, TEXT) TO anon, authenticated;
+-- check_signup_availability y auth_account_status solo las usa el backend (/api/auth):
+-- no se exponen al navegador para que nadie pueda averiguar qué correos o RUT existen.
 GRANT EXECUTE ON FUNCTION public.get_space_occupancy(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_delete_space(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticated;

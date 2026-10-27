@@ -252,3 +252,52 @@ El script incluye:
 | `ONECLICK_API_KEY` | Llave secreta entregada por Transbank |
 
 Spotly nunca recibe el número de la tarjeta: Transbank entrega un identificador (`tbk_user`) que solo lee el backend.
+
+## Actualización 2026-10-27: verificación de correo, recuperación de contraseña y sesión en cookie
+
+### Qué cambió
+- **Registro con código:** al registrarse la cuenta se crea **sin activar** y se envía un código de 6 dígitos al correo. Solo al escribir el código en `/verificar-correo` la cuenta queda activa y con sesión. Las cuentas que no validan su correo se eliminan a las 24 h.
+- **Recuperar contraseña:** en `/forgot-password` se escribe el correo y llega un enlace de un solo uso (vence en 1 h) que abre `/restablecer-contrasena`. Al guardar la nueva contraseña se cierran todas las sesiones de la cuenta.
+- **Contraseñas:** Supabase Auth las guarda solo como hash **bcrypt** con sal (irreversible). Spotly nunca las guarda ni las registra. Política: 8 a 72 caracteres, minúscula, mayúscula, número, sin nombre/correo/RUT y no comunes (se valida en el navegador y en el servidor).
+- **Sesión en cookie protegida:** el token largo vive en la cookie `spotly_rt` con `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`. JavaScript no puede leerla. El navegador solo guarda en memoria el token de acceso de 1 hora. Ya no hay tokens en `localStorage`.
+- **Anti-CSRF:** `/api/auth` exige la cabecera `X-Spotly-Request` y un `Origin` del mismo sitio.
+- **Cabeceras de seguridad:** Content-Security-Policy estricta (sin scripts en línea), HSTS, COOP, CORP, X-Frame-Options, Referrer-Policy y Permissions-Policy (`vercel.json` y `server.ts`, generadas desde `api/_security.ts`).
+- **Bloqueo por intentos:** login (5 por correo + IP), códigos (5 por correo + IP), reenvíos y enlaces de recuperación.
+
+### 1. Base de datos
+Si tu base ya tiene datos, ejecuta en **SQL Editor** el parche no destructivo `supabase/patch-2026-10-27-seguridad-acceso.sql`. (Si ejecutas `reset-and-setup.sql` completo, ya viene incluido.)
+
+### 2. Supabase → Authentication
+1. **Sign In / Providers → Email:** activa **Confirm email**. Deja **Email OTP Length = 6** y **Email OTP Expiration = 900** segundos (15 min).
+2. **Password requirements:** mínimo **8** y *Lowercase, uppercase letters and digits*. En plan Pro activa **Prevent use of leaked passwords**.
+3. **URL Configuration:** **Site URL** = tu dominio (ej. `https://proyecto.vercel.app`) y en **Redirect URLs** agrega `https://TU-DOMINIO/restablecer-contrasena` y `https://TU-DOMINIO/verificar-correo` (y `http://localhost:3000/...` para desarrollo).
+
+### 3. Envío de correos (elige una opción)
+**Opción A — Resend (recomendada, correos con la marca Spotly):**
+1. Crea una cuenta en resend.com, verifica tu dominio y crea una API key.
+2. En Vercel agrega `RESEND_API_KEY` y `EMAIL_FROM` (ej. `Spotly <no-responder@tudominio.cl>`).
+   Sin dominio propio, Resend solo permite enviar a tu propio correo (sirve para pruebas).
+
+**Opción B — Correos de Supabase:**
+1. **Authentication → Emails → SMTP Settings:** configura un SMTP propio (por ejemplo Gmail con una *contraseña de aplicación*: host `smtp.gmail.com`, puerto `465`). El SMTP incluido en Supabase solo entrega correos a los miembros del equipo del proyecto.
+2. **Email Templates → Confirm signup:** el cuerpo debe incluir el código:
+   ```html
+   <h2>Confirma tu correo en Spotly</h2>
+   <p>Tu código de verificación es:</p>
+   <p style="font-size:28px;font-weight:bold;letter-spacing:6px">{{ .Token }}</p>
+   <p>Vence en 15 minutos. Si no fuiste tú, ignora este correo.</p>
+   ```
+3. **Email Templates → Reset password:**
+   ```html
+   <h2>Restablece tu contraseña de Spotly</h2>
+   <p><a href="{{ .SiteURL }}/restablecer-contrasena?token_hash={{ .TokenHash }}&type=recovery">Crear nueva contraseña</a></p>
+   <p>El enlace vence en 1 hora y solo funciona una vez.</p>
+   ```
+
+### 4. Despliegue
+La web y `/api` deben estar en el **mismo dominio** (Vercel lo hace por defecto) para que la cookie `SameSite=Strict` funcione. Si separas la API, define `CORS_ORIGIN` con el dominio exacto del frontend.
+
+### 5. Comprobar
+- Registrarte con un correo real: debe llegar el código y la cuenta no debe poder entrar antes de validarlo.
+- En las herramientas del navegador (F12 → Application → Cookies) la cookie `spotly_rt` aparece con **HttpOnly**, **Secure** y **SameSite Strict**, y `localStorage` no contiene tokens.
+- `npm test` (88 pruebas, incluidas las de `/api/auth` y las cabeceras de seguridad).

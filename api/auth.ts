@@ -1,15 +1,37 @@
-// Inicio de sesión controlado por el servidor (RNF-04, RF-32, RF-33).
+// Autenticación de Spotly controlada por el servidor (RNF-04, RF-32, RF-33).
 //
-//   POST /api/auth?action=login   { email, password }
+//   POST /api/auth?action=login     { email, password, remember }  → inicia sesión
+//   POST /api/auth?action=refresh                                   → renueva la sesión con la cookie
+//   POST /api/auth?action=logout                                    → cierra la sesión y borra la cookie
+//   POST /api/auth?action=signup    { email, password, ...datos }   → crea la cuenta SIN activarla y envía un código
+//   POST /api/auth?action=verify    { email, code }                 → valida el código y abre la sesión
+//   POST /api/auth?action=resend    { email }                       → reenvía el código
+//   POST /api/auth?action=forgot    { email }                       → envía el enlace para restablecer la contraseña
+//   POST /api/auth?action=reset     { token_hash | access_token, password } → guarda la nueva contraseña
 //
-// Aplica el bloqueo temporal por intentos fallidos (por correo + IP y un límite
-// global por IP), rechaza cuentas suspendidas y registra el evento en la
-// auditoría con la IP real del cliente. Las funciones de bloqueo de la base solo
-// las puede ejecutar este backend (service_role).
+// Seguridad:
+// · Las contraseñas las guarda Supabase Auth solo como hash bcrypt (con sal); no se pueden revertir.
+// · La sesión larga (refresh token) vive en una cookie HttpOnly + Secure + SameSite=Strict
+//   limitada a /api/auth: JavaScript no la puede leer, así que un script inyectado no puede robarla.
+//   El navegador solo recibe el token de acceso corto (1 hora), que se guarda en memoria.
+// · Bloqueo por intentos fallidos (correo + IP y límite global por IP) para login, códigos y recuperación.
+// · Respuestas genéricas en "forgot" y "resend" para no revelar qué correos existen.
+// · Todas las acciones exigen la cabecera X-Spotly-Request y un Origin del mismo sitio (anti-CSRF).
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { passwordProblem } from '../src/utils/passwordPolicy.ts';
+import { emailSenderConfigured, resetEmail, sendEmail, verificationEmail } from './_email.ts';
 
 const GENERIC_ERROR = 'Credenciales inválidas. Revisa tu correo electrónico o contraseña.';
+const REFRESH_COOKIE = 'spotly_rt';
+const REMEMBER_COOKIE = 'spotly_rm';
+const COOKIE_PATH = '/api/auth';
+const REMEMBER_SECONDS = 60 * 60 * 24 * 30; // 30 días
+const CODE_MINUTES = 15;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+type Action = 'login' | 'refresh' | 'logout' | 'signup' | 'verify' | 'resend' | 'forgot' | 'reset';
+const ACTIONS: Action[] = ['login', 'refresh', 'logout', 'signup', 'verify', 'resend', 'forgot', 'reset'];
 
 function clientIp(req: VercelRequest): string {
   const forwarded = String(req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '');
@@ -25,14 +47,445 @@ function lockedMessage(until?: string | null): string {
   }.`;
 }
 
+// ---------- Cookies ----------
+function readCookie(req: VercelRequest, name: string): string | null {
+  const raw = String(req.headers.cookie || '');
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i > -1 && part.slice(0, i).trim() === name) {
+      try {
+        return decodeURIComponent(part.slice(i + 1).trim());
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function cookie(name: string, value: string, maxAge: number | null): string {
+  // __Host- no se usa porque exige Path=/; limitar la ruta a /api/auth reduce más la exposición.
+  const parts = [`${name}=${encodeURIComponent(value)}`, `Path=${COOKIE_PATH}`, 'HttpOnly', 'Secure', 'SameSite=Strict', 'Priority=High'];
+  if (maxAge !== null) parts.push(`Max-Age=${maxAge}`);
+  return parts.join('; ');
+}
+
+function setSessionCookies(res: VercelResponse, session: Session, remember: boolean) {
+  const age = remember ? REMEMBER_SECONDS : null; // null = se borra al cerrar el navegador
+  res.setHeader('Set-Cookie', [cookie(REFRESH_COOKIE, session.refresh_token, age), cookie(REMEMBER_COOKIE, remember ? '1' : '0', age)]);
+}
+
+function clearSessionCookies(res: VercelResponse) {
+  res.setHeader('Set-Cookie', [cookie(REFRESH_COOKIE, '', 0), cookie(REMEMBER_COOKIE, '', 0)]);
+}
+
+// Lo único que recibe el navegador: token de acceso corto y datos básicos del usuario.
+const publicSession = (s: Session) => ({
+  access_token: s.access_token,
+  expires_at: s.expires_at ?? Math.floor(Date.now() / 1000) + (s.expires_in || 3600),
+  user: { id: s.user.id, email: s.user.email },
+});
+
+// ---------- Anti-CSRF ----------
+function sameSiteRequest(req: VercelRequest): boolean {
+  if (req.headers['x-spotly-request'] !== '1') return false;
+  const origin = String(req.headers.origin || '');
+  if (!origin) return true; // algunos navegadores omiten Origin en mismo origen
+  try {
+    const o = new URL(origin);
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
+    const allowed = (process.env.CORS_ORIGIN || '').split(',').map((x) => x.trim()).filter((x) => x && x !== '*');
+    return o.host === host || allowed.includes(origin);
+  } catch {
+    return false;
+  }
+}
+
+function appUrl(req: VercelRequest): string {
+  const configured = (process.env.PUBLIC_APP_URL || '').replace(/\/$/, '');
+  if (configured) return configured;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000');
+  const proto = String(req.headers['x-forwarded-proto'] || (host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https'));
+  return `${proto.split(',')[0]}://${host}`;
+}
+
+// ---------- Utilidades de Supabase ----------
+interface Ctx {
+  req: VercelRequest;
+  res: VercelResponse;
+  admin: SupabaseClient;
+  newAuthClient: () => SupabaseClient;
+  ip: string;
+  userAgent: string;
+}
+
+async function audit(ctx: Ctx, action: string, severity: string, userId: string, details: Record<string, unknown> = {}) {
+  await ctx.admin
+    .rpc('write_audit', { p_action: action, p_severity: severity, p_user_id: userId, p_details: details, p_ip: ctx.ip, p_user_agent: ctx.userAgent })
+    .then(() => undefined, () => undefined);
+}
+
+async function isLocked(ctx: Ctx, key: string) {
+  const { data } = await ctx.admin.rpc('login_lock_status', { p_email: key, p_ip: ctx.ip });
+  return data?.locked ? (data.locked_until as string | null) || '' : null;
+}
+
+async function accountStatus(ctx: Ctx, email: string): Promise<{ user_id: string; email_confirmed: boolean; created_at: string } | null> {
+  const { data, error } = await ctx.admin.rpc('auth_account_status', { p_email: email });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return row?.user_id ? row : null;
+}
+
+const isConfirmedUser = (u: { email_confirmed_at?: string | null; confirmed_at?: string | null }) =>
+  Boolean(u.email_confirmed_at || u.confirmed_at);
+
+// Envía (o reenvía) el código de verificación. Con Resend el correo lo arma Spotly;
+// sin Resend lo envía Supabase con la plantilla "Confirm signup" (que debe incluir {{ .Token }}).
+async function sendVerificationCode(ctx: Ctx, email: string, name: string, signup?: { password: string; data: Record<string, unknown> }) {
+  if (emailSenderConfigured()) {
+    const { data, error } = signup
+      ? await ctx.admin.auth.admin.generateLink({ type: 'signup', email, password: signup.password, options: { data: signup.data } })
+      : await ctx.admin.auth.admin.generateLink({ type: 'magiclink', email });
+    if (error || !data?.properties?.email_otp) throw new Error(error?.message || 'No se pudo generar el código.');
+    const ok = await sendEmail(email, verificationEmail(name, data.properties.email_otp, CODE_MINUTES));
+    if (!ok) throw new Error('No se pudo enviar el correo de verificación.');
+    return;
+  }
+  const authClient = ctx.newAuthClient();
+  if (signup) {
+    const { data, error } = await authClient.auth.signUp({ email, password: signup.password, options: { data: signup.data, emailRedirectTo: `${appUrl(ctx.req)}/verificar-correo` } });
+    if (error) throw new Error(error.message);
+    // Si el proyecto tiene desactivada la confirmación de correo, Supabase activa la cuenta
+    // al instante: se cierra esa sesión para que nadie entre sin validar el correo.
+    if (data.session) await authClient.auth.signOut().catch(() => undefined);
+    return;
+  }
+  const { error } = await authClient.auth.resend({ type: 'signup', email, options: { emailRedirectTo: `${appUrl(ctx.req)}/verificar-correo` } });
+  if (error) throw new Error(error.message);
+}
+
+// ---------- Acciones ----------
+async function login(ctx: Ctx) {
+  const { req, res, admin, ip } = ctx;
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '');
+  const remember = req.body?.remember !== false;
+  if (!email || !password) return res.status(400).json({ success: false, message: GENERIC_ERROR });
+
+  const locked = await isLocked(ctx, email);
+  if (locked !== null) return res.status(429).json({ success: false, message: lockedMessage(locked) });
+
+  const authClient = ctx.newAuthClient();
+  const { data, error } = await authClient.auth.signInWithPassword({ email, password });
+
+  if (error || !data.session || !data.user) {
+    if (error?.message.toLowerCase().includes('email not confirmed')) {
+      return res.status(403).json({ success: false, code: 'EMAIL_NOT_CONFIRMED', message: 'Tu correo aún no está verificado. Ingresa el código que te enviamos.' });
+    }
+    const { data: attempt } = await admin.rpc('register_failed_login', { p_email: email, p_ip: ip });
+    await audit(ctx, 'LOGIN_FAILED', 'warning', 'anonymous', { email });
+    if (attempt?.locked) return res.status(429).json({ success: false, message: lockedMessage(attempt.locked_until) });
+    return res.status(401).json({ success: false, message: GENERIC_ERROR });
+  }
+
+  // Aunque el proyecto tenga desactivada la confirmación, Spotly exige el correo verificado.
+  if (!isConfirmedUser(data.user)) {
+    await authClient.auth.signOut().catch(() => undefined);
+    return res.status(403).json({ success: false, code: 'EMAIL_NOT_CONFIRMED', message: 'Tu correo aún no está verificado. Ingresa el código que te enviamos.' });
+  }
+
+  const { data: profile } = await admin.from('profiles').select('is_suspended, suspended_reason').eq('id', data.user.id).maybeSingle();
+  if (profile?.is_suspended) {
+    await admin.auth.admin.signOut(data.session.access_token, 'global').catch(() => undefined);
+    await audit(ctx, 'LOGIN_BLOCKED_SUSPENDED', 'security', data.user.id);
+    return res.status(403).json({
+      success: false,
+      message: `Tu cuenta está suspendida por administración${profile.suspended_reason ? ` (motivo: ${profile.suspended_reason})` : ''}. Escríbenos desde Ayuda y soporte.`,
+    });
+  }
+
+  await admin.rpc('reset_login_attempts', { p_email: email, p_ip: ip });
+  await audit(ctx, 'USER_LOGGED_IN', 'security', data.user.id, { method: 'password', remember });
+  setSessionCookies(res, data.session, remember);
+  return res.status(200).json({ success: true, session: publicSession(data.session) });
+}
+
+async function refresh(ctx: Ctx) {
+  const { req, res } = ctx;
+  const token = readCookie(req, REFRESH_COOKIE);
+  if (!token) return res.status(200).json({ success: true, session: null });
+  const remember = readCookie(req, REMEMBER_COOKIE) === '1';
+  const { data, error } = await ctx.newAuthClient().auth.refreshSession({ refresh_token: token });
+  if (error || !data.session || !data.user) {
+    clearSessionCookies(res);
+    return res.status(200).json({ success: true, session: null });
+  }
+  const { data: profile } = await ctx.admin.from('profiles').select('is_suspended').eq('id', data.user.id).maybeSingle();
+  if (profile?.is_suspended) {
+    await ctx.admin.auth.admin.signOut(data.session.access_token, 'global').catch(() => undefined);
+    clearSessionCookies(res);
+    return res.status(200).json({ success: true, session: null });
+  }
+  setSessionCookies(res, data.session, remember);
+  return res.status(200).json({ success: true, session: publicSession(data.session) });
+}
+
+async function logout(ctx: Ctx) {
+  const { req, res, admin } = ctx;
+  const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const token = readCookie(req, REFRESH_COOKIE);
+  let accessToken = bearer;
+  if (!accessToken && token) {
+    const { data } = await ctx.newAuthClient().auth.refreshSession({ refresh_token: token });
+    accessToken = data.session?.access_token || '';
+  }
+  if (accessToken) {
+    const { data: u } = await admin.auth.getUser(accessToken);
+    if (u?.user) await audit(ctx, 'USER_LOGGED_OUT', 'info', u.user.id);
+    // Revoca el refresh token en Supabase: la cookie deja de servir aunque alguien la copie.
+    await admin.auth.admin.signOut(accessToken, 'local').catch(() => undefined);
+  }
+  clearSessionCookies(res);
+  return res.status(200).json({ success: true });
+}
+
+async function signup(ctx: Ctx) {
+  const { req, res, admin } = ctx;
+  const b = req.body || {};
+  const email = String(b.email || '').trim().toLowerCase();
+  const password = String(b.password || '');
+  const firstNames = String(b.firstNames || '').trim().slice(0, 120);
+  const surnames = String(b.surnames || '').trim().slice(0, 120);
+  const rut = String(b.rut || '').trim().slice(0, 15);
+  const role = b.role === 'owner' ? 'owner' : 'tenant';
+
+  if (!EMAIL_RE.test(email) || email.length > 254) return res.status(400).json({ success: false, message: 'Ingresa un correo electrónico válido.' });
+  const pwdProblem = passwordProblem(password, { email, names: [firstNames, surnames], rut });
+  if (pwdProblem) return res.status(400).json({ success: false, message: pwdProblem });
+  if (!firstNames || !surnames || !rut) return res.status(400).json({ success: false, message: 'Completa tus nombres, apellidos y RUT.' });
+  if (b.agreedTerms !== true) return res.status(400).json({ success: false, message: 'Debes aceptar los términos y condiciones.' });
+  const birth = String(b.birthDate || '');
+  const adultLimit = new Date();
+  adultLimit.setFullYear(adultLimit.getFullYear() - 18);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || new Date(`${birth}T00:00:00`) > adultLimit) {
+    return res.status(400).json({ success: false, message: 'Debes tener 18 años o más para crear una cuenta.' });
+  }
+
+  const signupKey = `signup:${email}`;
+  const locked = await isLocked(ctx, signupKey);
+  if (locked !== null) return res.status(429).json({ success: false, message: 'Demasiados intentos de registro. Espera unos minutos e inténtalo de nuevo.' });
+
+  // Un registro anterior que nunca validó su correo no cuenta como cuenta: se reemplaza.
+  const existing = await accountStatus(ctx, email);
+  if (existing?.email_confirmed) {
+    return res.status(409).json({ success: false, message: 'Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.' });
+  }
+  if (existing && !existing.email_confirmed) {
+    await admin.auth.admin.deleteUser(existing.user_id).catch(() => undefined);
+  }
+
+  const { data: availability } = await admin.rpc('check_signup_availability', { p_email: email, p_rut: rut });
+  const row = Array.isArray(availability) ? availability[0] : availability;
+  if (row?.email_taken) return res.status(409).json({ success: false, message: 'Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.' });
+  if (row?.rut_taken) return res.status(409).json({ success: false, message: 'Ya existe una cuenta con este RUT. Si es tuya, inicia sesión o recupera tu contraseña.' });
+
+  const data = {
+    full_name: `${firstNames} ${surnames}`.trim(),
+    first_names: firstNames,
+    surnames,
+    rut,
+    phone: String(b.phone || '').slice(0, 30),
+    role,
+    owner_terms_accepted: role === 'owner' && b.agreedTerms === true,
+    gender: String(b.gender || 'prefiero_no_decir'),
+    birth_date: birth,
+  };
+
+  try {
+    await sendVerificationCode(ctx, email, firstNames.split(' ')[0], { password, data });
+  } catch (err) {
+    await admin.rpc('register_failed_login', { p_email: signupKey, p_ip: ctx.ip });
+    const msg = err instanceof Error ? err.message.toLowerCase() : '';
+    console.error('Registro: no se pudo enviar el código', msg);
+    if (msg.includes('database error') || msg.includes('duplicate')) {
+      return res.status(409).json({ success: false, message: 'El RUT o el correo ya están registrados en Spotly.' });
+    }
+    if (msg.includes('rate limit')) {
+      return res.status(429).json({ success: false, message: 'Se enviaron demasiados correos. Espera unos minutos e inténtalo de nuevo.' });
+    }
+    return res.status(502).json({ success: false, message: 'No pudimos enviar el correo de verificación. Inténtalo nuevamente en unos minutos.' });
+  }
+
+  await audit(ctx, 'SIGNUP_CODE_SENT', 'info', 'anonymous', { email, role });
+  return res.status(200).json({ success: true, message: 'Te enviamos un código de verificación a tu correo.' });
+}
+
+async function verify(ctx: Ctx) {
+  const { req, res, admin, ip } = ctx;
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const code = String(req.body?.code || '').replace(/\s+/g, '');
+  if (!EMAIL_RE.test(email) || !/^[0-9A-Za-z]{6,10}$/.test(code)) {
+    return res.status(400).json({ success: false, message: 'Ingresa el código de 6 dígitos que te enviamos.' });
+  }
+  const key = `otp:${email}`;
+  const locked = await isLocked(ctx, key);
+  if (locked !== null) return res.status(429).json({ success: false, message: `${lockedMessage(locked)} Pide un código nuevo más tarde.` });
+
+  const authClient = ctx.newAuthClient();
+  let result = await authClient.auth.verifyOtp({ email, token: code, type: 'email' });
+  if (result.error || !result.data.session) result = await authClient.auth.verifyOtp({ email, token: code, type: 'signup' });
+  const session = result.data.session;
+  if (result.error || !session) {
+    const { data: attempt } = await admin.rpc('register_failed_login', { p_email: key, p_ip: ip });
+    if (attempt?.locked) return res.status(429).json({ success: false, message: lockedMessage(attempt.locked_until) });
+    const expired = (result.error?.message || '').toLowerCase().includes('expired');
+    return res.status(400).json({
+      success: false,
+      message: expired ? 'El código venció. Pide uno nuevo.' : `Código incorrecto. Te quedan ${attempt?.remaining ?? 'pocos'} intentos.`,
+    });
+  }
+  await admin.rpc('reset_login_attempts', { p_email: key, p_ip: ip });
+  await audit(ctx, 'EMAIL_VERIFIED', 'security', session.user.id, {});
+  setSessionCookies(res, session, true);
+  return res.status(200).json({ success: true, session: publicSession(session) });
+}
+
+async function resend(ctx: Ctx) {
+  const { req, res, admin, ip } = ctx;
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const generic = { success: true, message: 'Si tu cuenta está pendiente de verificación, te enviamos un código nuevo.' };
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ success: false, message: 'Ingresa un correo electrónico válido.' });
+  const key = `resend:${email}`;
+  if ((await isLocked(ctx, key)) !== null) return res.status(429).json({ success: false, message: 'Pediste muchos códigos. Espera unos minutos.' });
+  // Cada reenvío cuenta: máximo 5 por correo e IP cada 15 minutos.
+  await admin.rpc('register_failed_login', { p_email: key, p_ip: ip });
+  const status = await accountStatus(ctx, email);
+  if (status && !status.email_confirmed) {
+    const { data: profile } = await admin.from('profiles').select('first_names').eq('id', status.user_id).maybeSingle();
+    await sendVerificationCode(ctx, email, String(profile?.first_names || '').split(' ')[0]).catch((e) => console.error('Reenvío de código:', e));
+  }
+  return res.status(200).json(generic);
+}
+
+async function forgot(ctx: Ctx) {
+  const { req, res, admin, ip } = ctx;
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  // Misma respuesta exista o no la cuenta (no se revela qué correos están registrados).
+  const generic = { success: true, message: 'Si el correo está registrado en Spotly, te enviamos un enlace para crear una nueva contraseña. Revisa también tu carpeta de spam.' };
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ success: false, message: 'Ingresa un correo electrónico válido.' });
+  const key = `reset:${email}`;
+  if ((await isLocked(ctx, key)) !== null) return res.status(429).json({ success: false, message: 'Pediste muchos enlaces. Espera unos minutos e inténtalo de nuevo.' });
+  await admin.rpc('register_failed_login', { p_email: key, p_ip: ip });
+
+  const status = await accountStatus(ctx, email).catch(() => null);
+  if (!status?.email_confirmed) return res.status(200).json(generic);
+
+  const redirect = `${appUrl(req)}/restablecer-contrasena`;
+  try {
+    if (emailSenderConfigured()) {
+      const { data, error } = await admin.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: redirect } });
+      if (error || !data?.properties?.hashed_token) throw new Error(error?.message || 'sin token');
+      const link = `${redirect}?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=recovery`;
+      await sendEmail(email, resetEmail(link, 60));
+    } else {
+      const { error } = await ctx.newAuthClient().auth.resetPasswordForEmail(email, { redirectTo: redirect });
+      if (error) throw new Error(error.message);
+    }
+    await audit(ctx, 'PASSWORD_RESET_REQUESTED', 'security', status.user_id, {});
+  } catch (err) {
+    console.error('Recuperación de contraseña:', err);
+  }
+  return res.status(200).json(generic);
+}
+
+// Lee el payload de un JWT ya validado por Supabase (getUser), para revisar el método de acceso.
+function jwtClaims(token: string): Record<string, any> {
+  try {
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+  } catch {
+    return {};
+  }
+}
+
+async function reset(ctx: Ctx) {
+  const { req, res, admin, ip } = ctx;
+  const password = String(req.body?.password || '');
+  const tokenHash = String(req.body?.token_hash || '');
+  const accessToken = String(req.body?.access_token || '');
+  const invalid = () => res.status(400).json({ success: false, code: 'LINK_INVALID', message: 'El enlace no es válido o ya venció. Pide uno nuevo desde «¿Olvidaste tu contraseña?».' });
+  if (!tokenHash && !accessToken) return invalid();
+  // Se valida la contraseña ANTES de usar el enlace, porque el enlace sirve una sola vez.
+  const basicProblem = passwordProblem(password);
+  if (basicProblem) return res.status(400).json({ success: false, message: basicProblem });
+  if ((await isLocked(ctx, `reset-link:${ip}`)) !== null) return res.status(429).json({ success: false, message: 'Demasiados intentos. Espera unos minutos.' });
+
+  // 1. Comprobar que el enlace es un enlace de recuperación válido.
+  let userId = '';
+  let userEmail = '';
+  let names: string[] = [];
+  if (tokenHash) {
+    const { data, error } = await ctx.newAuthClient().auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    if (error || !data.user || !data.session) {
+      await admin.rpc('register_failed_login', { p_email: `reset-link:${ip}`, p_ip: ip });
+      return invalid();
+    }
+    userId = data.user.id;
+    userEmail = data.user.email || '';
+    names = [String(data.user.user_metadata?.first_names || ''), String(data.user.user_metadata?.surnames || '')];
+    // Se cierran todas las sesiones de la cuenta (incluida la de recuperación):
+    // después se entra con la contraseña nueva.
+    await admin.auth.admin.signOut(data.session.access_token, 'global').catch(() => undefined);
+  } else {
+    const { data, error } = await admin.auth.getUser(accessToken);
+    const amr: Array<{ method?: string }> = jwtClaims(accessToken).amr || [];
+    if (error || !data.user || !amr.some((m) => m.method === 'recovery')) {
+      await admin.rpc('register_failed_login', { p_email: `reset-link:${ip}`, p_ip: ip });
+      return invalid();
+    }
+    userId = data.user.id;
+    userEmail = data.user.email || '';
+    names = [String(data.user.user_metadata?.first_names || ''), String(data.user.user_metadata?.surnames || '')];
+  }
+
+  // 2. Validar y guardar la nueva contraseña (Supabase la guarda como hash bcrypt).
+  const problem = passwordProblem(password, { email: userEmail, names });
+  if (problem) return res.status(400).json({ success: false, message: problem });
+  const { error: updateError } = await admin.auth.admin.updateUserById(userId, { password });
+  if (updateError) {
+    const msg = updateError.message.toLowerCase();
+    return res.status(400).json({
+      success: false,
+      message: msg.includes('same') ? 'La nueva contraseña debe ser distinta de la anterior.' : msg.includes('weak') || msg.includes('pwned') ? 'Esa contraseña es poco segura o apareció en filtraciones conocidas. Elige otra.' : 'No se pudo guardar la contraseña. Inténtalo nuevamente.',
+    });
+  }
+
+  // 3. Cerrar todas las sesiones abiertas de la cuenta (por si alguien más tenía acceso).
+  if (accessToken) await admin.auth.admin.signOut(accessToken, 'global').catch(() => undefined);
+  clearSessionCookies(res);
+  await audit(ctx, 'PASSWORD_RESET_COMPLETED', 'security', userId, {});
+  return res.status(200).json({ success: true, message: 'Tu contraseña se actualizó. Ya puedes iniciar sesión con la nueva.' });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST' || req.query?.action !== 'login') {
+  res.setHeader('Pragma', 'no-cache');
+  const corsOrigin = process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== '*' ? process.env.CORS_ORIGIN : '';
+  if (corsOrigin && req.headers.origin === corsOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', corsOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Spotly-Request');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
+  const action = String(req.query?.action || '') as Action;
+  if (req.method !== 'POST' || !ACTIONS.includes(action)) {
     return res.status(405).json({ success: false, message: 'Method Not Allowed' });
+  }
+  if (!sameSiteRequest(req)) {
+    return res.status(403).json({ success: false, message: 'Solicitud no permitida.' });
   }
 
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -50,86 +503,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const email = String(req.body?.email || '').trim().toLowerCase();
-  const password = String(req.body?.password || '');
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: GENERIC_ERROR });
-  }
-
-  const ip = clientIp(req);
-  const userAgent = String(req.headers['user-agent'] || '').slice(0, 500);
-  const options = { auth: { persistSession: false, autoRefreshToken: false } };
-  const admin = createClient(url, serviceKey, options);
+  const options = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
+  const ctx: Ctx = {
+    req,
+    res,
+    admin: createClient(url, serviceKey, options),
+    newAuthClient: () => createClient(url, anonKey, options),
+    ip: clientIp(req),
+    userAgent: String(req.headers['user-agent'] || '').slice(0, 500),
+  };
 
   try {
-    const { data: lock } = await admin.rpc('login_lock_status', { p_email: email, p_ip: ip });
-    if (lock?.locked) {
-      return res.status(429).json({ success: false, message: lockedMessage(lock.locked_until) });
+    switch (action) {
+      case 'login': return await login(ctx);
+      case 'refresh': return await refresh(ctx);
+      case 'logout': return await logout(ctx);
+      case 'signup': return await signup(ctx);
+      case 'verify': return await verify(ctx);
+      case 'resend': return await resend(ctx);
+      case 'forgot': return await forgot(ctx);
+      case 'reset': return await reset(ctx);
     }
-
-    const authClient = createClient(url, anonKey, options);
-    const { data, error } = await authClient.auth.signInWithPassword({ email, password });
-
-    if (error || !data.session || !data.user) {
-      if (error?.message.toLowerCase().includes('email not confirmed')) {
-        return res.status(401).json({
-          success: false,
-          message: 'Confirma tu correo electrónico desde el mensaje que te enviamos y luego inicia sesión.',
-        });
-      }
-      const { data: attempt } = await admin.rpc('register_failed_login', { p_email: email, p_ip: ip });
-      await admin.rpc('write_audit', {
-        p_action: 'LOGIN_FAILED',
-        p_severity: 'warning',
-        p_user_id: 'anonymous',
-        p_details: { email },
-        p_ip: ip,
-        p_user_agent: userAgent,
-      });
-      if (attempt?.locked) {
-        return res.status(429).json({ success: false, message: lockedMessage(attempt.locked_until) });
-      }
-      return res.status(401).json({ success: false, message: GENERIC_ERROR });
-    }
-
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('is_suspended, suspended_reason')
-      .eq('id', data.user.id)
-      .maybeSingle();
-    if (profile?.is_suspended) {
-      await authClient.auth.signOut().catch(() => undefined);
-      await admin.rpc('write_audit', {
-        p_action: 'LOGIN_BLOCKED_SUSPENDED',
-        p_severity: 'security',
-        p_user_id: data.user.id,
-        p_details: {},
-        p_ip: ip,
-        p_user_agent: userAgent,
-      });
-      return res.status(403).json({
-        success: false,
-        message: `Tu cuenta está suspendida por administración${
-          profile.suspended_reason ? ` (motivo: ${profile.suspended_reason})` : ''
-        }. Escríbenos desde Ayuda y soporte.`,
-      });
-    }
-
-    await admin.rpc('reset_login_attempts', { p_email: email, p_ip: ip });
-    await admin.rpc('write_audit', {
-      p_action: 'USER_LOGGED_IN',
-      p_severity: 'security',
-      p_user_id: data.user.id,
-      p_details: { method: 'password' },
-      p_ip: ip,
-      p_user_agent: userAgent,
-    });
-
-    return res.status(200).json({
-      success: true,
-      session: { access_token: data.session.access_token, refresh_token: data.session.refresh_token },
-    });
-  } catch {
-    return res.status(500).json({ success: false, message: 'No se pudo iniciar sesión. Inténtalo nuevamente.' });
+  } catch (err) {
+    console.error(`/api/auth ${action}:`, err);
+    return res.status(500).json({ success: false, message: 'Ocurrió un error en el servidor. Inténtalo nuevamente.' });
   }
 }

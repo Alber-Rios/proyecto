@@ -14,6 +14,8 @@ import { CookieBanner } from './components/CookieBanner.tsx';
 const SpaceDetailPage = lazy(() => import('./pages/SpaceDetailPage.tsx').then((m) => ({ default: m.SpaceDetailPage })));
 const LoginPage = lazy(() => import('./pages/LoginPage.tsx').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/RegisterPage.tsx').then((m) => ({ default: m.RegisterPage })));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.tsx').then((m) => ({ default: m.VerifyEmailPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.tsx').then((m) => ({ default: m.ResetPasswordPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.tsx').then((m) => ({ default: m.ForgotPasswordPage })));
 const OwnerDashboardPage = lazy(() => import('./pages/OwnerDashboardPage.tsx').then((m) => ({ default: m.OwnerDashboardPage })));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage.tsx').then((m) => ({ default: m.AdminDashboardPage })));
@@ -171,6 +173,8 @@ function AppContent() {
           <Route path="/login" element={<LoginPage onNavigate={handleNavigate} />} />
           <Route path="/register" element={<RegisterPage onNavigate={handleNavigate} />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage onNavigate={handleNavigate} />} />
+          <Route path="/verificar-correo" element={<VerifyEmailPage />} />
+          <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
 
           <Route path="/favorites" element={
             <FavoritesPage
