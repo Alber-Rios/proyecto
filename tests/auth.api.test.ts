@@ -11,6 +11,8 @@ const state = {
   passwordUpdates: [] as { id: string; password: string }[],
   deleted: [] as string[],
   suspended: new Set<string>(),
+  rpcMissing: false,
+  resendFails: false,
 };
 
 const session = (id: string, email: string, tag = 'a') => ({
@@ -26,6 +28,7 @@ const admin = {
     state.rpcCalls.push({ fn, args });
     if (fn === 'login_lock_status') return { data: { locked: state.locked } };
     if (fn === 'register_failed_login') return { data: { locked: false, remaining: 4 } };
+    if (fn === 'auth_account_status' && state.rpcMissing) return { data: null, error: { message: 'Could not find the function public.auth_account_status' } };
     if (fn === 'auth_account_status') {
       const u = state.users.find((x) => x.email === args.p_email);
       return { data: u ? [{ user_id: u.id, email_confirmed: u.confirmed, created_at: '2026-01-01' }] : [] };
@@ -49,6 +52,7 @@ const admin = {
       return u ? { data: { user: { id, email: u.email, user_metadata: {} } }, error: null } : { data: { user: null }, error: { message: 'bad' } };
     }),
     admin: {
+      listUsers: vi.fn(async () => ({ data: { users: state.users.map((u) => ({ id: u.id, email: u.email, email_confirmed_at: u.confirmed ? '2026-01-01' : null, created_at: '2026-01-01' })) }, error: null })),
       signOut: vi.fn(async (token: string, scope: string) => {
         state.signOuts.push({ token, scope });
         return { error: null };
@@ -146,9 +150,10 @@ beforeEach(() => {
   process.env.VITE_SUPABASE_ANON_KEY = 'anon-key';
   process.env.RESEND_API_KEY = 're_test';
   process.env.PUBLIC_APP_URL = 'https://spotly.cl';
-  Object.assign(state, { users: [{ id: 'u1', email: 'ana@correo.cl', confirmed: true, password: 'Segura2026x' }], rpcCalls: [], locked: false, sent: [], signOuts: [], passwordUpdates: [], deleted: [], suspended: new Set() });
+  Object.assign(state, { users: [{ id: 'u1', email: 'ana@correo.cl', confirmed: true, password: 'Segura2026x' }], rpcCalls: [], locked: false, rpcMissing: false, resendFails: false, sent: [], signOuts: [], passwordUpdates: [], deleted: [], suspended: new Set() });
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: any) => {
     const b = JSON.parse(init.body);
+    if (state.resendFails) return new Response('{"message":"domain not verified"}', { status: 403 });
     state.sent.push({ to: b.to[0], subject: b.subject, text: b.text });
     return new Response('{}', { status: 200 });
   }));
@@ -256,6 +261,20 @@ describe('/api/auth', () => {
     expect(unknown.body.message).toBe(known.body.message);
     expect(state.sent.map((s) => s.to)).toEqual(['ana@correo.cl']);
     expect(state.sent[0].text).toContain('https://spotly.cl/restablecer-contrasena?token_hash=hash-1&type=recovery');
+  });
+
+  it('recuperar contraseña funciona aunque falte el parche SQL (usa la API de administración)', async () => {
+    state.rpcMissing = true;
+    const res = await call('forgot', { email: 'ana@correo.cl' });
+    expect(res.statusCode).toBe(200);
+    expect(state.sent.map((s) => s.to)).toEqual(['ana@correo.cl']);
+  });
+
+  it('si el correo no se puede enviar, avisa en vez de decir que se envió', async () => {
+    state.resendFails = true;
+    const res = await call('forgot', { email: 'ana@correo.cl' });
+    expect(res.statusCode).toBe(502);
+    expect(res.body.code).toBe('EMAIL_NOT_SENT');
   });
 
   it('restablecer: enlace inválido no cambia nada', async () => {

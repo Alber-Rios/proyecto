@@ -236,11 +236,25 @@ async function isLocked(ctx: Ctx, key: string) {
   return data?.locked ? (data.locked_until as string | null) || '' : null;
 }
 
-async function accountStatus(ctx: Ctx, email: string): Promise<{ user_id: string; email_confirmed: boolean; created_at: string } | null> {
+type AccountStatus = { user_id: string; email_confirmed: boolean; created_at: string };
+
+async function accountStatus(ctx: Ctx, email: string): Promise<AccountStatus | null> {
   const { data, error } = await ctx.admin.rpc('auth_account_status', { p_email: email });
-  if (error) throw new Error(error.message);
-  const row = Array.isArray(data) ? data[0] : data;
-  return row?.user_id ? row : null;
+  if (!error) {
+    const row = Array.isArray(data) ? data[0] : data;
+    return row?.user_id ? row : null;
+  }
+  // Si aún no se ejecutó el parche SQL (falta auth_account_status), se busca la cuenta con
+  // la API de administración de Supabase Auth. Así el registro y la recuperación siguen funcionando.
+  console.warn('auth_account_status no disponible; se usa la API de administración:', error.message);
+  for (let page = 1; page <= 20; page++) {
+    const { data: list, error: listError } = await ctx.admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (listError) throw new Error(listError.message);
+    const found = (list.users as Array<{ id: string; email?: string; email_confirmed_at?: string | null; confirmed_at?: string | null; created_at: string }>).find((u) => (u.email || '').toLowerCase() === email);
+    if (found) return { user_id: found.id, email_confirmed: isConfirmedUser(found), created_at: found.created_at };
+    if (list.users.length < 200) break;
+  }
+  return null;
 }
 
 const isConfirmedUser = (u: { email_confirmed_at?: string | null; confirmed_at?: string | null }) =>
@@ -484,23 +498,42 @@ async function forgot(ctx: Ctx) {
   if ((await isLocked(ctx, key)) !== null) return res.status(429).json({ success: false, message: 'Pediste muchos enlaces. Espera unos minutos e inténtalo de nuevo.' });
   await admin.rpc('register_failed_login', { p_email: key, p_ip: ip });
 
-  const status = await accountStatus(ctx, email).catch(() => null);
-  if (!status?.email_confirmed) return res.status(200).json(generic);
+  let status: AccountStatus | null = null;
+  try {
+    status = await accountStatus(ctx, email);
+  } catch (err) {
+    console.error('Recuperación: no se pudo consultar la cuenta', err);
+  }
+  // Cuenta inexistente o sin verificar: no se envía nada (respuesta igual, sin revelar nada).
+  if (!status?.email_confirmed) {
+    console.info(`Recuperación: ${status ? 'cuenta sin verificar' : 'no existe cuenta'}; no se envía correo.`);
+    return res.status(200).json(generic);
+  }
 
   const redirect = `${appUrl(req)}/restablecer-contrasena`;
   try {
     if (emailSenderConfigured()) {
       const { data, error } = await admin.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: redirect } });
-      if (error || !data?.properties?.hashed_token) throw new Error(error?.message || 'sin token');
+      if (error || !data?.properties?.hashed_token) throw new Error(error?.message || 'Supabase no entregó el enlace de recuperación');
       const link = `${redirect}?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=recovery`;
-      await sendEmail(email, resetEmail(link, 60));
+      const sent = await sendEmail(email, resetEmail(link, 60));
+      if (!sent) throw new Error('Resend rechazó el correo (revisa RESEND_API_KEY, EMAIL_FROM y el dominio verificado)');
     } else {
       const { error } = await ctx.newAuthClient().auth.resetPasswordForEmail(email, { redirectTo: redirect });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(`Supabase no pudo enviar el correo: ${error.message}`);
     }
-    await audit(ctx, 'PASSWORD_RESET_REQUESTED', 'security', status.user_id, {});
+    await audit(ctx, 'PASSWORD_RESET_REQUESTED', 'security', status.user_id, { provider: emailSenderConfigured() ? 'resend' : 'supabase' });
   } catch (err) {
-    console.error('Recuperación de contraseña:', err);
+    // La cuenta existe pero el correo no salió: es un problema de configuración, no del usuario.
+    console.error('Recuperación de contraseña: el correo no se envió.', err);
+    const msg = err instanceof Error ? err.message.toLowerCase() : '';
+    return res.status(502).json({
+      success: false,
+      code: 'EMAIL_NOT_SENT',
+      message: msg.includes('rate limit')
+        ? 'Se enviaron demasiados correos en poco tiempo. Espera unos minutos e inténtalo de nuevo.'
+        : 'No pudimos enviar el correo en este momento. Inténtalo más tarde o escríbenos desde Ayuda y soporte.',
+    });
   }
   return res.status(200).json(generic);
 }

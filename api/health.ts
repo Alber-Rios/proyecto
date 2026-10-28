@@ -16,6 +16,29 @@ async function pingDatabase(): Promise<'ok' | 'error' | 'not_configured'> {
   }
 }
 
+// Diagnóstico de la configuración de correos y acceso (sin revelar secretos).
+async function authSetup() {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let sqlPatch: 'ok' | 'missing' | 'unknown' = 'unknown';
+  if (url && service) {
+    try {
+      const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { error } = await admin.rpc('auth_account_status', { p_email: 'diagnostico@spotly.invalid' });
+      sqlPatch = error ? 'missing' : 'ok';
+    } catch {
+      sqlPatch = 'unknown';
+    }
+  }
+  return {
+    serviceRoleKey: Boolean(service),
+    emailProvider: process.env.RESEND_API_KEY ? 'resend' : 'supabase',
+    emailFrom: process.env.RESEND_API_KEY ? (process.env.EMAIL_FROM ? 'configurado' : 'falta EMAIL_FROM (se usa onboarding@resend.dev, que solo envía al dueño de la cuenta Resend)') : 'plantillas y SMTP de Supabase',
+    publicAppUrl: process.env.PUBLIC_APP_URL || null,
+    sqlPatch,
+  };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -30,6 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.status(database === 'error' ? 503 : 200).json({
     status: database === 'error' ? 'degraded' : 'ok',
     database,
+    auth: await authSetup(),
     timestamp: new Date().toISOString(),
   });
 }
