@@ -6,6 +6,9 @@ import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getTodayIso, getOffsetDateIso } from '../utils/formatters.ts';
 import { SignatureCanvas } from './SignatureCanvas.tsx';
+import { ContractDocument } from './contract/ContractDocument.tsx';
+import { buildContractClauses } from '../utils/contractGenerator.ts';
+import { formatContractTerm, formatLongDate } from '../utils/contractTerm.ts';
 import { CheckoutPaymentBox, AppliedDiscount, PaymentChoice } from './CheckoutPaymentBox.tsx';
 import { saveBookingDraft } from '../utils/bookingDraft.ts';
 import { PaymentProgressModal, PaymentProgressStep } from './PaymentProgressModal.tsx';
@@ -225,6 +228,48 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       basePrice: amounts.basePrice,
     };
   }, [space, activeModality, startDate, endDate, hourStart, hourEnd, discount]);
+
+  // Vista previa del contrato: mismas cláusulas que se firman y sellan al pagar.
+  const previewAddress = space
+    ? space.address
+      ? `${space.address}, ${space.commune}`
+      : `${space.commune} (la dirección exacta se consigna al confirmar)`
+    : '';
+  const previewTerm = formatContractTerm({
+    modality: activeModality,
+    startDate: startDate || todayStr,
+    endDate: endDate || startDate || todayStr,
+    hourStart: activeModality === 'por_hora' ? hourStart : undefined,
+    hourEnd: activeModality === 'por_hora' ? hourEnd : undefined,
+    units: calculations.units,
+    month: activeModality === 'mensual' ? selectedMonth : undefined,
+  });
+  const previewClauses = useMemo(
+    () =>
+      space
+        ? buildContractClauses({
+            spaceTitle: space.title,
+            spaceAddress: previewAddress,
+            tenantName: currentUser?.fullName || '[nombre del arrendatario]',
+            tenantRut: currentUser?.rut || '',
+            ownerName: space.ownerName,
+            ownerRut: space.ownerRut || '',
+            totalClp: calculations.total,
+            guaranteeDepositClp: calculations.deposit,
+            discountClp: calculations.discount,
+            startDate: startDate || todayStr,
+            endDate: endDate || startDate || todayStr,
+            ip: 'que se registra al firmar',
+            rentalModality: activeModality,
+            priceUnit: activeModality === 'por_hora' ? 'hour' : activeModality === 'mensual' ? 'month' : 'day',
+            durationUnits: calculations.units,
+            hourStart: activeModality === 'por_hora' ? hourStart : undefined,
+            hourEnd: activeModality === 'por_hora' ? hourEnd : undefined,
+            intendedUse: intendedUse.trim() || undefined,
+          })
+        : [],
+    [space, previewAddress, currentUser, calculations, startDate, endDate, todayStr, activeModality, hourStart, hourEnd, intendedUse]
+  );
 
   // Si cambian las fechas u horas se descarta el descuento calculado (depende del subtotal).
   useEffect(() => {
@@ -691,83 +736,48 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     </div>
                   )}
 
-                  <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-4">
-                    <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-                      <div>
-                        <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
-                          <FileCheck2 className="w-4 h-4 text-rose-600" />
-                          Contrato de arrendamiento
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-bold mt-1 block">
-                          Generado automáticamente por Spotly
-                        </span>
-                      </div>
-                      <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-bold uppercase tracking-wider">
-                        Ley N° 18.101
-                      </span>
-                    </div>
-
-                    <div className="text-xs sm:text-[13px] text-slate-800 space-y-3.5 leading-relaxed">
-                      <p>
-                        En Santiago de Chile, a {new Date().toLocaleDateString('es-CL')}, se celebra el presente contrato de arrendamiento entre las siguientes partes:
-                      </p>
-                      
-                      <div className="space-y-2 py-1">
-                        <p>
-                          <strong>Arrendador (Propietario):</strong> {space.ownerName} (RUT: {space.ownerRut ? formatRut(space.ownerRut) : 'se consigna en el contrato al confirmar'})
-                        </p>
-                        <p>
-                          <strong>Arrendatario:</strong> {currentUser?.fullName || 'Usuario no registrado (Inicio de sesión requerido)'} (RUT: {currentUser?.rut || 'Pendiente de autenticación'})
-                        </p>
-                        <p>
-                          <strong>Inmueble:</strong> {space.title}, ubicado en {space.address ? `${space.address}, ` : ''}{space.commune}{space.address ? '' : ' (la dirección exacta se consigna en el contrato al confirmar)'}.
-                        </p>
-                      </div>
-
-                      <p>
-                        <strong>Primero:</strong> El Arrendador da en arriendo el Inmueble detallado precedentemente al Arrendatario, quien lo acepta para el uso exclusivo de: <strong>{intendedUse.trim() || 'Actividades comerciales o profesionales lícitas declaradas por el arrendatario'}</strong>.
-                      </p>
-                      
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                        <p>
-                          <strong>Segundo (Vigencia y horario):</strong>{' '}
-                          {selectedModality === 'por_hora' ? (
-                            <span>
-                              La vigencia y ocupación será el día <strong>{startDate || todayStr}</strong>, en el horario exacto de <strong>{String(hourStart).padStart(2, '0')}:00 a {String(hourEnd).padStart(2, '0')}:00 hrs</strong> ({calculations.units} {calculations.label} cronológicas continuas). Dicha franja horaria queda bloqueada y sincronizada exclusivamente para el arrendatario en el sistema Spotly.
-                            </span>
-                          ) : selectedModality === 'mensual' ? (
-                            <span>
-                              La vigencia del arriendo mensual corresponde al mes <strong>{selectedMonth || 'Octubre 2026'}</strong> ({calculations.units} {calculations.label}), con ocupación exclusiva bajo el marco de la Ley N° 18.101. El espacio queda bloqueado en el calendario durante todo el período.
-                            </span>
-                          ) : (
-                            <span>
-                              La vigencia de este contrato será desde el día <strong>{startDate || todayStr}</strong> hasta el día <strong>{endDate || tomorrowStr}</strong>, comprendiendo un total de <strong>{calculations.units} {calculations.label} completos</strong>.
-                            </span>
-                          )}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 pt-1">
-                          <Lock className="w-3.5 h-3.5 shrink-0" />
-                          <span>Bloqueo Activo: Se reserva y bloquea este horario/fecha para evitar doble reserva con otros clientes.</span>
-                        </div>
-                      </div>
-                      
-                      <p>
-                        <strong>Tercero:</strong> El valor acordado para este período es de <strong>{formatClp(calculations.subtotal)}</strong>{calculations.deposit > 0 ? (<>, más una garantía retornable de <strong>{formatClp(calculations.deposit)}</strong></>) : null}, totalizando a pagar <strong>{formatClp(calculations.total)}</strong> (incluye la comisión de servicio de 5 %).
-                      </p>
-                    </div>
-                  </div>
+                  <ContractDocument
+                    status="draft"
+                    issuedAt={`En Santiago de Chile, a ${formatLongDate(todayStr, false)}.`}
+                    owner={{
+                      name: space.ownerName,
+                      rut: space.ownerRut ? formatRut(space.ownerRut) : 'se consigna al confirmar',
+                    }}
+                    tenant={{
+                      name: currentUser?.fullName || 'Inicia sesión para completar tus datos',
+                      rut: currentUser?.rut ? formatRut(currentUser.rut) : 'pendiente de inicio de sesión',
+                    }}
+                    spaceTitle={space.title}
+                    spaceAddress={previewAddress}
+                    intendedUse={intendedUse}
+                    term={previewTerm}
+                    lockNotice="Al confirmar el pago, esta fecha y horario quedan bloqueados solo para ti en Spotly: nadie más puede reservarlos."
+                    amounts={[
+                      { label: `Arriendo (${calculations.units} ${calculations.label})`, value: calculations.subtotal },
+                      { label: 'Comisión de servicio Spotly (5 %)', value: calculations.platformFee },
+                      ...(calculations.deposit > 0
+                        ? [{ label: 'Garantía reembolsable', value: calculations.deposit }]
+                        : []),
+                      ...(calculations.discount > 0
+                        ? [{ label: 'Descuento aplicado', value: calculations.discount, negative: true }]
+                        : []),
+                    ]}
+                    total={calculations.total}
+                    clauses={previewClauses}
+                  />
 
                   {/* Campo obligatorio: ¿Para qué va a utilizar este lugar? */}
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                    <label className="text-xs font-extrabold text-slate-900 block">
+                    <label htmlFor="booking-intended-use" className="text-sm font-extrabold text-slate-900 block">
                       ¿Para qué va a utilizar este lugar?
                     </label>
                     <textarea
+                      id="booking-intended-use"
                       rows={2}
                       value={intendedUse}
                       onChange={(e) => setIntendedUse(e.target.value)}
                       placeholder="Comenta aquí para qué vas a utilizar este lugar..."
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 focus:outline-hidden bg-white"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 focus:outline-hidden bg-white"
                     />
                   </div>
 
@@ -779,7 +789,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       onChange={(e) => setAcceptContract(e.target.checked)}
                       className="w-4 h-4 mt-0.5 text-rose-600 rounded-md border-slate-300 focus:ring-rose-500 cursor-pointer"
                     />
-                    <span className="text-xs text-slate-700 leading-relaxed font-bold">
+                    <span className="text-sm text-slate-800 leading-relaxed font-bold">
                       Leí el contrato y acepto los términos y condiciones
                     </span>
                   </label>

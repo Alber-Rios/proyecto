@@ -2,10 +2,24 @@
 import { DigitalContract } from '../types.ts';
 import { formatClp, formatRut } from './formatters.ts';
 import { isSha256Hex } from './contractHash.ts';
+import { parseClause } from './contractClauses.ts';
 
 export async function downloadContractPdf(contract: DigitalContract): Promise<void> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  // Título e idioma del documento: los lectores de PDF y de pantalla los anuncian.
+  doc.setProperties({
+    title: `Contrato de arrendamiento ${contract.id} - Spotly`,
+    subject: `Arriendo de ${contract.spaceTitle}`,
+    author: 'Spotly',
+    keywords: 'contrato, arrendamiento, Ley 18.101, Ley 19.799',
+    creator: 'Spotly',
+  });
+  try {
+    (doc as unknown as { setLanguage?: (l: string) => void }).setLanguage?.('es-CL');
+  } catch {
+    /* versión de jsPDF sin setLanguage */
+  }
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 18;
@@ -23,7 +37,7 @@ export async function downloadContractPdf(contract: DigitalContract): Promise<vo
     doc.setFont('helvetica', style);
     doc.setFontSize(size);
     const lines = doc.splitTextToSize(text, width) as string[];
-    const lineHeight = size * 0.42;
+    const lineHeight = size * 0.5;
     for (const line of lines) {
       ensureSpace(lineHeight);
       doc.text(line, margin, y);
@@ -44,11 +58,11 @@ export async function downloadContractPdf(contract: DigitalContract): Promise<vo
   doc.setTextColor(15, 23, 42);
   y = 40;
 
-  write(`Espacio: ${contract.spaceTitle}`, 10, 'bold', 0.5);
-  write(`Ubicación: ${contract.spaceAddress}`, 9, 'normal', 0.5);
-  write(`Arrendatario: ${contract.tenantName} (RUT ${formatRut(contract.tenantRut)})`, 9, 'normal', 0.5);
-  write(`Propietario: ${contract.ownerName} (RUT ${formatRut(contract.ownerRut)})`, 9, 'normal', 0.5);
-  write(`Vigencia: ${contract.startDate} al ${contract.endDate}`, 9, 'normal', 0.5);
+  write(`Espacio: ${contract.spaceTitle}`, 11, 'bold', 0.8);
+  write(`Ubicación: ${contract.spaceAddress}`, 10, 'normal', 0.8);
+  write(`Arrendatario: ${contract.tenantName} (RUT ${formatRut(contract.tenantRut)})`, 10, 'normal', 0.8);
+  write(`Propietario: ${contract.ownerName} (RUT ${formatRut(contract.ownerRut)})`, 10, 'normal', 0.8);
+  write(`Vigencia: ${contract.startDate} al ${contract.endDate}`, 10, 'normal', 0.8);
   write(
     `Monto total: ${formatClp(contract.totalClp)} · Garantía: ${formatClp(contract.guaranteeDepositClp)}`,
     9,
@@ -56,7 +70,14 @@ export async function downloadContractPdf(contract: DigitalContract): Promise<vo
     4
   );
 
-  contract.clauses.forEach((clause) => write(clause, 9.5, 'normal', 3));
+  contract.clauses.forEach((clause) => {
+    const parsed = parseClause(clause);
+    if (parsed.title) {
+      ensureSpace(14);
+      write(`${parsed.ordinal}. ${parsed.title}`, 11, 'bold', 1);
+    }
+    write(parsed.body, 10.5, 'normal', 4);
+  });
 
   ensureSpace(50);
   y += 2;
@@ -73,7 +94,7 @@ export async function downloadContractPdf(contract: DigitalContract): Promise<vo
       // Firma no embebible: se mantiene el registro textual.
     }
   }
-  write(`${contract.tenantName} · RUT ${formatRut(contract.tenantRut)}`, 9, 'normal', 0.5);
+  write(`${contract.tenantName} · RUT ${formatRut(contract.tenantRut)}`, 10, 'normal', 0.8);
   write(`Fecha de suscripción: ${new Date(contract.signedAt).toLocaleString('es-CL')}`, 8.5, 'normal', 0.5);
   write(`IP de suscripción: ${contract.signerIp || contract.tenantSignature.ip}`, 8.5, 'normal', 3);
 
