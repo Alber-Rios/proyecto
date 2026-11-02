@@ -78,6 +78,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
           subtotalClp: reservation.subtotalClp,
           discountClp: reservation.discountClp,
           securityDepositClp: reservation.securityDepositClp,
+          platformFeeClp: reservation.platformFeeClp,
           totalClp: reservation.totalClp,
         },
         'tenant'

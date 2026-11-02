@@ -10,6 +10,8 @@ export interface RefundInput {
   subtotalClp: number;
   discountClp?: number;
   securityDepositClp: number;
+  /** Comisión de servicio Spotly (5 %). Si falta, se deduce del total. */
+  platformFeeClp?: number;
   totalClp: number;
 }
 
@@ -54,26 +56,31 @@ export function calculateRefund(input: RefundInput, actor: CancellationActor, no
   }
 
   const rent = Math.max(input.subtotalClp - (input.discountClp || 0), 0);
+  const fee = Math.max(
+    input.platformFeeClp ?? input.totalClp - rent - input.securityDepositClp,
+    0
+  );
+  // La comisión se devuelve si se cancela con 24 h o más de anticipación.
   if (hours >= 48) {
     return {
-      refundClp: rent + input.securityDepositClp,
+      refundClp: rent + input.securityDepositClp + fee,
       tier: 'full',
       hoursBeforeStart: hours,
-      description: 'Con 48 horas o más de anticipación se devuelve el 100 % del arriendo y la garantía. La comisión de servicio no es reembolsable.',
+      description: 'Con 48 horas o más de anticipación se devuelve todo: arriendo, garantía y comisión.',
     };
   }
   if (hours >= 24) {
     return {
-      refundClp: Math.round(rent * 0.5) + input.securityDepositClp,
+      refundClp: Math.round(rent * 0.5) + input.securityDepositClp + fee,
       tier: 'half',
       hoursBeforeStart: hours,
-      description: 'Entre 24 y 48 horas antes se devuelve el 50 % del arriendo y la garantía completa. La comisión de servicio no es reembolsable.',
+      description: 'Entre 24 y 48 horas antes se devuelve el 50 % del arriendo, la garantía y la comisión.',
     };
   }
   return {
     refundClp: input.securityDepositClp,
     tier: 'deposit_only',
     hoursBeforeStart: hours,
-    description: 'Con menos de 24 horas de anticipación solo se devuelve la garantía.',
+    description: 'Con menos de 24 horas de anticipación solo se devuelve la garantía. La comisión de servicio se cobra.',
   };
 }
