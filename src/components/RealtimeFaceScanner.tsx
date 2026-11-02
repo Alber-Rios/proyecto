@@ -368,7 +368,14 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
       console.warn('Real camera error:', err);
     }
 
+    // Sin cámara real: solo en desarrollo se usa una imagen de prueba. En el
+    // sitio publicado se pide revisar el permiso (nunca se verifica con datos falsos).
     if (!stream) {
+      if (!import.meta.env.DEV) {
+        setCameraError('No pudimos abrir tu cámara. Revisa que el navegador tenga permiso para usarla (ícono del candado en la barra de direcciones) y que ninguna otra app la esté ocupando.');
+        setIsStartingCamera(false);
+        return;
+      }
       stream = createSyntheticFaceCameraStream();
     }
 

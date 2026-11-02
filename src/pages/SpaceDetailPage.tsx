@@ -236,7 +236,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
 
   // Precios dinámicos según modalidad
   const rateLabel = activeModality === 'por_hora' ? 'TARIFA POR HORA' : activeModality === 'mensual' ? 'TARIFA MENSUAL' : 'TARIFA POR DÍA';
-  const displayPrice = activeModality === 'por_hora' ? (space.pricePerHour || 45000) : activeModality === 'mensual' ? (space.pricePerMonth || 3800000) : space.pricePerDay;
+  const displayPrice = activeModality === 'por_hora' ? (space.pricePerHour || 0) : activeModality === 'mensual' ? (space.pricePerMonth || 0) : space.pricePerDay;
   const unitSuffix = activeModality === 'por_hora' ? '/ hr' : activeModality === 'mensual' ? '/ mes' : '/ día';
   const minHoursLabel = Math.max(1, space.minBookingHours || 1);
   const subRateLabel =

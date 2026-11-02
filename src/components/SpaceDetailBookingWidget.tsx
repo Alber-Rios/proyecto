@@ -95,9 +95,9 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
   const activeReservationsForSpace = useSpaceReservations(space);
 
   // Precios base por modalidad
-  const priceDay = space.pricePerDay || 350000;
-  const priceHour = space.pricePerHour || 45000;
-  const priceMonth = space.pricePerMonth || 3800000;
+  const priceDay = space.pricePerDay || 0;
+  const priceHour = space.pricePerHour || 0;
+  const priceMonth = space.pricePerMonth || 0;
 
   // Determinar modalidades disponibles según la publicación del espacio
   const availableModalities = useMemo<('por_hora' | 'por_dia' | 'mensual')[]>(() => {

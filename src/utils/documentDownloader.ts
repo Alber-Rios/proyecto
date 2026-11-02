@@ -181,7 +181,7 @@ export function downloadReservationDocument(reservation: Reservation) {
         <div>
           <strong>Propietario / Anfitrión:</strong><br/>
           ${reservation.ownerName}<br/>
-          <span style="color: #475569; font-family: monospace;">RUT: ${formatRut(reservation.ownerRut || '14.258.963-7')}</span><br/>
+          <span style="color: #475569; font-family: monospace;">RUT: ${reservation.ownerRut ? formatRut(reservation.ownerRut) : 'no informado'}</span><br/>
           <span style="color: #64748b; font-size: 12px;">Contrato Asociado: ${reservation.digitalContractId || 'Generado digitalmente'}</span>
         </div>
       </div>

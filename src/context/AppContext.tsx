@@ -1524,9 +1524,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? `[${options.problemCategory}] ${reason.trim()}`
       : reason.trim();
 
-    const fallbackSubtotal = spc.pricePerDay || 120000;
-    const fallbackDeposit = spc.securityDeposit || 60000;
-    const fallbackFee = Math.round(fallbackSubtotal * 0.05);
+    // Reporte sin reserva asociada: no hay montos en custodia.
+    const fallbackSubtotal = 0;
+    const fallbackDeposit = 0;
+    const fallbackFee = 0;
 
     const subtotalClp = res ? res.subtotalClp : fallbackSubtotal;
     const securityDepositClp = res ? res.securityDepositClp : fallbackDeposit;
@@ -1540,9 +1541,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       spaceTitle: res ? res.spaceTitle : spc.title,
       tenantId: currentUser?.id || res?.tenantId || 'guest',
       tenantName: res ? res.tenantName : currentUser?.fullName || 'Usuario Spotly',
-      tenantRut: res ? res.tenantRut : currentUser?.rut || '18.421.905-3',
+      tenantRut: res ? res.tenantRut : currentUser?.rut || '',
       ownerName: res ? res.ownerName : spc.ownerName,
-      ownerRut: (res ? res.ownerRut : spc.ownerRut) || '14.258.963-7',
+      ownerRut: (res ? res.ownerRut : spc.ownerRut) || '',
       subtotalClp,
       securityDepositClp,
       platformFeeClp,

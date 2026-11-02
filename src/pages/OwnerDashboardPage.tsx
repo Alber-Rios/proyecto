@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { OwnerRevenueReport } from '../components/OwnerRevenueReport.tsx';
 import { Space, Reservation, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
-import { formatClp, formatRut, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
+import { formatClp, formatHourRange, formatRut, formatUnits, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
 import { useChileNow } from '../hooks/useChileNow.ts';
 import { expiryLabel, isActionableRequest, isExpiredRequest, isExpiringSoon } from '../utils/requestExpiry.ts';
 import { ContractModal } from '../components/ContractModal.tsx';
@@ -540,16 +540,10 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   // Leyenda de tarifa dinámica para el recinto seleccionado
   const spaceLegendRate = useMemo(() => {
     if (!selectedSpace) return 'Disponible';
-    if (selectedSpace.rentalModality === 'por_hora' || selectedSpace.pricePerHour) {
-      const kRate = Math.round((selectedSpace.pricePerHour || 45000) / 1000);
-      return `Disponible ($${kRate}k/h)`;
-    }
-    if (selectedSpace.rentalModality === 'mensual' || selectedSpace.pricePerMonth) {
-      const mRate = ((selectedSpace.pricePerMonth || 3800000) / 1000000).toFixed(1);
-      return `Disponible ($${mRate}M/mes)`;
-    }
-    const kRate = Math.round((selectedSpace.pricePerDay || 280000) / 1000);
-    return `Disponible ($${kRate}k/día)`;
+    if (selectedSpace.pricePerHour) return `Disponible · ${formatClp(selectedSpace.pricePerHour)} la hora`;
+    if (selectedSpace.pricePerMonth) return `Disponible · ${formatClp(selectedSpace.pricePerMonth)} al mes`;
+    if (selectedSpace.pricePerDay) return `Disponible · ${formatClp(selectedSpace.pricePerDay)} el día`;
+    return 'Disponible';
   }, [selectedSpace]);
 
   const spaceModalityLabel = useMemo(() => {
@@ -611,7 +605,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             <span className="text-xs text-slate-300 hidden sm:inline">•</span>
             <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1 whitespace-nowrap">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-              Pagos habilitados Webpay / stripe
+              Cobros con Webpay
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 mt-1.5 tracking-tight">
@@ -1558,7 +1552,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       {selectedSpace.address}, {selectedSpace.commune} • Capacidad: {selectedSpace.capacity} pers • {selectedSpace.surfaceM2} m²
                     </p>
                     <div className="flex items-center gap-3 mt-1 text-xs text-slate-700 flex-wrap">
-                      <span>Tarifa base: <strong className="text-slate-900">{formatClp(selectedSpace.pricePerHour || selectedSpace.pricePerDay || 45000)}</strong></span>
+                      <span>Tarifa base: <strong className="text-slate-900">{selectedSpace.pricePerHour || selectedSpace.pricePerDay ? formatClp(selectedSpace.pricePerHour || selectedSpace.pricePerDay) : 'sin tarifa'}</strong></span>
                       <span className="text-slate-300">•</span>
                       <span>Garantía mensual: <strong className="text-slate-900">{selectedSpace.securityDeposit && selectedSpace.securityDeposit > 0 ? formatClp(selectedSpace.securityDeposit) : 'No pide'}</strong></span>
                     </div>
@@ -1690,7 +1684,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                           <div className="flex items-center gap-1.5 min-w-0">
                             <CalendarIcon className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                             <span className="font-bold truncate">
-                              {res.startDate} {res.durationUnits ? `• ${res.durationUnits} hrs (${res.hourStart ?? 9}:00-${res.hourEnd ?? (res.hourStart ?? 9) + (res.durationUnits || 4)}:00)` : `• ${res.totalDays} días`}
+                              {res.startDate} · {res.rentalModality === 'por_hora' ? formatHourRange(res.hourStart, res.hourEnd) : formatUnits(res.totalDays, 'día')}
                             </span>
                           </div>
                           <span className="text-[10px] font-bold text-indigo-600 whitespace-nowrap shrink-0">
@@ -2217,12 +2211,12 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                           {booking.rentalModality === 'por_hora' || booking.hourStart !== undefined ? (
                             <>
                               <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>Horario solicitado: <strong>{booking.hourStart ?? 10}:00 a {booking.hourEnd ?? 14}:00 hrs</strong> ({booking.durationUnits || booking.totalDays || 4} hrs)</span>
+                              <span>Horario: <strong>{formatHourRange(booking.hourStart, booking.hourEnd)}</strong></span>
                             </>
                           ) : booking.rentalModality === 'mensual' ? (
                             <>
                               <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>Mes solicitado: <strong>{booking.rentalMonth || 'Septiembre 2026'}</strong></span>
+                              <span>Mes: <strong>{booking.rentalMonth || `desde el ${booking.startDate}`}</strong></span>
                             </>
                           ) : (
                             <>
@@ -2239,7 +2233,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       </div>
 
                       <div className="space-y-1 text-[11px] text-slate-700">
-                        <p>Cliente: <strong>{booking.tenantName}</strong> (RUT: {booking.tenantRut || '18.345.678-9'})</p>
+                        <p>Cliente: <strong>{booking.tenantName}</strong> (RUT: {booking.tenantRut ? formatRut(booking.tenantRut) : 'no informado'})</p>
                         <p>Destino: <em>"{booking.intendedUse}"</em></p>
                       </div>
 
@@ -2339,7 +2333,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                       {isSelectedModalDayPast ? 'Fecha pasada (Sin reservas)' : 'Día 100% disponible'}
                     </p>
                     <p className="text-[11px] text-emerald-700">
-                      Tarifa vigente: {formatClp(selectedSpace?.pricePerHour || selectedSpace?.pricePerDay || 45000)}
+                      Tarifa vigente: {selectedSpace?.pricePerHour || selectedSpace?.pricePerDay ? formatClp(selectedSpace.pricePerHour || selectedSpace.pricePerDay) : 'sin tarifa'}
                     </p>
                     {isSelectedModalDayPast ? (
                       <div className="w-full py-2 px-3 rounded-xl bg-slate-200 text-slate-500 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed">

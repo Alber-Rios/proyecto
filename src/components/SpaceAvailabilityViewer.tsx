@@ -22,7 +22,7 @@ import {
   CalendarDays
 } from 'lucide-react';
 import { Space, Reservation, SpaceBlock } from '../types.ts';
-import { formatClp, formatRut, getSpaceAvailableModalities, getTodayIso, formatDateCl } from '../utils/formatters.ts';
+import { formatClp, formatHourRange, formatRut, getSpaceAvailableModalities, getTodayIso, formatDateCl } from '../utils/formatters.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { useSpaceReservations } from '../hooks/useSpaceReservations.ts';
 import { useChileNow } from '../hooks/useChileNow.ts';
@@ -157,9 +157,10 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
   }, [startDate, todayIso]);
 
   // Tarifas
-  const priceHour = space.pricePerHour || Math.round(space.pricePerDay / 8) || 45000;
-  const priceDay = space.pricePerDay || 280000;
-  const priceMonth = space.pricePerMonth || 3800000;
+  // Sin tarifa publicada se muestra 0 (nunca un precio inventado).
+  const priceHour = space.pricePerHour || 0;
+  const priceDay = space.pricePerDay || 0;
+  const priceMonth = space.pricePerMonth || 0;
 
   const monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -1007,7 +1008,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                                   : 'Reserva confirmada'}
                               </span>
                               <span className="text-xs font-extrabold text-slate-900">
-                                Horario: {String(booking.hourStart ?? 10).padStart(2, '0')}:00 a {String(booking.hourEnd ?? 16).padStart(2, '0')}:00 hrs ({booking.durationUnits || 6} hrs)
+                                Horario: {formatHourRange(booking.hourStart, booking.hourEnd)}
                               </span>
                             </div>
                             <span className="text-sm font-bold text-emerald-700">
@@ -1940,11 +1941,11 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                   <div className="text-lg sm:text-xl font-bold text-white flex items-center gap-2 flex-wrap">
                     <span>{formatClp(priceMonth)} / mes fijo</span>
                     <span className="text-xs font-bold text-slate-300 bg-slate-700/60 px-2 py-0.5 rounded-lg border border-slate-600">
-                      Garantía: {formatClp(space.securityDeposit || priceMonth)}
+                      Garantía: {space.securityDeposit ? formatClp(space.securityDeposit) : "no pide"}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
-                    Contrato Notarial / Digital con validez legal continua regulado por Ley N° 18.101.
+                    Contrato digital con firma electrónica simple (Ley N° 19.799), según la Ley N° 18.101.
                   </p>
                 </div>
 

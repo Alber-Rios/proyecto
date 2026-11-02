@@ -252,3 +252,19 @@ export function getOffsetDateIso(daysOffset: number): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/** "08:00 a 09:00 h", o "Horario no informado" si falta un dato (nunca se inventa). */
+export function formatHourRange(hourStart?: number | null, hourEnd?: number | null): string {
+  if (hourStart === undefined || hourStart === null || hourEnd === undefined || hourEnd === null) {
+    return 'Horario no informado';
+  }
+  const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
+  return `${hh(hourStart)} a ${hh(hourEnd)} h`;
+}
+
+/** "2 horas", "1 día", "3 meses". */
+export function formatUnits(n: number | undefined | null, unit: 'hora' | 'día' | 'mes'): string {
+  const value = Number(n) || 0;
+  const plural = unit === 'mes' ? 'meses' : unit === 'día' ? 'días' : 'horas';
+  return `${value} ${value === 1 ? unit : plural}`;
+}
