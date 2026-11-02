@@ -1769,6 +1769,13 @@ BEGIN
       IF NOT (v_tenant OR v_owner OR v_admin) THEN
         RAISE EXCEPTION 'No autorizado para cancelar esta reserva';
       END IF;
+      -- El arrendatario solo puede cancelar antes de que empiece el arriendo;
+      -- después, un problema se reporta como reclamo (lo revisa administración).
+      IF v_tenant AND NOT v_owner AND NOT v_admin
+         AND (OLD.start_date + make_interval(hours => COALESCE(OLD.hour_start, 0)))
+             <= (now() AT TIME ZONE 'America/Santiago') THEN
+        RAISE EXCEPTION 'El arriendo ya comenzó y no se puede cancelar. Si hubo un problema, repórtalo desde la reserva.';
+      END IF;
       v_refund := public.compute_refund(OLD, v_tenant AND NOT v_admin);
       NEW.cancelled_at := now();
       NEW.cancelled_by := auth.uid();

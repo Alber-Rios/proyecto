@@ -6,7 +6,7 @@ import { formatClp, getChileNow, getTodayIso } from '../utils/formatters.ts';
 import { insertReviewToDb } from '../lib/dataAccess.ts';
 import { isReservationFinished } from '../utils/reviewEligibility.ts';
 import { CreditCard, Loader2, Star, XCircle, X } from 'lucide-react';
-import { isExpiredRequest } from '../utils/requestExpiry.ts';
+import { hasRequestStarted, isExpiredRequest } from '../utils/requestExpiry.ts';
 
 const PAYMENT_LABELS: Record<string, { text: string; className: string }> = {
   pending: { text: 'Pago pendiente', className: 'bg-amber-100 text-amber-800' },
@@ -65,7 +65,10 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
     reservation.paymentStatus === 'pending' &&
     Date.now() - new Date(reservation.createdAt).getTime() < PAYMENT_HOLD_MINUTES * 60000;
 
-  const canCancel = reservation.status === 'pending' || reservation.status === 'confirmed';
+  // Se puede cancelar solo antes de que empiece el arriendo.
+  const canCancel =
+    (reservation.status === 'pending' || reservation.status === 'confirmed') &&
+    !hasRequestStarted(reservation, getChileNow());
   const finished = isReservationFinished(reservation);
   const canReview = finished && !existingReview;
 
