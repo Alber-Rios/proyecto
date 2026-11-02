@@ -61,6 +61,18 @@ export function formatRut(rawRut: string): string {
   return `${formattedBody}-${dv}`;
 }
 
+/**
+ * Formatea el RUT mientras se escribe: "123243245" → "12.324.324-5".
+ * Solo deja números y una K al final (dígito verificador), máximo 9 caracteres.
+ */
+export function formatRutInput(value: string): string {
+  let cleaned = cleanRut(value);
+  // La K solo puede ir como dígito verificador (al final).
+  cleaned = cleaned.slice(0, -1).replace(/K/g, '') + cleaned.slice(-1);
+  cleaned = cleaned.slice(0, 9);
+  return formatRut(cleaned);
+}
+
 export function validateRut(rut: string): boolean {
   const cleaned = cleanRut(rut);
   if (cleaned.length < 8 || cleaned.length > 9) {

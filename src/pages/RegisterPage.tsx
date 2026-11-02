@@ -5,7 +5,7 @@ import { useGuestOnly } from '../hooks/useGuestOnly.ts';
 import { useNavigate } from 'react-router-dom';
 import { PasswordStrength } from '../components/PasswordStrength.tsx';
 import { passwordProblem } from '../utils/passwordPolicy.ts';
-import { validateRut, formatRut, capitalizeInitial } from '../utils/formatters.ts';
+import { validateRut, formatRut, formatRutInput, capitalizeInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import { UserGender } from '../types.ts';
 import { Link } from 'react-router-dom';
@@ -34,6 +34,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const [firstNames, setFirstNames] = useState('');
   const [surnames, setSurnames] = useState('');
   const [rut, setRut] = useState('');
+  const [rutTouched, setRutTouched] = useState(false);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -56,7 +57,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
     }
 
     if (!validateRut(rut)) {
-      setError('El RUT ingresado no es válido según el algoritmo oficial Módulo 11 de Chile.');
+      setError('RUT no válido. Revisa los números y el dígito después del guion.');
       return;
     }
 
@@ -251,10 +252,21 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     type="text"
                     required
                     autoComplete="off"
+                    inputMode="text"
+                    placeholder="12.345.678-9"
+                    maxLength={12}
                     value={rut}
-                    onChange={(e) => setRut(e.target.value)}
+                    onChange={(e) => setRut(formatRutInput(e.target.value))}
+                    onBlur={() => setRutTouched(true)}
+                    aria-invalid={rutTouched && rut !== '' && !validateRut(rut)}
+                    aria-describedby="reg-rut-error"
                     className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium !bg-none"
                   />
+                  {rutTouched && rut !== '' && !validateRut(rut) && (
+                    <p id="reg-rut-error" role="alert" className="mt-1.5 text-sm text-rose-700">
+                      RUT no válido. Revisa los números y el dígito después del guion.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="reg-phone" className="block text-sm font-medium text-stone-700 mb-1.5">

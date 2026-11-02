@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { UserGender } from '../types.ts';
-import { formatRut, validateRut, capitalizeInitial, getNameInitial } from '../utils/formatters.ts';
+import { formatRut, formatRutInput, validateRut, capitalizeInitial, getNameInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import {
   User,
@@ -36,7 +36,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   // Formulario de edición de datos personales
   const [firstNames, setFirstNames] = useState(capitalizeInitial(currentUser?.firstNames || currentUser?.fullName || ''));
   const [surnames, setSurnames] = useState(capitalizeInitial(currentUser?.surnames || ''));
-  const [rut, setRut] = useState(currentUser?.rut || '');
+  const [rut, setRut] = useState(formatRutInput(currentUser?.rut || ''));
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState(currentUser?.phone || '+56 9 ');
   const [gender, setGender] = useState<UserGender>(currentUser?.gender || 'prefiero_no_decir');
@@ -387,7 +387,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <input
                   type="text"
                   value={rut}
-                  onChange={(e) => setRut(e.target.value)}
+                  onChange={(e) => setRut(formatRutInput(e.target.value))}
+                  maxLength={12}
+                  placeholder="12.345.678-9"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
                   required
                 />
