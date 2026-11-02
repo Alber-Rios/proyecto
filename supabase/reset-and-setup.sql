@@ -1689,9 +1689,8 @@ END;
 $$;
 
 -- Política de cancelación (RF-18), misma regla que src/utils/refundPolicy.ts:
---   ≥ 48 h antes del inicio: 100 % del arriendo pagado + garantía + comisión
---   24–48 h antes:            50 % del arriendo pagado + garantía + comisión
---   < 24 h antes:              solo la garantía (la comisión se cobra)
+--   ≥ 24 h antes del inicio: se devuelve todo (arriendo pagado + garantía + comisión)
+--   < 24 h antes:              arriendo pagado + garantía (solo se cobra la comisión)
 --   Si cancela el propietario o el administrador, o el propietario rechaza la
 --   solicitud, se devuelve el 100 % del total.
 CREATE FUNCTION public.compute_refund(
@@ -1711,13 +1710,11 @@ BEGIN
   IF NOT p_by_tenant THEN
     RETURN p_res.total_clp;
   END IF;
-  -- Con 24 h o más de anticipación también se devuelve la comisión.
-  IF v_hours >= 48 THEN
+  -- Con 24 h o más se devuelve todo; con menos de 24 h solo se cobra la comisión.
+  IF v_hours >= 24 THEN
     RETURN v_rent + p_res.security_deposit_clp + COALESCE(p_res.platform_fee_clp, 0);
-  ELSIF v_hours >= 24 THEN
-    RETURN round(v_rent * 0.5) + p_res.security_deposit_clp + COALESCE(p_res.platform_fee_clp, 0);
   ELSE
-    RETURN p_res.security_deposit_clp;
+    RETURN v_rent + p_res.security_deposit_clp;
   END IF;
 END;
 $$;

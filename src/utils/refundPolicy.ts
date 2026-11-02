@@ -17,7 +17,7 @@ export interface RefundInput {
 
 export interface RefundResult {
   refundClp: number;
-  tier: 'full' | 'half' | 'deposit_only' | 'total';
+  tier: 'full' | 'fee_charged' | 'total';
   hoursBeforeStart: number;
   description: string;
 }
@@ -60,27 +60,20 @@ export function calculateRefund(input: RefundInput, actor: CancellationActor, no
     input.platformFeeClp ?? input.totalClp - rent - input.securityDepositClp,
     0
   );
-  // La comisión se devuelve si se cancela con 24 h o más de anticipación.
-  if (hours >= 48) {
+  // Con 24 h o más de anticipación se devuelve todo. Con menos de 24 h se
+  // devuelve el arriendo y la garantía, y solo se cobra la comisión.
+  if (hours >= 24) {
     return {
       refundClp: rent + input.securityDepositClp + fee,
       tier: 'full',
       hoursBeforeStart: hours,
-      description: 'Con 48 horas o más de anticipación se devuelve todo: arriendo, garantía y comisión.',
-    };
-  }
-  if (hours >= 24) {
-    return {
-      refundClp: Math.round(rent * 0.5) + input.securityDepositClp + fee,
-      tier: 'half',
-      hoursBeforeStart: hours,
-      description: 'Entre 24 y 48 horas antes se devuelve el 50 % del arriendo, la garantía y la comisión.',
+      description: 'Con 24 horas o más de anticipación se devuelve todo lo pagado: arriendo, garantía y comisión.',
     };
   }
   return {
-    refundClp: input.securityDepositClp,
-    tier: 'deposit_only',
+    refundClp: rent + input.securityDepositClp,
+    tier: 'fee_charged',
     hoursBeforeStart: hours,
-    description: 'Con menos de 24 horas de anticipación solo se devuelve la garantía. La comisión de servicio se cobra.',
+    description: `Con menos de 24 horas de anticipación se devuelve el arriendo y la garantía; se cobra solo la comisión de servicio (${fee.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}).`,
   };
 }

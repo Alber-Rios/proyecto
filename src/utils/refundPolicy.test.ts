@@ -13,39 +13,39 @@ describe('hoursUntilStart', () => {
 });
 
 describe('calculateRefund (RF-18 / CP-13)', () => {
-  it('devuelve todo (arriendo, garantía y comisión) con 48 h o más', () => {
+  it('con 48 h o más devuelve todo', () => {
     const r = calculateRefund({ ...base, startDate: '2026-10-15', hourStart: 9 }, 'tenant', now);
     expect(r.tier).toBe('full');
     expect(r.refundClp).toBe(155000);
   });
 
-  it('entre 24 y 48 h devuelve 50 % del arriendo, la garantía y la comisión', () => {
+  it('entre 24 y 48 h también devuelve todo (no se cobra nada)', () => {
     const r = calculateRefund({ ...base, startDate: '2026-10-13', hourStart: 18 }, 'tenant', now);
-    expect(r.tier).toBe('half');
-    expect(r.refundClp).toBe(105000);
+    expect(r.tier).toBe('full');
+    expect(r.refundClp).toBe(155000);
   });
 
-  it('justo 24 h antes todavía no se cobra la comisión', () => {
+  it('justo 24 h antes todavía devuelve todo', () => {
     const r = calculateRefund({ ...base, startDate: '2026-10-13', hourStart: 12 }, 'tenant', now);
-    expect(r.tier).toBe('half');
-    expect(r.refundClp).toBe(105000);
+    expect(r.refundClp).toBe(155000);
   });
 
-  it('con menos de 24 h devuelve solo la garantía y cobra la comisión', () => {
+  it('con menos de 24 h devuelve arriendo y garantía y cobra solo la comisión', () => {
     const r = calculateRefund({ ...base, startDate: '2026-10-12', hourStart: 18 }, 'tenant', now);
-    expect(r.tier).toBe('deposit_only');
-    expect(r.refundClp).toBe(50000);
+    expect(r.tier).toBe('fee_charged');
+    expect(r.refundClp).toBe(150000);
   });
 
-  it('descuenta el monto promocional del arriendo reembolsable', () => {
-    const r = calculateRefund({ ...base, discountClp: 20000, totalClp: 135000, startDate: '2026-10-20' }, 'tenant', now);
-    expect(r.refundClp).toBe(80000 + 50000 + 5000);
+  it('con descuento devuelve lo efectivamente pagado', () => {
+    const withDiscount = { ...base, discountClp: 20000, totalClp: 135000 };
+    expect(calculateRefund({ ...withDiscount, startDate: '2026-10-20' }, 'tenant', now).refundClp).toBe(135000);
+    expect(calculateRefund({ ...withDiscount, startDate: '2026-10-12', hourStart: 18 }, 'tenant', now).refundClp).toBe(130000);
   });
 
   it('si falta la comisión la deduce del total', () => {
     const { platformFeeClp: _omit, ...noFee } = base;
-    const r = calculateRefund({ ...noFee, startDate: '2026-10-15', hourStart: 9 }, 'tenant', now);
-    expect(r.refundClp).toBe(155000);
+    const r = calculateRefund({ ...noFee, startDate: '2026-10-12', hourStart: 18 }, 'tenant', now);
+    expect(r.refundClp).toBe(150000);
   });
 
   it('reembolsa el total si cancela el propietario o administración', () => {

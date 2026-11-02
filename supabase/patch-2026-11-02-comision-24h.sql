@@ -1,12 +1,11 @@
 -- ==============================================================================
--- SPOTLY · PARCHE 2026-11-02 (b): comisión según 24 horas
+-- SPOTLY · PARCHE 2026-11-02 (b): cancelación según 24 horas
 -- ==============================================================================
 -- NO es destructivo. Supabase → SQL Editor → New query → pegar todo → Run.
 --
--- Nueva regla cuando cancela el arrendatario:
---   ≥ 48 h antes del inicio: 100 % del arriendo + garantía + comisión
---   24–48 h antes:            50 % del arriendo + garantía + comisión
---   < 24 h antes:              solo la garantía (la comisión se cobra)
+-- Regla cuando cancela el arrendatario:
+--   ≥ 24 h antes del inicio: se devuelve todo (arriendo + garantía + comisión)
+--   < 24 h antes:              arriendo + garantía (solo se cobra la comisión)
 -- Si cancela el propietario o administración, o se rechaza la solicitud: 100 %.
 BEGIN;
 
@@ -27,13 +26,11 @@ BEGIN
   IF NOT p_by_tenant THEN
     RETURN p_res.total_clp;
   END IF;
-  -- Con 24 h o más de anticipación también se devuelve la comisión.
-  IF v_hours >= 48 THEN
+  -- Con 24 h o más se devuelve todo; con menos de 24 h solo se cobra la comisión.
+  IF v_hours >= 24 THEN
     RETURN v_rent + p_res.security_deposit_clp + COALESCE(p_res.platform_fee_clp, 0);
-  ELSIF v_hours >= 24 THEN
-    RETURN round(v_rent * 0.5) + p_res.security_deposit_clp + COALESCE(p_res.platform_fee_clp, 0);
   ELSE
-    RETURN p_res.security_deposit_clp;
+    RETURN v_rent + p_res.security_deposit_clp;
   END IF;
 END;
 $$;
