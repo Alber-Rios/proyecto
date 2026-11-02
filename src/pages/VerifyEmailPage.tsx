@@ -39,6 +39,29 @@ export const VerifyEmailPage: React.FC = () => {
     window.scrollTo({ top: 0 });
   }, []);
 
+  // Si la plantilla del correo trae un enlace en vez del código, Supabase
+  // confirma la cuenta al abrirlo y vuelve aquí con el resultado en la URL.
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const query = new URLSearchParams(window.location.search);
+    const linkError = hash.get('error_description') || query.get('error_description');
+    const confirmed = hash.get('access_token') && ['signup', 'email'].includes(hash.get('type') || '');
+    if (!linkError && !confirmed) return;
+    // Los tokens no se dejan en la barra de direcciones ni en el historial.
+    window.history.replaceState(null, '', window.location.pathname);
+    if (confirmed) {
+      navigate('/login', {
+        replace: true,
+        state: { notice: 'Tu correo quedó verificado. Ya puedes iniciar sesión.' },
+      });
+    } else {
+      setError('El enlace de verificación venció o ya se usó. Escribe tu correo y pide un código nuevo.');
+      setEditingEmail(true);
+      setCooldown(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = window.setTimeout(() => setCooldown((c) => c - 1), 1000);
