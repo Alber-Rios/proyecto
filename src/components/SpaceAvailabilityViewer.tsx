@@ -26,6 +26,7 @@ import { formatClp, formatRut, getSpaceAvailableModalities, getTodayIso, formatD
 import { useApp } from '../context/AppContext.tsx';
 import { useSpaceReservations } from '../hooks/useSpaceReservations.ts';
 import { useChileNow } from '../hooks/useChileNow.ts';
+import { expiryLabel, isActionableRequest, isExpiredRequest } from '../utils/requestExpiry.ts';
 import { blockCoversWholeDay, blockedHoursOnDay, blocksOnDay, describeBlock } from '../utils/spaceBlocks.ts';
 import { isHourSlotPast } from '../utils/formatters.ts';
 
@@ -975,12 +976,15 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                   <div className="grid grid-cols-1 gap-3">
                     {dayScheduleData.uniqueBookings.map((booking) => {
                       const tPhone = getTenantPhone(booking);
-                      const isPending = booking.status === 'pending';
+                      const isExpired = isExpiredRequest(booking, chileNow);
+                      const isPending = booking.status === 'pending' && !isExpired;
                       return (
                         <div
                           key={booking.id}
                           className={`p-3.5 sm:p-4 rounded-2xl border shadow-2xs space-y-3 ${
-                            isPending
+                            isExpired
+                              ? 'bg-slate-50 border-slate-300'
+                              : isPending
                               ? 'bg-amber-50/90 border-amber-300'
                               : 'bg-white border-rose-200'
                           }`}
@@ -989,12 +993,18 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                             <div className="flex items-center gap-2 flex-wrap">
                               <span
                                 className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                  isPending
+                                  isExpired
+                                    ? 'bg-slate-200 text-slate-800'
+                                    : isPending
                                     ? 'bg-amber-500 text-white'
                                     : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 }`}
                               >
-                                {isPending ? 'Solicitud por aprobar' : 'Reserva confirmada'}
+                                {isExpired
+                                  ? 'Vencida sin respuesta'
+                                  : isPending
+                                  ? `Solicitud por aprobar · ${expiryLabel(booking, chileNow).toLowerCase()}`
+                                  : 'Reserva confirmada'}
                               </span>
                               <span className="text-xs font-extrabold text-slate-900">
                                 Horario: {String(booking.hourStart ?? 10).padStart(2, '0')}:00 a {String(booking.hourEnd ?? 16).padStart(2, '0')}:00 hrs ({booking.durationUnits || 6} hrs)
@@ -1026,6 +1036,12 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                             </div>
                           </div>
 
+                          {isExpired && (
+                            <p className="text-xs text-slate-800 bg-white px-3 py-2 rounded-xl border border-slate-300">
+                              No se respondió antes de la hora de inicio: la solicitud se rechaza automáticamente, el horario queda libre y se devuelve el 100 % al arrendatario.
+                            </p>
+                          )}
+
                           {booking.intendedUse && (
                             <div className="text-xs text-slate-700 bg-white/80 px-3 py-2 rounded-xl border border-slate-200 break-words">
                               <strong className="text-slate-900">¿Para qué va a utilizar este lugar?:</strong> "{booking.intendedUse}"
@@ -1033,7 +1049,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                           )}
 
                           <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 pt-1">
-                            {isPending && !dayScheduleData.isPastDate && onApproveReservation && (
+                            {isPending && isActionableRequest(booking, chileNow) && onApproveReservation && (
                               <button
                                 type="button"
                                 onClick={() => onApproveReservation(booking.id)}
@@ -1152,7 +1168,9 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                               {occInfo?.status === 'blocked'
                                 ? 'Bloqueada'
                                 : occInfo?.status === 'pending'
-                                ? 'Solicitud'
+                                ? occInfo.reservation && isExpiredRequest(occInfo.reservation, chileNow)
+                                  ? 'Vencida'
+                                  : 'Solicitud'
                                 : dayScheduleData.isPastDate
                                 ? 'Ocupado'
                                 : 'Reservada'}
@@ -1221,7 +1239,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                                 )}
 
                                 <div className="pt-1 flex items-center gap-1 flex-wrap">
-                                  {occInfo.status === 'pending' && !dayScheduleData.isPastDate && occInfo.reservation && onApproveReservation && (
+                                  {occInfo.status === 'pending' && occInfo.reservation && isActionableRequest(occInfo.reservation, chileNow) && onApproveReservation && (
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -1682,7 +1700,9 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                         }`}
                       >
                         {dayDetailsForSelectedDate.primaryReservation.status === 'pending'
-                          ? 'Solicitud por aprobar'
+                          ? isExpiredRequest(dayDetailsForSelectedDate.primaryReservation, chileNow)
+                            ? 'Vencida sin respuesta'
+                            : 'Solicitud por aprobar'
                           : 'Reserva confirmada'}
                       </span>
                     </div>
@@ -1697,8 +1717,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     <div>Uso: <em>"{dayDetailsForSelectedDate.primaryReservation.intendedUse || 'Arriendo diario'}"</em></div>
                   </div>
                   <div className="pt-2 flex flex-wrap items-center gap-2">
-                    {dayDetailsForSelectedDate.primaryReservation.status === 'pending' &&
-                      !dayDetailsForSelectedDate.isPastDate &&
+                    {isActionableRequest(dayDetailsForSelectedDate.primaryReservation, chileNow) &&
                       onApproveReservation && (
                         <button
                           type="button"

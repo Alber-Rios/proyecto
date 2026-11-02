@@ -2,10 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { Reservation, Review } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { calculateRefund } from '../utils/refundPolicy.ts';
-import { formatClp, getTodayIso } from '../utils/formatters.ts';
+import { formatClp, getChileNow, getTodayIso } from '../utils/formatters.ts';
 import { insertReviewToDb } from '../lib/dataAccess.ts';
 import { isReservationFinished } from '../utils/reviewEligibility.ts';
 import { CreditCard, Loader2, Star, XCircle, X } from 'lucide-react';
+import { isExpiredRequest } from '../utils/requestExpiry.ts';
 
 const PAYMENT_LABELS: Record<string, { text: string; className: string }> = {
   pending: { text: 'Pago pendiente', className: 'bg-amber-100 text-amber-800' },
@@ -26,10 +27,17 @@ export const PaymentStatusBadge: React.FC<{ reservation: Reservation }> = ({ res
 
 export function reservationStatusLabel(reservation: Reservation): string {
   if (reservation.status === 'pending' && reservation.paymentStatus === 'pending') return 'Esperando pago';
+  if (reservation.status === 'pending' && isExpiredRequest(reservation, getChileNow())) {
+    return 'Vencida: el anfitrión no respondió a tiempo · se te devuelve el 100 %';
+  }
   if (reservation.status === 'pending') return 'Lista de espera · esperando al anfitrión';
   if (reservation.status === 'confirmed') return 'Confirmada';
   if (reservation.status === 'completed') return 'Finalizada';
-  if (reservation.status === 'rejected') return 'Rechazada por el anfitrión';
+  if (reservation.status === 'rejected') {
+    return /no respondió/i.test(reservation.cancellationReason || '')
+      ? 'Vencida: el anfitrión no respondió a tiempo'
+      : 'Rechazada por el anfitrión';
+  }
   return 'Cancelada';
 }
 

@@ -7,6 +7,8 @@ import { OwnerRevenueReport } from '../components/OwnerRevenueReport.tsx';
 import { Space, Reservation, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
+import { useChileNow } from '../hooks/useChileNow.ts';
+import { expiryLabel, isActionableRequest, isExpiredRequest, isExpiringSoon } from '../utils/requestExpiry.ts';
 import { ContractModal } from '../components/ContractModal.tsx';
 import { PublishSpaceForm, SpaceFormData } from '../components/PublishSpaceForm.tsx';
 import { SpaceAvailabilityViewer } from '../components/SpaceAvailabilityViewer.tsx';
@@ -234,6 +236,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   }, [spaces, currentUser.id]);
 
   // Fecha de referencia actual del sistema
+  const chileNow = useChileNow();
   const todayIso = useMemo(() => getTodayIso(), []);
 
   // Reservas recibidas para las propiedades de este propietario
@@ -259,10 +262,9 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
   // Solicitudes pendientes válidas para aprobar (del día actual hacia adelante)
   const pendingValidBookings = useMemo(() => {
-    return myReceivedBookings.filter(
-      (b) => b.status === 'pending' && b.startDate >= todayIso
-    );
-  }, [myReceivedBookings, todayIso]);
+    // Vence al llegar su hora de inicio: después ya no se puede aprobar.
+    return myReceivedBookings.filter((b) => isActionableRequest(b, chileNow));
+  }, [myReceivedBookings, chileNow]);
 
   // Visitas técnicas vigentes (solo desde hoy en adelante; si ya pasó el día de la visita ya no aparece)
   const upcomingVisitRequests = useMemo(() => {
@@ -316,7 +318,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
     myReceivedBookings.forEach((b) => {
       const fee = b.platformFeeClp ?? Math.round(b.subtotalClp * 0.05);
-      if (b.status === 'pending' && b.startDate >= todayIso) {
+      if (isActionableRequest(b, chileNow)) {
         if (bySpace[b.spaceId]) {
           bySpace[b.spaceId].pendingCount += 1;
         }
@@ -1016,9 +1018,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
               : myReceivedBookings;
 
             if (bookingListStatusFilter === 'pending_valid') {
-              displayedBookings = displayedBookings.filter(
-                (b) => b.status === 'pending' && b.startDate >= todayIso
-              );
+              displayedBookings = displayedBookings.filter((b) => isActionableRequest(b, chileNow));
             } else if (bookingListStatusFilter === 'confirmed') {
               displayedBookings = displayedBookings.filter((b) => b.status === 'confirmed');
             } else if (bookingListStatusFilter === 'past') {
@@ -1046,8 +1046,9 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             return (
               <div className="divide-y divide-slate-100">
                 {displayedBookings.map((res) => {
-                  const isPast = res.startDate < todayIso;
-                  const canApprove = res.status === 'pending' && !isPast;
+                  const isExpired = isExpiredRequest(res, chileNow);
+                  const isPast = res.startDate < todayIso || isExpired;
+                  const canApprove = isActionableRequest(res, chileNow);
 
                   return (
                     <div key={res.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition">
@@ -1071,8 +1072,8 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                               ? 'Aceptada / confirmada'
                               : res.status === 'pending'
                               ? isPast
-                                ? 'Expirada (Fecha anterior a hoy)'
-                                : 'Esperando tu respuesta (Vigente)'
+                                ? 'Vencida sin respuesta · se devuelve el 100 %'
+                                : `Esperando tu respuesta · ${expiryLabel(res, chileNow).toLowerCase()}`
                               : res.status === 'cancelled'
                               ? cancelledByOf(res) === 'tenant'
                                 ? 'Cancelada por el arrendatario'
@@ -1179,8 +1180,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                               <>
                                 <button
                                   onClick={() => {
-                                    if (res.startDate < todayIso) {
-                                      alert('Las reservas para aprobar deben ser del día actual hacia adelante.');
+                                    if (!isActionableRequest(res, chileNow)) {
+                                      alert('Esta solicitud venció: su hora de inicio ya pasó y se rechaza automáticamente con devolución del 100 %.');
                                       return;
                                     }
                                     changeReservationStatus(res.id, 'confirmed');
@@ -1599,7 +1600,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Solo solicitudes válidas del día actual hacia adelante ({todayIso} en adelante).
+                    Si no respondes antes de la hora de inicio, la solicitud se rechaza sola y se devuelve el 100 % al arrendatario.
                   </p>
                 </div>
               </div>
@@ -1661,8 +1662,12 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                           <Building className="w-3.5 h-3.5 shrink-0" />
                           <span className="truncate">{res.spaceTitle}</span>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 whitespace-nowrap shrink-0">
-                          Expira en 4h
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 ${
+                            isExpiringSoon(res, chileNow) ? 'bg-rose-100 text-rose-800' : 'bg-amber-50 text-amber-900'
+                          }`}
+                        >
+                          {expiryLabel(res, chileNow)}
                         </span>
                       </div>
 
@@ -2190,14 +2195,18 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                 const { booking, visit, maintenance } = getDayEventsForSelectedSpace(selectedDayInfo.date);
 
                 if (booking) {
-                  const isPastBooking = booking.startDate < todayIso;
+                  const isPastBooking = booking.startDate < todayIso || isExpiredRequest(booking, chileNow);
                   return (
                     <div className="p-4 rounded-2xl bg-rose-50/90 border border-rose-200 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                           booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                         }`}>
-                          {booking.status === 'confirmed' ? 'Reserva confirmada' : 'Solicitud pendiente'}
+                          {booking.status === 'confirmed'
+                            ? 'Reserva confirmada'
+                            : isPastBooking
+                              ? 'Solicitud vencida'
+                              : 'Solicitud pendiente'}
                         </span>
                         <span className="font-extrabold text-rose-700 text-sm">{formatClp(booking.subtotalClp)}</span>
                       </div>
@@ -2249,7 +2258,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                           isPastBooking ? (
                             <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 font-bold text-[11px] text-center flex items-center justify-center gap-1.5">
                               <Lock className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Registro Histórico • Sin modificaciones permitidas</span>
+                              <span>Vencida sin respuesta • se devuelve el 100 % al arrendatario</span>
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-2 pt-1">

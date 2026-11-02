@@ -980,6 +980,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Cada 5 minutos se revisan las solicitudes cuya hora de inicio llegó sin
+  // respuesta: la base las rechaza (100 % de devolución) y se libera el horario.
+  useEffect(() => {
+    if (!currentUser || !isSupabaseConfigured()) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshReservations().catch(() => undefined);
+    }, 5 * 60_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
+
   // Reembolsos que quedaron pendientes (p. ej. una solicitud que el anfitrión no
   // respondió a tiempo y la base rechazó sola): se reintentan al cargar las
   // reservas, una vez por sesión y reserva. La API valida que quien la llama sea

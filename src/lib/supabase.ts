@@ -229,8 +229,27 @@ export async function deleteSpaceFromDb(id: string): Promise<{ success: boolean;
 }
 
 // 2. RESERVAS (reservations)
+// Vence las solicitudes propias que nadie respondió antes de su hora de inicio
+// (rechazo con devolución del 100 %). Respaldo de pg_cron: si el mantenimiento
+// automático no corre, la app lo hace al cargar. Si la función aún no existe
+// en la base (falta el parche SQL), se ignora.
+let warnedMissingExpiry = false;
+export async function expireMyUnansweredRequests(): Promise<number> {
+  if (!isSupabaseConfigured() || !currentSessionUserId()) return 0;
+  const { data, error } = await supabase.rpc('expire_my_unanswered_requests');
+  if (error) {
+    if (!warnedMissingExpiry) {
+      warnedMissingExpiry = true;
+      console.warn('No se pudieron vencer las solicitudes atrasadas (¿falta el parche SQL 2026-11-02?):', error.message);
+    }
+    return 0;
+  }
+  return Number(data) || 0;
+}
+
 export async function getReservationsFromDb(): Promise<Reservation[]> {
   if (!isSupabaseConfigured()) return [];
+  await expireMyUnansweredRequests();
   const { data, error } = await supabase
     .from('reservations')
     .select('*')
