@@ -27,11 +27,11 @@ export const PasswordStrength: React.FC<{
             <span key={i} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${password && i < Math.max(score, 1) ? level.color : 'bg-stone-200'}`} />
           ))}
         </div>
-        {password && <span className={`text-[11px] font-bold ${level.text}`}>{level.label}</span>}
+        {password && <span className={`text-xs font-bold ${level.text}`}>{level.label}</span>}
       </div>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
         {checks.map((c) => (
-          <li key={c.id} className={`flex items-center gap-1.5 text-[11px] ${c.ok ? 'text-emerald-700' : 'text-stone-500'}`}>
+          <li key={c.id} className={`flex items-center gap-1.5 text-xs ${c.ok ? 'text-emerald-700' : 'text-stone-500'}`}>
             {c.ok ? <Check className="w-3 h-3 shrink-0" aria-hidden="true" /> : <X className="w-3 h-3 shrink-0" aria-hidden="true" />}
             <span>{c.label}</span>
             <span className="sr-only">{c.ok ? '(cumple)' : '(falta)'}</span>

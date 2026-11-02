@@ -140,13 +140,13 @@ export const BookingResultModal: React.FC<BookingResultModalProps> = ({
           <div className="text-left p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
             <div className="font-bold text-slate-900 truncate">{reservation.spaceTitle}</div>
             <div className="flex items-center gap-1.5 text-slate-600">
-              <CalendarCheck className="w-3.5 h-3.5 text-slate-400" /> {describeWhen(reservation)}
+              <CalendarCheck className="w-3.5 h-3.5 text-slate-500" /> {describeWhen(reservation)}
             </div>
             <div className="flex items-center justify-between pt-1">
               <span className="text-slate-500">{success ? 'Total pagado' : 'Total'}</span>
-              <span className="font-extrabold text-slate-900">{formatClp(reservation.totalClp)}</span>
+              <span className="font-bold text-slate-900">{formatClp(reservation.totalClp)}</span>
             </div>
-            <div className="text-[10px] font-mono text-slate-400">Reserva #{reservation.id.slice(-6)}</div>
+            <div className="text-xs font-mono text-slate-500">Reserva #{reservation.id.slice(-6)}</div>
           </div>
         )}
 

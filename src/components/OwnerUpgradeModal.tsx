@@ -95,7 +95,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
               </div>
             </div>
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 bg-emerald-100 text-emerald-800 rounded-lg">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-emerald-100 text-emerald-800 rounded-lg">
                 <CheckCircle2 className="w-3 h-3" /> Identidad vinculada
               </span>
             </div>
@@ -106,23 +106,23 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1">
               <Building className="w-5 h-5 text-rose-600" />
               <div className="text-xs font-bold text-slate-900">Publicaciones ilimitadas</div>
-              <p className="text-[11px] text-slate-500">Sube fotos, define tarifas en CLP por día u hora y gestiona disponibilidad.</p>
+              <p className="text-xs text-slate-500">Sube fotos, define tarifas en CLP por día u hora y gestiona disponibilidad.</p>
             </div>
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1">
               <FileText className="w-5 h-5 text-indigo-600" />
               <div className="text-xs font-bold text-slate-900">Contratos digitales</div>
-              <p className="text-[11px] text-slate-500">Firma electrónica con validez legal según Ley 19.799 para cada arriendo.</p>
+              <p className="text-xs text-slate-500">Firma electrónica con validez legal según Ley 19.799 para cada arriendo.</p>
             </div>
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
               <div className="text-xs font-bold text-slate-900">Garantía custodiada</div>
-              <p className="text-[11px] text-slate-500">Depósitos de garantía retenidos digitalmente ante eventuales daños.</p>
+              <p className="text-xs text-slate-500">Depósitos de garantía retenidos digitalmente ante eventuales daños.</p>
             </div>
           </div>
 
           {/* Términos Legales & Checkboxes Obligatorios */}
           <div className="space-y-3 bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
               <Lock className="w-4 h-4 text-amber-700" />
               Acuerdo vinculante de propietario (Spotly Chile v2026.1)
             </div>
@@ -190,7 +190,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
               className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm ${
                 canSubmit && !loading
                   ? 'bg-rose-600 hover:from-rose-700 hover:to-amber-700 text-white cursor-pointer hover:shadow-md'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-slate-200 text-slate-500 cursor-not-allowed'
               }`}
             >
               {loading ? (

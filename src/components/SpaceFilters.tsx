@@ -85,7 +85,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
         {/* Input de Búsqueda */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             id="search-space-input"
             type="text"
@@ -98,7 +98,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
             <button
               type="button"
               onClick={() => onSearchChange('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-600 rounded-full hover:bg-slate-200 transition cursor-pointer"
               title="Limpiar búsqueda"
             >
               <X className="w-3.5 h-3.5" />
@@ -108,7 +108,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
 
         {/* Selector de Comuna */}
         <div className="relative min-w-[200px] md:w-64">
-          <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <MapPin className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <select
             id="select-commune-filter"
             value={selectedCommune}
@@ -122,7 +122,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
               </option>
             ))}
           </select>
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs font-bold">
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs font-bold">
             ▼
           </div>
         </div>
@@ -159,7 +159,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
               <Clock className="w-3.5 h-3.5 text-rose-500" />
               Modalidad de cobro:
             </span>
-            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-600">
               {selectedRateModality === 'all' ? 'Todas' : selectedRateModality === 'hour' ? 'Por hora' : selectedRateModality === 'day' ? 'Por Día' : 'Por Mes'}
             </span>
           </div>
@@ -194,7 +194,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
               <Layers className="w-3.5 h-3.5 text-indigo-500" />
               Entorno:
             </span>
-            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-600">
               {selectedEnvironment === 'all' ? 'Todos' : selectedEnvironment === 'abierto' ? 'Abierto' : 'Cerrado'}
             </span>
           </div>

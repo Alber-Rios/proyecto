@@ -102,20 +102,20 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
 
         {/* Categoría & Entorno Badges */}
         <div className="absolute top-3 left-3 flex flex-col items-start gap-1">
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/95 backdrop-blur-xs text-slate-800 shadow-xs">
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-white/95 backdrop-blur-xs text-slate-800 shadow-xs">
             {getCategoryLabel(space.category)}
           </span>
           {space.spaceEnvironment === 'abierto' ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/95 text-white shadow-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/95 text-white shadow-xs">
               <Sun className="w-3 h-3" /> Al aire libre
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/90 text-white shadow-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-900/90 text-white shadow-xs">
               <Building2 className="w-3 h-3" /> Interior
             </span>
           )}
           {space.isVerified && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/95 text-white shadow-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500/95 text-white shadow-xs">
               <ShieldCheck className="w-3 h-3" /> Verificado
             </span>
           )}
@@ -126,7 +126,7 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
           <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg text-xs font-bold bg-slate-900/80 backdrop-blur-xs text-white flex items-center gap-1 shadow-sm">
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
             <span>{space.rating.toFixed(1)}</span>
-            <span className="text-[10px] text-slate-300">({space.reviewsCount})</span>
+            <span className="text-xs text-slate-300">({space.reviewsCount})</span>
           </div>
         )}
       </div>
@@ -151,11 +151,11 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
         {/* Capacidad y Superficie */}
         <div className="flex items-center gap-4 text-xs text-slate-600 pt-2 border-t border-slate-100">
           <div className="flex items-center gap-1">
-            <Users className="w-3.5 h-3.5 text-slate-400" />
+            <Users className="w-3.5 h-3.5 text-slate-500" />
             <span>Hasta {space.capacity} personas</span>
           </div>
           <div className="flex items-center gap-1">
-            <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
+            <Maximize2 className="w-3.5 h-3.5 text-slate-500" />
             <span>{space.surfaceM2} m²</span>
           </div>
         </div>
@@ -167,7 +167,7 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
               const rate = getSpaceRateInfo(space);
               return (
                 <div>
-                  <span className="text-base font-extrabold text-slate-900">
+                  <span className="text-base font-bold text-slate-900">
                     {formatClp(rate.amount)}
                   </span>
                   <span className="text-xs text-slate-500 font-medium"> {rate.unitLabel}</span>

@@ -70,7 +70,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
           </div>
 
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+            <span className="text-xs font-bold text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
               Centro de ayuda y soporte
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
@@ -145,7 +145,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
             <Scale className="w-3.5 h-3.5 text-rose-600" />
             Ayuda, soporte y centro de disputas
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             ¿Tuviste un problema con el lugar?
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
@@ -172,7 +172,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
               <AlertCircle className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-rose-900">
+              <span className="text-xs font-bold text-rose-900">
                 Aviso importante · solicitud de verificación rechazada
               </span>
               <p className="text-xs text-rose-800">
@@ -217,7 +217,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>¡Tu problema fue registrado como Disputa #{submittedDisputeId}!</span>
               </div>
-              <p className="text-[11px] text-emerald-700 leading-relaxed">
+              <p className="text-xs text-emerald-700 leading-relaxed">
                 El Administrador ya recibió tu comentario sobre el lugar en el Centro de Arbitraje y Garantías. Puedes ver el estado de tu disputa en el panel derecho.
               </p>
             </div>
@@ -248,7 +248,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Solo aparecen los lugares donde has realizado una reserva.
                 </p>
               </div>
@@ -258,7 +258,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>No tienes lugares reservados actualmente</span>
                 </div>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
+                <p className="text-xs text-amber-800 leading-relaxed">
                   Para reportar un problema y abrir una disputa, primero debes haber realizado una reserva en ese lugar.
                 </p>
                 <button
@@ -303,9 +303,9 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                 value={problemComment}
                 onChange={(e) => setProblemComment(e.target.value)}
                 placeholder="Describe qué ocurrió en el lugar (ej. el espacio no contaba con el equipamiento prometido, hubo problemas de acceso, limpieza o desperfectos)..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500 focus:outline-hidden bg-white resize-y disabled:bg-slate-100 disabled:text-slate-400"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-rose-500 focus:outline-hidden bg-white resize-y disabled:bg-slate-100 disabled:text-slate-400"
               />
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Al enviar este comentario, se generará una <strong>Disputa</strong> que será revisada por el Administrador.
               </p>
             </div>
@@ -315,7 +315,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
               disabled={myReservations.length === 0}
               className={`w-full py-3.5 rounded-2xl font-bold text-xs shadow-md transition flex items-center justify-center gap-2 ${
                 myReservations.length === 0
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
                   : 'bg-rose-600 hover:bg-rose-700 text-white cursor-pointer'
               }`}
             >
@@ -367,11 +367,11 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        <span className="font-mono text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
                           #{d.id}
                         </span>
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             d.status === 'resolved_refund'
                               ? 'bg-emerald-100 text-emerald-800'
                               : d.status === 'resolved_owner'
@@ -386,24 +386,24 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
                             : 'En revisión / arbitraje'}
                         </span>
                       </div>
-                      <span className="text-xs font-extrabold text-rose-600">
+                      <span className="text-xs font-bold text-rose-600">
                         Monto involucrado: {formatClp(d.amountClp)}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+                      <Building2 className="w-4 h-4 text-slate-500 shrink-0" />
                       <h3 className="text-sm font-bold text-slate-900">{d.spaceTitle}</h3>
                     </div>
 
                     <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-xs space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      <span className="text-xs font-bold text-slate-500 block">
                         Problema comentado por el usuario:
                       </span>
                       <p className="text-slate-800 font-medium leading-relaxed">{d.reason}</p>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                       <span>
                         Anfitrión: <strong className="text-slate-700">{d.ownerName}</strong> ({formatRut(d.ownerRut)})
                       </span>

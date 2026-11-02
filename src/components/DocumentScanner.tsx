@@ -482,7 +482,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleConfirmCapturedDoc}
-                        className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                        className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
                         Aceptar y continuar
@@ -505,12 +505,12 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                         <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                         No se detectó una cédula de identidad
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold">
                         Revisión manual
                       </span>
                     </div>
 
-                    <p className="text-[11px] text-slate-200 leading-tight">
+                    <p className="text-xs text-slate-200 leading-tight">
                       {verificationResult.feedbackMessage ||
                         'La foto parece ser una selfie o no se observa claramente la cédula en el marco.'}
                     </p>
@@ -527,7 +527,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleConfirmCapturedDoc}
-                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[10px] font-medium transition cursor-pointer"
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-white rounded-xl text-xs font-medium transition cursor-pointer"
                         title="Usar esta foto si consideras que es válida"
                       >
                         Aceptar de todos modos
@@ -560,7 +560,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
 
                 {/* Silueta de guía según el lado requerido */}
                 <div className="flex items-start justify-between opacity-40 text-white pointer-events-none">
-                  <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-wider uppercase">
+                  <div className="flex items-center gap-1.5 text-xs font-bold">
                     <CreditCard className="w-3.5 h-3.5" />
                     <span>Cédula Chilena • {side === 'front' ? 'Frente' : 'Reverso'}</span>
                   </div>
@@ -593,7 +593,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                   </div>
                 )}
 
-                <div className="text-center text-[9px] font-bold text-white/70">
+                <div className="text-center text-xs font-bold text-white/70">
                   {side === 'front' ? 'Ubica el frente de tu carnet aquí' : 'Ubica el reverso con código aquí'}
                 </div>
 
@@ -614,7 +614,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                 <button
                   type="button"
                   onClick={cancelCountdown}
-                  className="mt-2 text-[11px] text-slate-300 hover:text-white underline cursor-pointer"
+                  className="mt-2 text-xs text-slate-300 hover:text-white underline cursor-pointer"
                 >
                   Cancelar temporizador
                 </button>
@@ -669,7 +669,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                 <button
                   type="button"
                   onClick={() => executeCaptureAndVerify()}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-extrabold text-xs shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     isDocDetected
                       ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 ring-4 ring-emerald-400/40 scale-102'
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white'
@@ -690,7 +690,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
               <p className="text-sm font-bold text-white">
                 Escaneo de Cédula: {side === 'front' ? 'Frente (Anverso)' : 'Reverso (Dorso)'}
               </p>
-              <p className="text-xs text-slate-400 max-w-xs">
+              <p className="text-xs text-slate-500 max-w-xs">
                 Sostén tu cédula frente a la cámara. Un administrador revisará la imagen que envíes.
               </p>
             </div>
@@ -728,7 +728,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
           <button
             type="button"
             onClick={() => setAutoCaptureEnabled(!autoCaptureEnabled)}
-            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer shrink-0 ${
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer shrink-0 ${
               autoCaptureEnabled
                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'

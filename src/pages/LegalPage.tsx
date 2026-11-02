@@ -82,8 +82,8 @@ export function LegalPage({ document }: { document: LegalDocument }) {
             <FileText className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-700">Información legal · Spotly Chile</p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">{page.title}</h1>
+            <p className="text-xs font-bold tracking-[0.16em] text-rose-700">Información legal · Spotly Chile</p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">{page.title}</h1>
           </div>
         </div>
         <p className="mt-5 max-w-3xl text-sm leading-relaxed text-slate-600">{page.intro}</p>

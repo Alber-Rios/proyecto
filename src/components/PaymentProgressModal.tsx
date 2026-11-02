@@ -68,7 +68,7 @@ export const PaymentProgressModal: React.FC<PaymentProgressModalProps> = ({ step
               >
                 <span
                   className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    done ? 'bg-emerald-500 text-white' : current ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-400'
+                    done ? 'bg-emerald-500 text-white' : current ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500'
                   }`}
                 >
                   <AnimatePresence mode="wait" initial={false}>
@@ -86,15 +86,15 @@ export const PaymentProgressModal: React.FC<PaymentProgressModalProps> = ({ step
                   </AnimatePresence>
                 </span>
                 <span className="min-w-0">
-                  <span className={`block text-sm font-bold ${done || current ? 'text-slate-900' : 'text-slate-400'}`}>{s.title}</span>
-                  <span className={`block text-xs ${done || current ? 'text-slate-600' : 'text-slate-400'}`}>{s.text}</span>
+                  <span className={`block text-sm font-bold ${done || current ? 'text-slate-900' : 'text-slate-500'}`}>{s.title}</span>
+                  <span className={`block text-xs ${done || current ? 'text-slate-600' : 'text-slate-500'}`}>{s.text}</span>
                 </span>
               </li>
             );
           })}
         </ol>
 
-        <p className="mt-5 text-center text-[11px] text-slate-500">No cierres ni recargues esta página mientras procesamos tu reserva.</p>
+        <p className="mt-5 text-center text-xs text-slate-500">No cierres ni recargues esta página mientras procesamos tu reserva.</p>
       </motion.div>
     </div>,
     document.body

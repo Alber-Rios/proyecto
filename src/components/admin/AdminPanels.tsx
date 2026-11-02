@@ -115,7 +115,7 @@ export const AuditLogPanel: React.FC = () => {
                   <td className="px-4 py-2 whitespace-nowrap text-slate-600">{new Date(log.timestamp).toLocaleString('es-CL')}</td>
                   <td className="px-4 py-2">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                         log.severity === 'critical'
                           ? 'bg-rose-100 text-rose-800'
                           : log.severity === 'security'
@@ -130,15 +130,15 @@ export const AuditLogPanel: React.FC = () => {
                   </td>
                   <td className="px-4 py-2 text-slate-700">
                     {log.userEmail}
-                    <span className="block text-[10px] text-slate-400">{log.userRole}</span>
+                    <span className="block text-xs text-slate-500">{log.userRole}</span>
                   </td>
-                  <td className="px-4 py-2 font-mono text-[11px] text-slate-600">{log.ip}</td>
-                  <td className="px-4 py-2 font-mono text-[10px] text-slate-500 max-w-md break-all">{JSON.stringify(log.details)}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-slate-600">{log.ip}</td>
+                  <td className="px-4 py-2 font-mono text-xs text-slate-500 max-w-md break-all">{JSON.stringify(log.details)}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400">Sin eventos para el filtro seleccionado.</td>
+                  <td colSpan={5} className="px-4 py-6 text-center text-slate-500">Sin eventos para el filtro seleccionado.</td>
                 </tr>
               )}
             </tbody>
@@ -207,7 +207,7 @@ export const ReportsPanel: React.FC = () => {
           <p className="text-xs text-slate-500">Denuncias de publicaciones y usuarios enviadas por la comunidad.</p>
         </div>
         <ul className="divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
-          {reports.length === 0 && <li className="p-5 text-xs text-slate-400">No hay reportes.</li>}
+          {reports.length === 0 && <li className="p-5 text-xs text-slate-500">No hay reportes.</li>}
           {reports.map((report) => {
             const space = report.targetSpaceId ? spaces.find((s) => s.id === report.targetSpaceId) : undefined;
             return (
@@ -216,7 +216,7 @@ export const ReportsPanel: React.FC = () => {
                   <span className="font-bold text-slate-900">
                     {report.targetType === 'space' ? 'Publicación' : 'Usuario'}: {report.targetLabel}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">{report.status}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">{report.status}</span>
                 </div>
                 <p className="text-slate-500">
                   {report.category} · {report.reporterEmail} · {new Date(report.createdAt).toLocaleString('es-CL')}
@@ -296,7 +296,7 @@ export const ReportsPanel: React.FC = () => {
             </li>
           ))}
         </ul>
-        {error && <p className="p-4 text-[11px] font-semibold text-rose-600">{error}</p>}
+        {error && <p className="p-4 text-xs font-semibold text-rose-600">{error}</p>}
       </div>
     </div>
   );
@@ -353,13 +353,13 @@ export const KpiDashboard: React.FC = () => {
           {kpis.map((kpi) => (
             <div key={kpi.id} className="p-4 rounded-2xl border border-slate-200 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-500">{kpi.id}</span>
+                <span className="text-xs font-bold text-slate-500">{kpi.id}</span>
                 <span className={`w-3 h-3 rounded-full ${LIGHT_CLASS[kpi.light]}`} aria-label={`Semáforo ${kpi.light}`} />
               </div>
               <p className="text-xs font-bold text-slate-900">{kpi.name}</p>
               <p className="text-2xl font-bold text-slate-900 tabular-nums">{kpi.display}</p>
-              <p className="text-[11px] text-slate-500">Meta: {kpi.target}</p>
-              {kpi.detail && <p className="text-[10px] text-slate-400">{kpi.detail}</p>}
+              <p className="text-xs text-slate-500">Meta: {kpi.target}</p>
+              {kpi.detail && <p className="text-xs text-slate-500">{kpi.detail}</p>}
             </div>
           ))}
         </div>
@@ -414,7 +414,7 @@ export const DiscountCodesPanel: React.FC = () => {
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
       <form onSubmit={save} className={`${cardClass} p-5 space-y-3`}>
         <h2 className="text-base font-bold text-slate-900">Nuevo código</h2>
-        <input required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="CÓDIGO" className={`${inputClass} w-full uppercase`} />
+        <input required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="CÓDIGO" className={`${inputClass} w-full `} />
         <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción" className={`${inputClass} w-full`} />
         <label className="block text-xs text-slate-600">
           % de descuento sobre el arriendo
@@ -426,7 +426,7 @@ export const DiscountCodesPanel: React.FC = () => {
           <input type="date" value={form.validUntil} onChange={(e) => setForm({ ...form, validUntil: e.target.value })} className={`${inputClass} w-full mt-1`} />
         </label>
         <input type="number" min={1} value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })} placeholder="Máximo de usos (opcional)" className={`${inputClass} w-full`} />
-        {error && <p className="text-[11px] font-semibold text-rose-600">{error}</p>}
+        {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
         <button type="submit" disabled={saving} className="w-full px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
           Guardar código
         </button>
@@ -447,7 +447,7 @@ export const DiscountCodesPanel: React.FC = () => {
               <tr key={c.code}>
                 <td className="px-4 py-2 font-mono font-bold">
                   {c.code}
-                  {c.description && <span className="block font-sans font-normal text-[10px] text-slate-500">{c.description}</span>}
+                  {c.description && <span className="block font-sans font-normal text-xs text-slate-500">{c.description}</span>}
                 </td>
                 <td className="px-4 py-2">
                   {c.percentOff}%{c.maxDiscountClp ? ` (tope ${formatClp(c.maxDiscountClp)})` : ''}
@@ -460,7 +460,7 @@ export const DiscountCodesPanel: React.FC = () => {
                 <td className="px-4 py-2">
                   <button
                     onClick={() => toggle(c)}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}
                   >
                     {c.active ? 'Activo' : 'Inactivo'}
                   </button>
@@ -511,18 +511,18 @@ export const PaymentsPanel: React.FC = () => {
                 <td className="px-4 py-2 tabular-nums">{formatClp(p.amountClp)}</td>
                 <td className="px-4 py-2">
                   {p.status}
-                  {p.environment === 'integration' && <span className="block text-[10px] text-slate-400">integración</span>}
+                  {p.environment === 'integration' && <span className="block text-xs text-slate-500">integración</span>}
                 </td>
                 <td className="px-4 py-2 font-mono">
                   {p.authorizationCode || '—'}
-                  {p.cardLast4 && <span className="block text-[10px] text-slate-400">**** {p.cardLast4}</span>}
+                  {p.cardLast4 && <span className="block text-xs text-slate-500">**** {p.cardLast4}</span>}
                 </td>
                 <td className="px-4 py-2 tabular-nums">{p.refundedAmountClp ? formatClp(p.refundedAmountClp) : '—'}</td>
               </tr>
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-slate-400">Aún no hay transacciones.</td>
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">Aún no hay transacciones.</td>
               </tr>
             )}
           </tbody>

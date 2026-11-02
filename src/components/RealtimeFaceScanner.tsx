@@ -471,7 +471,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleConfirmCapturedFace}
-                        className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                        className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
                         Aceptar y continuar a antecedentes
@@ -508,7 +508,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                       <button
                         type="button"
                         onClick={handleConfirmCapturedFace}
-                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[10px] font-medium transition cursor-pointer"
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-white rounded-xl text-xs font-medium transition cursor-pointer"
                       >
                         Aceptar de todos modos
                       </button>
@@ -562,7 +562,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 <button
                   type="button"
                   onClick={cancelCountdown}
-                  className="mt-2 text-[11px] text-slate-300 hover:text-white underline cursor-pointer"
+                  className="mt-2 text-xs text-slate-300 hover:text-white underline cursor-pointer"
                 >
                   Cancelar temporizador
                 </button>
@@ -592,7 +592,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 <button
                   type="button"
                   onClick={stopCamera}
-                  className="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-[10px] font-bold border border-white/20 shadow-md cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold border border-white/20 shadow-md cursor-pointer flex items-center gap-1"
                 >
                   <X className="w-3 h-3" />
                   <span className="hidden sm:inline">Cerrar</span>
@@ -630,7 +630,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
                 <button
                   type="button"
                   onClick={() => executeCaptureAndVerify()}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-extrabold text-xs shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     isFaceDetected
                       ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 ring-4 ring-emerald-400/40 scale-102'
                       : 'bg-indigo-600 hover:bg-indigo-500 text-white'
@@ -651,7 +651,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
 
             <div className="space-y-1">
               <p className="text-sm font-bold text-white">Reconocimiento facial biométrico</p>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto">
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">
                 Tómate una selfie de frente. Tendrás 5 segundos o captura manual para mirar al lente con tranquilidad.
               </p>
             </div>
@@ -690,7 +690,7 @@ export const RealtimeFaceScanner: React.FC<RealtimeFaceScannerProps> = ({
           <button
             type="button"
             onClick={() => setAutoCaptureEnabled(!autoCaptureEnabled)}
-            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer shrink-0 ${
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer shrink-0 ${
               autoCaptureEnabled
                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'

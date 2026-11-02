@@ -63,7 +63,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
           setOpen(true);
           setSent(false);
         }}
-        className="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer"
+        className="text-xs font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer"
       >
         <Flag className="w-3.5 h-3.5" /> {buttonLabel}
       </button>
@@ -106,7 +106,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
                     placeholder="Explica qué ocurrió"
                   />
                 </label>
-                {error && <p className="text-[11px] font-semibold text-rose-600">{error}</p>}
+                {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
                 <div className="flex justify-end">
                   <button
                     type="submit"

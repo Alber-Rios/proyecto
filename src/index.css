@@ -104,18 +104,6 @@ div[data-temp-mail] {
 .shine:hover::before { transform: translateX(120%); }
 
 
-/* Texto con degradado dorado-rosa animado */
-@keyframes gradient-pan { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-.text-luxe {
-  background: linear-gradient(90deg, #fda4af, #fcd34d, #fb7185, #fda4af);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: gradient-pan 8s ease-in-out infinite;
-}
-
-
 /* ===== Entrada de modales y diálogos =====
    El fondo oscuro aparece con un fundido y la ventana sube un poco mientras
    aparece. Aplica a todos los modales del sitio sin tocar cada uno. */

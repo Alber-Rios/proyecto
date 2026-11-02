@@ -229,7 +229,7 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
     if (upcoming) {
       return (
         <div className="flex items-center gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-          <CalendarClock className="w-4 h-4 text-slate-400 shrink-0" />
+          <CalendarClock className="w-4 h-4 text-slate-500 shrink-0" />
           Podrás dejar tu reseña cuando termine tu reserva del {formatDay(upcoming.endDate)}.
         </div>
       );
@@ -249,15 +249,15 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
       {reviews.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-4 sm:items-center p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <div className="text-center sm:pr-4 sm:border-r border-slate-200 shrink-0">
-            <div className="text-3xl font-extrabold text-slate-900">{average.toFixed(1).replace('.', ',')}</div>
+            <div className="text-3xl font-bold text-slate-900">{average.toFixed(1).replace('.', ',')}</div>
             <Stars rating={average} size="w-4 h-4" />
-            <div className="text-[11px] text-slate-500 mt-0.5">
+            <div className="text-xs text-slate-500 mt-0.5">
               {reviews.length} {reviews.length === 1 ? 'reseña' : 'reseñas'}
             </div>
           </div>
           <ul className="flex-1 space-y-1" aria-label="Distribución de calificaciones">
             {distribution.map((d) => (
-              <li key={d.value} className="flex items-center gap-2 text-[11px] text-slate-600">
+              <li key={d.value} className="flex items-center gap-2 text-xs text-slate-600">
                 <span className="w-3 text-right font-semibold">{d.value}</span>
                 <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                 <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
@@ -330,7 +330,7 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
               />
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] text-slate-400">{comment.length}/1000</span>
+                <span className="text-xs text-slate-500">{comment.length}/1000</span>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -350,7 +350,7 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
                 </div>
               </div>
               {formError && (
-                <p className="text-[11px] font-semibold text-rose-600" role="alert">
+                <p className="text-xs font-semibold text-rose-600" role="alert">
                   {formError}
                 </p>
               )}
@@ -379,15 +379,15 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-full bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">
+                    <span className="w-7 h-7 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center">
                       {review.tenantName.charAt(0).toUpperCase()}
                     </span>
                     {review.tenantName}
                     {currentUser?.id === review.tenantId && (
-                      <span className="text-[10px] font-semibold text-slate-500">(tú)</span>
+                      <span className="text-xs font-semibold text-slate-500">(tú)</span>
                     )}
                   </span>
-                  <span className="text-[11px] text-slate-500">{new Date(review.createdAt).toLocaleDateString('es-CL')}</span>
+                  <span className="text-xs text-slate-500">{new Date(review.createdAt).toLocaleDateString('es-CL')}</span>
                 </div>
                 <Stars rating={review.rating} />
                 {review.comment && <p className="text-xs text-slate-700 leading-relaxed">{review.comment}</p>}
@@ -396,7 +396,7 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
                   <button
                     type="button"
                     onClick={() => startEdit(review)}
-                    className="text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+                    className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
                   >
                     Editar mi reseña
                   </button>
@@ -404,7 +404,7 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
 
                 {review.ownerReply && replyDrafts[review.id] === undefined && (
                   <div className="ml-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <p className="text-[11px] font-bold text-slate-900 flex items-center gap-1">
+                    <p className="text-xs font-bold text-slate-900 flex items-center gap-1">
                       <MessageSquare className="w-3.5 h-3.5" /> Respuesta de {space.ownerName}
                     </p>
                     <p className="text-xs text-slate-700">{review.ownerReply}</p>
@@ -447,7 +447,7 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
                   ) : (
                     <button
                       onClick={() => setReplyDrafts((prev) => ({ ...prev, [review.id]: review.ownerReply || '' }))}
-                      className="ml-4 text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                      className="ml-4 text-xs font-bold text-rose-600 hover:underline cursor-pointer"
                     >
                       {review.ownerReply ? 'Editar respuesta' : 'Responder'}
                     </button>
@@ -457,7 +457,7 @@ export const SpaceReviews: React.FC<{ space: Space; onOpenAuth?: (mode: 'login' 
           </AnimatePresence>
         </ul>
       )}
-      {error && <p className="text-[11px] font-semibold text-rose-600">{error}</p>}
+      {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
     </section>
   );
 };

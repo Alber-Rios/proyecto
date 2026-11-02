@@ -177,7 +177,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Volumen transado {text.per}</h3>
-            <span className="text-[10px] text-slate-500">Reservas confirmadas y completadas</span>
+            <span className="text-xs text-slate-500">Reservas confirmadas y completadas</span>
           </div>
           <VerticalBarChart
             key={`gmv-${period}`}
@@ -207,7 +207,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Usuarios nuevos {text.per}</h3>
-            <span className="text-[10px] text-slate-500">Arrendatarios y propietarios</span>
+            <span className="text-xs text-slate-500">Arrendatarios y propietarios</span>
           </div>
           <VerticalBarChart
             key={`users-${period}`}
@@ -221,7 +221,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Comunas con más volumen</h3>
-            <span className="text-[10px] text-slate-500">{text.range}</span>
+            <span className="text-xs text-slate-500">{text.range}</span>
           </div>
           <HorizontalBarList title="Volumen por comuna" data={topCommunes} formatValue={compactClp} emptyText="Sin reservas confirmadas en este período." />
         </section>
@@ -229,7 +229,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Espacios con más volumen</h3>
-            <span className="text-[10px] text-slate-500">{text.range}</span>
+            <span className="text-xs text-slate-500">{text.range}</span>
           </div>
           <HorizontalBarList
             title="Volumen por espacio"
@@ -244,7 +244,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
       <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-900">Reservas por estado</h3>
-          <span className="text-[10px] text-slate-500">{text.range} · {statusBreakdown.reduce((a, d) => a + d.value, 0)} reservas</span>
+          <span className="text-xs text-slate-500">{text.range} · {statusBreakdown.reduce((a, d) => a + d.value, 0)} reservas</span>
         </div>
         <HorizontalBarList title="Reservas por estado" data={statusBreakdown} formatValue={(v) => String(v)} emptyText="Sin reservas en este período." />
       </section>

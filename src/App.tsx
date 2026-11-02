@@ -257,12 +257,12 @@ function AppContent() {
       </Suspense>
 
       {/* Footer Institucional Chileno */}
-      <footer className="bg-slate-900 text-slate-400 text-sm mt-16 border-t border-slate-800">
+      <footer className="bg-slate-900 text-slate-500 text-sm mt-16 border-t border-slate-800">
         <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="space-y-3">
               <BrandLogo tone="light" className="text-[1.6rem]" />
-              <p className="text-slate-400 leading-relaxed text-sm">
+              <p className="text-slate-500 leading-relaxed text-sm">
                 Una plataforma para encontrar y publicar espacios con modalidades de arriendo flexibles. Revisa los detalles y condiciones de cada publicación.
               </p>
             </div>
@@ -302,7 +302,7 @@ function AppContent() {
                   ['/mapa-del-sitio', 'Mapa del sitio'],
                 ].map(([href, label]) => (
                   <li key={href}>
-                    <Link to={href} onClick={() => window.scrollTo({ top: 0 })} className="inline-block py-1.5 text-slate-400 hover:text-white transition">
+                    <Link to={href} onClick={() => window.scrollTo({ top: 0 })} className="inline-block py-1.5 text-slate-500 hover:text-white transition">
                       {label}
                     </Link>
                   </li>
@@ -311,7 +311,7 @@ function AppContent() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400">
+          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-500">
             <span>© {new Date().getFullYear()} Spotly.</span>
             <span>La disponibilidad y las condiciones dependen de cada publicación.</span>
           </div>

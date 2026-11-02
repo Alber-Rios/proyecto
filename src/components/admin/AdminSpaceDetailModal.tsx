@@ -34,7 +34,7 @@ const STATUS_LABEL: Record<Space['status'], string> = {
 
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3.5 py-2.5 min-w-0">
-    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+    <p className="text-xs font-bold tracking-wide text-slate-500">{label}</p>
     <div className="mt-0.5 text-sm font-semibold text-slate-800 break-words">{children}</div>
   </div>
 );
@@ -86,11 +86,11 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
         <div className="bg-slate-900 text-white px-5 sm:px-6 py-4 flex items-start justify-between gap-4 shrink-0">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-400/40">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-400/40">
                 Revisión de publicación
               </span>
               <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                   space.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-slate-300'
                 }`}
               >
@@ -98,7 +98,7 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold mt-1 truncate">{space.title}</h2>
-            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+            <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
               <MapPin className="w-3.5 h-3.5" />
               {[space.address, space.commune, space.region].filter(Boolean).join(', ')}
             </p>
@@ -139,7 +139,7 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
                     </button>
                   </>
                 )}
-                <span className="absolute bottom-3 right-3 text-[11px] font-bold bg-slate-900/80 text-white px-2 py-0.5 rounded-full">
+                <span className="absolute bottom-3 right-3 text-xs font-bold bg-slate-900/80 text-white px-2 py-0.5 rounded-full">
                   Foto {photo + 1} de {images.length}
                 </span>
               </div>
@@ -168,17 +168,17 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
             <Field label="Entorno">{space.spaceEnvironment === 'abierto' ? 'Abierto' : 'Techado'}</Field>
             <Field label="Capacidad">
               <span className="inline-flex items-center gap-1">
-                <Users className="w-3.5 h-3.5 text-slate-400" /> {space.capacity} personas
+                <Users className="w-3.5 h-3.5 text-slate-500" /> {space.capacity} personas
               </span>
             </Field>
             <Field label="Superficie">
               <span className="inline-flex items-center gap-1">
-                <Maximize2 className="w-3.5 h-3.5 text-slate-400" /> {space.surfaceM2} m²
+                <Maximize2 className="w-3.5 h-3.5 text-slate-500" /> {space.surfaceM2} m²
               </span>
             </Field>
             <Field label="Horario">
               <span className="inline-flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-slate-400" /> {space.openingHours || 'No informado'}
+                <Clock className="w-3.5 h-3.5 text-slate-500" /> {space.openingHours || 'No informado'}
               </span>
             </Field>
             <Field label="Mínimo de reserva">
@@ -196,11 +196,11 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {prices.map((p) => (
                 <Field key={p.label} label={p.label}>
-                  {p.value ? formatClp(p.value) : <span className="text-slate-400 font-medium">No ofrece</span>}
+                  {p.value ? formatClp(p.value) : <span className="text-slate-500 font-medium">No ofrece</span>}
                 </Field>
               ))}
               <Field label="Garantía">
-                {space.securityDeposit ? formatClp(space.securityDeposit) : <span className="text-slate-400 font-medium">No pide</span>}
+                {space.securityDeposit ? formatClp(space.securityDeposit) : <span className="text-slate-500 font-medium">No pide</span>}
               </Field>
             </div>
           </div>
@@ -224,7 +224,7 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-slate-400">Sin equipamiento informado.</span>
+                    <span className="text-xs text-slate-500">Sin equipamiento informado.</span>
                   )}
                 </div>
               </div>
@@ -237,7 +237,7 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-xs text-slate-400">Sin reglas informadas.</p>
+                  <p className="text-xs text-slate-500">Sin reglas informadas.</p>
                 )}
               </div>
             </div>
@@ -263,17 +263,17 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
                   <p className="text-lg font-bold text-slate-900">{spaceReservations.length}</p>
-                  <p className="text-[11px] text-slate-500">Reservas</p>
+                  <p className="text-xs text-slate-500">Reservas</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-slate-900">{confirmed.length}</p>
-                  <p className="text-[11px] text-slate-500 inline-flex items-center gap-0.5">
+                  <p className="text-xs text-slate-500 inline-flex items-center gap-0.5">
                     <CalendarCheck className="w-3 h-3" /> Confirmadas
                   </p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-slate-900">{space.reviewsCount ? space.rating.toFixed(1) : '—'}</p>
-                  <p className="text-[11px] text-slate-500 inline-flex items-center gap-0.5">
+                  <p className="text-xs text-slate-500 inline-flex items-center gap-0.5">
                     <Star className="w-3 h-3" /> {space.reviewsCount} reseñas
                   </p>
                 </div>
@@ -294,7 +294,7 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
               <ExternalLink className="w-3.5 h-3.5" /> Ver página pública
             </a>
           ) : (
-            <span className="text-xs text-slate-400">La publicación no es visible en el catálogo mientras está pausada.</span>
+            <span className="text-xs text-slate-500">La publicación no es visible en el catálogo mientras está pausada.</span>
           )}
           <div className="flex items-center gap-2">
             <button

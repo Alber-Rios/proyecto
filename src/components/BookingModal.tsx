@@ -489,12 +489,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">
+                <span className="text-xs font-bold text-rose-400">
                   {getCategoryLabel(space.category)}
                 </span>
                 <span className="text-slate-500">•</span>
                 <span className="text-xs text-slate-300 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                  <MapPin className="w-3.5 h-3.5 text-slate-500" />
                   {space.commune}
                 </span>
               </div>
@@ -686,7 +686,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   >
                     2
                   </div>
-                  <span className={`text-xs font-bold ${bookingStep === 2 ? 'text-slate-900' : 'text-slate-400'}`}>
+                  <span className={`text-xs font-bold ${bookingStep === 2 ? 'text-slate-900' : 'text-slate-500'}`}>
                     2. Pago con Webpay
                   </span>
                 </div>
@@ -704,7 +704,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         </div>
                         <div>
                           <h4 className="text-xs font-bold text-amber-950">Inicia sesión para reservar</h4>
-                          <p className="text-[11px] text-amber-850">
+                          <p className="text-xs text-amber-850">
                             El contrato va a tu nombre y RUT, así que necesitas una cuenta.
                           </p>
                         </div>
@@ -768,7 +768,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                   {/* Campo obligatorio: ¿Para qué va a utilizar este lugar? */}
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                    <label htmlFor="booking-intended-use" className="text-sm font-extrabold text-slate-900 block">
+                    <label htmlFor="booking-intended-use" className="text-sm font-bold text-slate-900 block">
                       ¿Para qué va a utilizar este lugar?
                     </label>
                     <textarea
@@ -874,7 +874,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           <ShieldCheck className="w-4 h-4 text-indigo-600" />
                           <span>Verifica tu identidad para reservar</span>
                         </span>
-                        <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold">
                           KYC Chile
                         </span>
                       </div>
@@ -930,7 +930,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {/* SI YA SE GENERÓ LA VISITA CON ÉXITO */}
               {createdVisit ? (
                 <div className="p-6 bg-emerald-950/80 rounded-3xl border border-emerald-600 text-white space-y-4 text-center">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center mx-auto shadow-lg animate-bounce">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center mx-auto shadow-lg">
                     <CalendarCheck className="w-8 h-8" />
                   </div>
 
@@ -947,25 +947,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   {/* Voucher Card */}
                   <div className="bg-slate-900/90 border border-slate-700 rounded-2xl p-4 text-left text-xs space-y-2.5 max-w-md mx-auto">
                     <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                      <span className="text-slate-400">Código de visita:</span>
+                      <span className="text-slate-500">Código de visita:</span>
                       <span className="font-mono font-bold text-emerald-400">{createdVisit.id}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Fecha:</span>
+                      <span className="text-slate-500">Fecha:</span>
                       <span className="font-bold text-white">{createdVisit.visitDate}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Horario:</span>
+                      <span className="text-slate-500">Horario:</span>
                       <span className="font-bold text-cyan-400">{createdVisit.visitTimeSlot}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Modalidad:</span>
+                      <span className="text-slate-500">Modalidad:</span>
                       <span className="font-bold capitalize text-white">
                         {createdVisit.modality === 'presencial' ? 'Presencial en el recinto' : 'Virtual (Videollamada)'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Dirección:</span>
+                      <span className="text-slate-500">Dirección:</span>
                       <span className="font-bold text-white text-right truncate max-w-[200px]">
                         {createdVisit.spaceAddress}
                       </span>
@@ -1027,7 +1027,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         </div>
                         <div>
                           <div className="text-xs font-bold text-slate-900">Visita presencial</div>
-                          <div className="text-[11px] text-slate-500">En {space.commune}</div>
+                          <div className="text-xs text-slate-500">En {space.commune}</div>
                         </div>
                       </button>
 
@@ -1047,7 +1047,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         </div>
                         <div>
                           <div className="text-xs font-bold text-slate-900">Visita virtual</div>
-                          <div className="text-[11px] text-slate-500">Por videollamada</div>
+                          <div className="text-xs text-slate-500">Por videollamada</div>
                         </div>
                       </button>
                     </div>
@@ -1057,7 +1057,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
+                        <CalendarIcon className="w-3.5 h-3.5 text-slate-500" />
                         <span>Fecha</span>
                       </label>
                       <input
@@ -1071,7 +1071,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                        <Users className="w-3.5 h-3.5 text-slate-500" />
                         <span>¿Cuántas personas van?</span>
                       </label>
                       <select
@@ -1103,7 +1103,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                               : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="text-[10px] opacity-80 uppercase tracking-wider">{slot.period}</div>
+                          <div className="text-xs opacity-80">{slot.period}</div>
                           <div className="text-xs font-bold mt-0.5">{slot.label}</div>
                         </button>
                       ))}

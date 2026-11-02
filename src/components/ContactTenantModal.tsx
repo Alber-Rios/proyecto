@@ -29,12 +29,12 @@ export const ContactTenantModal: React.FC<ContactTenantModalProps> = ({ tenant, 
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900">Contactar al arrendatario</h3>
-            <p className="text-[11px] text-slate-500">Recinto: {tenant.spaceTitle}</p>
+            <p className="text-xs text-slate-500">Recinto: {tenant.spaceTitle}</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+          className="p-1 text-slate-500 hover:text-slate-600 rounded-lg cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>

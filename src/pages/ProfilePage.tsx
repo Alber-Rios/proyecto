@@ -56,7 +56,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+            <span className="text-xs font-bold text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
               Mi cuenta Spotly
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
@@ -230,7 +230,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           <div className="flex sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100">
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-slate-500">
               Miembro desde {new Date(currentUser.createdAt || Date.now()).toLocaleDateString('es-CL')}
             </span>
             <button
@@ -348,7 +348,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               <div>
                 <p className="font-bold">¡Datos actualizados con éxito!</p>
-                <p className="text-[11px] text-emerald-700">Tu información de contacto y perfil han quedado sincronizados en Spotly.</p>
+                <p className="text-xs text-emerald-700">Tu información de contacto y perfil han quedado sincronizados en Spotly.</p>
               </div>
             </div>
           )}

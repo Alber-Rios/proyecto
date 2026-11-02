@@ -22,7 +22,7 @@ const PAYMENT_LABELS: Record<string, { text: string; className: string }> = {
 export const PaymentStatusBadge: React.FC<{ reservation: Reservation }> = ({ reservation }) => {
   const label = PAYMENT_LABELS[reservation.paymentStatus || 'legacy_simulated'];
   if (!label) return null;
-  return <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${label.className}`}>{label.text}</span>;
+  return <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${label.className}`}>{label.text}</span>;
 };
 
 export function reservationStatusLabel(reservation: Reservation): string {
@@ -129,13 +129,13 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
         </button>
       )}
       {existingReview && (
-        <span className="text-[11px] font-bold text-amber-700 flex items-center gap-1">
+        <span className="text-xs font-bold text-amber-700 flex items-center gap-1">
           <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> Valoraste con {existingReview.rating}/5
         </span>
       )}
 
       {error && !showCancel && !showReview && (
-        <p className="w-full text-[11px] font-semibold text-rose-600">{error}</p>
+        <p className="w-full text-xs font-semibold text-rose-600">{error}</p>
       )}
 
       {showCancel && (
@@ -157,7 +157,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
                 <p className="text-sm font-bold text-slate-900">
                   Reembolso estimado: {formatClp(refundPreview.refundClp)}
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   El monto definitivo lo calcula el servidor al confirmar, según la hora exacta de la cancelación.
                 </p>
               </div>
@@ -169,7 +169,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
               placeholder="Motivo de la cancelación (opcional)"
               className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
             />
-            {error && <p className="text-[11px] font-semibold text-rose-600">{error}</p>}
+            {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowCancel(false)}
@@ -225,7 +225,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
               placeholder="Cuéntanos cómo fue tu experiencia (opcional)"
               className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
             />
-            {error && <p className="text-[11px] font-semibold text-rose-600">{error}</p>}
+            {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowReview(false)}

@@ -199,7 +199,7 @@ export const VerifyEmailPage: React.FC = () => {
             </button>
           </div>
 
-          <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+          <p className="text-xs text-slate-500 text-center leading-relaxed">
             El código vence en 15 minutos. ¿No llegó? Revisa la carpeta de spam o promociones. Si no lo validas, la cuenta se elimina a las 24 horas.
           </p>
         </form>

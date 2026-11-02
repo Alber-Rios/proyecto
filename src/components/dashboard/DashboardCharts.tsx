@@ -56,7 +56,7 @@ export const VerticalBarChart: React.FC<{
         <div className="absolute inset-x-0 bottom-0 border-t border-slate-300" aria-hidden />
         <div className="absolute inset-x-0 border-t border-dashed border-slate-100" style={{ bottom: height / 2 }} aria-hidden />
         {!hasData && (
-          <div className="absolute inset-0 flex items-center justify-center text-[11px] text-slate-400">{emptyText}</div>
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">{emptyText}</div>
         )}
         <div className="absolute inset-0 flex items-end gap-2 sm:gap-3 px-1" role="presentation">
           {data.map((d, i) => {
@@ -76,7 +76,7 @@ export const VerticalBarChart: React.FC<{
                 {/* La etiqueta solo en la barra actual y la máxima, para no saturar */}
                 {hasData && (i === lastIdx || d.value === max) && d.value > 0 && !active && (
                   <motion.span
-                    className="absolute text-[10px] font-bold text-slate-700 whitespace-nowrap"
+                    className="absolute text-xs font-bold text-slate-700 whitespace-nowrap"
                     style={{ bottom: `calc(${pct}% + 4px)` }}
                     initial={reduce ? false : { opacity: 0, y: 6 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -101,7 +101,7 @@ export const VerticalBarChart: React.FC<{
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 4, scale: 0.96 }}
                       transition={{ duration: 0.16, ease: EASE_OUT }}
-                      className="absolute z-10 bottom-full mb-1 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-[10px] shadow-lg whitespace-nowrap pointer-events-none origin-bottom"
+                      className="absolute z-10 bottom-full mb-1 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs shadow-lg whitespace-nowrap pointer-events-none origin-bottom"
                     >
                       <div className="font-bold">{d.label}</div>
                       <div>{formatValue(d.value)}</div>
@@ -118,7 +118,7 @@ export const VerticalBarChart: React.FC<{
         {data.map((d, i) => (
           <span
             key={d.key}
-            className={`flex-1 min-w-0 text-center text-[10px] whitespace-nowrap ${i === lastIdx ? 'font-bold text-slate-800' : 'text-slate-500'} ${
+            className={`flex-1 min-w-0 text-center text-xs whitespace-nowrap ${i === lastIdx ? 'font-bold text-slate-800' : 'text-slate-500'} ${
               // Con muchas barras, en pantallas chicas se muestra una etiqueta por medio.
               data.length > 8 && (lastIdx - i) % 2 === 1 ? 'invisible sm:visible' : ''
             }`}
@@ -145,7 +145,7 @@ export const HorizontalBarList: React.FC<{
   data = data.filter((d) => d.value > 0);
   const max = Math.max(0, ...data.map((d) => d.value));
   if (data.length === 0 || max === 0) {
-    return <p className="text-[11px] text-slate-400 py-4 text-center">{emptyText}</p>;
+    return <p className="text-xs text-slate-500 py-4 text-center">{emptyText}</p>;
   }
   return (
     <figure>
@@ -159,7 +159,7 @@ export const HorizontalBarList: React.FC<{
                 className={`w-full text-left space-y-1 ${onSelect ? 'cursor-pointer group' : ''}`}
                 title={d.detail ? `${d.label}: ${formatValue(d.value)} · ${d.detail}` : `${d.label}: ${formatValue(d.value)}`}
               >
-                <div className="flex items-baseline justify-between gap-2 text-[11px]">
+                <div className="flex items-baseline justify-between gap-2 text-xs">
                   <span className={`font-semibold text-slate-700 truncate ${onSelect ? 'group-hover:text-slate-950' : ''}`}>{d.label}</span>
                   <AnimatedNumber className="font-bold text-slate-900 whitespace-nowrap" text={formatValue(d.value)} />
                 </div>
@@ -171,7 +171,7 @@ export const HorizontalBarList: React.FC<{
                     transition={{ duration: 0.9, delay: i * 0.08, ease: EASE_OUT }}
                   />
                 </div>
-                {d.detail && <div className="text-[10px] text-slate-500 truncate">{d.detail}</div>}
+                {d.detail && <div className="text-xs text-slate-500 truncate">{d.detail}</div>}
               </Row>
             </li>
           );
@@ -226,13 +226,13 @@ export const OccupancyHeatStrip: React.FC<{ title: string; days: HeatDay[]; onSe
               onSelect ? 'cursor-pointer' : 'cursor-default'
             }`}
           >
-            <div className="text-[9px] font-semibold uppercase opacity-80">{d.weekday}</div>
-            <div className="text-sm font-extrabold leading-tight">{d.dayNum}</div>
-            <div className="text-[9px] font-bold">{d.pct}%</div>
+            <div className="text-xs font-semibold opacity-80">{d.weekday}</div>
+            <div className="text-sm font-bold leading-tight">{d.dayNum}</div>
+            <div className="text-xs font-bold">{d.pct}%</div>
           </motion.button>
         ))}
       </div>
-      <div id={legendId} className="flex items-center gap-1.5 text-[10px] text-slate-500">
+      <div id={legendId} className="flex items-center gap-1.5 text-xs text-slate-500">
         <span>Libre</span>
         {HEAT_STEPS.map((s) => (
           <span key={s.min} className={`w-4 h-2.5 rounded-sm ${s.cls.split(' ')[0]}`} aria-hidden />
@@ -263,13 +263,13 @@ export const StatTile: React.FC<{
       } ${onClick ? 'cursor-pointer hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 transition duration-300' : ''}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 leading-tight">{label}</span>
-        {icon && <span className="text-slate-400 shrink-0">{icon}</span>}
+        <span className="text-xs font-bold text-slate-500 leading-tight">{label}</span>
+        {icon && <span className="text-slate-500 shrink-0">{icon}</span>}
       </div>
-      <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words leading-tight">
+      <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight break-words leading-tight">
         <AnimatedNumber text={value} />
       </div>
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-h-[16px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs min-h-[16px]">
         {delta != null && Number.isFinite(delta) && (
           <span
             className={`font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap ${
@@ -292,7 +292,7 @@ export const ActionQueue: React.FC<{
   const pending = items.filter((i) => i.count > 0);
   if (pending.length === 0) {
     return (
-      <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
         <span aria-hidden>✓</span> Todo al día: no hay tareas pendientes.
       </div>
     );
@@ -318,10 +318,10 @@ export const ActionQueue: React.FC<{
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold text-slate-900 truncate">{i.label}</span>
-              <span className="block text-[10px] text-slate-500 truncate">{i.hint}</span>
+              <span className="block text-xs text-slate-500 truncate">{i.hint}</span>
             </span>
-            <span className="text-sm font-extrabold text-slate-900">{i.count}</span>
-            <span className="text-slate-400 transition-transform group-hover:translate-x-1" aria-hidden>→</span>
+            <span className="text-sm font-bold text-slate-900">{i.count}</span>
+            <span className="text-slate-500 transition-transform group-hover:translate-x-1" aria-hidden>→</span>
           </button>
         </motion.li>
       ))}

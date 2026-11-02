@@ -518,12 +518,8 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
     <div className="static lg:sticky lg:top-24 bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden">
       {/* 1. HEADER OSCURO SLATE (IDÉNTICO A LA REFERENCIA) */}
       <div className="bg-[#0f172a] text-white p-4 sm:p-5">
-        <div className="flex items-center justify-between text-[11px] font-bold tracking-wider text-slate-300 uppercase mb-1">
-          <span>{categoryName} • {space.commune.toUpperCase()}</span>
-          <span className="flex items-center gap-1 text-emerald-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Activo
-          </span>
+        <div className="flex items-center justify-between text-xs font-bold text-slate-300 mb-1">
+          <span>{categoryName} · {space.commune}</span>
         </div>
 
         <h3 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
@@ -565,11 +561,8 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
         <div className="p-5 sm:p-6 space-y-5">
           {/* Selector de Modalidad relacionado estrictamente con la publicación */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold uppercase tracking-wider">
-              <span>{availableModalities.length === 1 ? 'Modalidad de esta Publicación' : 'Modalidad de arriendo'}</span>
-              <span className="text-emerald-700 font-semibold lowercase flex items-center gap-1">
-                {availableModalities.length === 1 ? 'Tarifa fijada' : 'Flexibilidad Spotly'}
-              </span>
+            <div className="flex items-center justify-between text-xs text-slate-500 font-bold">
+              <span>{availableModalities.length === 1 ? 'Se arrienda' : '¿Cómo quieres arrendar?'}</span>
             </div>
 
             <div className={`grid gap-1.5 bg-slate-100/80 p-1 rounded-2xl border border-slate-200 ${
@@ -589,11 +582,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
-                  <span className="text-[11px] font-extrabold">Por hora</span>
-                  <span className={`text-[10px] font-bold ${activeModality === 'por_hora' ? 'text-rose-600' : 'text-slate-500'}`}>
+                  <span className="text-xs font-bold">Por hora</span>
+                  <span className={`text-xs font-bold ${activeModality === 'por_hora' ? 'text-rose-600' : 'text-slate-500'}`}>
                     {formatClp(priceHour)}
                   </span>
-                  <span className="text-[9px] text-slate-400">Mínimo 2 hrs</span>
+                  <span className="text-xs text-slate-500">Mínimo 2 hrs</span>
                 </button>
               )}
 
@@ -607,11 +600,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
-                  <span className="text-[11px] font-extrabold">Por Día</span>
-                  <span className={`text-[10px] font-bold ${activeModality === 'por_dia' ? 'text-amber-400' : 'text-slate-500'}`}>
+                  <span className="text-xs font-bold">Por Día</span>
+                  <span className={`text-xs font-bold ${activeModality === 'por_dia' ? 'text-amber-400' : 'text-slate-500'}`}>
                     {formatClp(priceDay)}
                   </span>
-                  <span className={`text-[9px] ${activeModality === 'por_dia' ? 'text-slate-300' : 'text-slate-400'}`}>09:00 - 23:00</span>
+                  <span className={`text-xs ${activeModality === 'por_dia' ? 'text-slate-300' : 'text-slate-500'}`}>09:00 - 23:00</span>
                 </button>
               )}
 
@@ -625,11 +618,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
-                  <span className="text-[11px] font-extrabold">Por Mes</span>
-                  <span className={`text-[10px] font-bold ${activeModality === 'mensual' ? 'text-indigo-600' : 'text-slate-500'}`}>
+                  <span className="text-xs font-bold">Por Mes</span>
+                  <span className={`text-xs font-bold ${activeModality === 'mensual' ? 'text-indigo-600' : 'text-slate-500'}`}>
                     {priceMonth >= 1000000 ? `$${(priceMonth / 1000000).toFixed(1)}M` : formatClp(priceMonth)}
                   </span>
-                  <span className="text-[9px] text-slate-400">Mensual</span>
+                  <span className="text-xs text-slate-500">Mensual</span>
                 </button>
               )}
             </div>
@@ -649,7 +642,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   </div>
 
                   {/* Leyenda */}
-                  <div className="flex items-center gap-2.5 text-[10px]">
+                  <div className="flex items-center gap-2.5 text-xs">
                     <span className="flex items-center gap-1 text-slate-600 font-medium">
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Disponible
                     </span>
@@ -680,9 +673,9 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                         title={isPast ? 'Fecha pasada no disponible' : isOccupied ? 'Fecha ocupada' : `Seleccionar ${day.dayNum}`}
                         className={`py-2 px-1 rounded-xl border text-center transition flex flex-col items-center justify-between select-none ${
                           isPast
-                            ? 'bg-slate-100/60 border-slate-200 text-slate-400 opacity-40 cursor-not-allowed'
+                            ? 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-40 cursor-not-allowed'
                             : isOccupied
-                            ? 'bg-slate-100/70 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
+                            ? 'bg-slate-100/70 border-slate-200 text-slate-500 opacity-60 cursor-not-allowed'
                             : isCheckIn || isCheckOut
                             ? 'bg-[#1e293b] border-[#1e293b] text-white shadow-sm ring-2 ring-slate-900/20 cursor-pointer'
                             : isSelected
@@ -690,8 +683,8 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                             : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300 hover:bg-slate-50 cursor-pointer'
                         }`}
                       >
-                        <span className={`text-[10px] uppercase font-bold leading-none ${
-                          isPast ? 'text-slate-400' : isCheckIn || isCheckOut || isSelected ? 'text-slate-300' : 'text-slate-500'
+                        <span className={`text-xs font-bold leading-none ${
+                          isPast ? 'text-slate-500' : isCheckIn || isCheckOut || isSelected ? 'text-slate-300' : 'text-slate-500'
                         }`}>
                           {day.weekday}
                         </span>
@@ -718,9 +711,9 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                             : isOccupied
                             ? 'Ocupado'
                             : isCheckIn
-                            ? 'Check-in'
+                            ? 'Inicio'
                             : isCheckOut
-                            ? 'Check-out'
+                            ? 'Término'
                             : isSelected
                             ? 'En rango'
                             : 'Libre'}
@@ -734,7 +727,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
               {/* Casillas de selección Fecha de Inicio y Fecha de Término */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:border-slate-300 transition">
-                  <label className="block text-[11px] font-extrabold text-slate-700">Fecha de inicio</label>
+                  <label className="block text-xs font-bold text-slate-700">Fecha de inicio</label>
                   <input
                     type="date"
                     min={todayIso}
@@ -752,7 +745,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 </div>
 
                 <div className="space-y-1 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs hover:border-slate-300 transition">
-                  <label className="block text-[11px] font-extrabold text-slate-700">Fecha de término</label>
+                  <label className="block text-xs font-bold text-slate-700">Fecha de término</label>
                   <input
                     type="date"
                     value={endDate}
@@ -767,11 +760,6 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 </div>
               </div>
 
-              {/* Mensaje de validación informativa */}
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800 bg-emerald-50/80 border border-emerald-200 px-3 py-1.5 rounded-xl">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Solo reservas válidas desde hoy ({formatIsoToDateDisplay(todayIso)}) en adelante.</span>
-              </div>
             </div>
           )}
 
@@ -780,20 +768,20 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
             <div className="space-y-3">
               <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Solo se arrienda por mes</span>
+                  <span className="text-xs font-bold text-indigo-700">Solo se arrienda por mes</span>
                   <div className="text-xl font-bold text-slate-900">
                     {formatClp(priceMonth)}
                     <span className="text-xs font-normal text-slate-500"> / mes</span>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-600 text-white shadow-xs">
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-xs">
                   Con contrato
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-slate-700">Mes de inicio</label>
+                  <label className="block text-xs font-bold text-slate-700">Mes de inicio</label>
                   <select
                     value={selectedMonth}
                     onChange={(e) => onMonthChange(e.target.value)}
@@ -805,13 +793,13 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       </option>
                     ))}
                   </select>
-                  <span className="text-[10px] text-slate-500 block">
+                  <span className="text-xs text-slate-500 block">
                     Desde el {formatIsoToDateDisplay(startDate)}
                   </span>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-slate-700">Duración</label>
+                  <label className="block text-xs font-bold text-slate-700">Duración</label>
                   <select
                     value={monthCount}
                     onChange={(e) => setMonthCount(Number(e.target.value))}
@@ -823,7 +811,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       </option>
                     ))}
                   </select>
-                  <span className="text-[10px] text-slate-500 block">Hasta el {formatIsoToDateDisplay(endDate)}</span>
+                  <span className="text-xs text-slate-500 block">Hasta el {formatIsoToDateDisplay(endDate)}</span>
                 </div>
               </div>
 
@@ -838,11 +826,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-rose-600" />
-                    <label className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    <label className="text-xs font-bold text-slate-900 tracking-wide">
                       ¿Cuántas horas quieres arrendar?
                     </label>
                   </div>
-                  <span className="text-[10px] font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
                     {totalHours} {totalHours === 1 ? 'hora' : 'horas'}
                   </span>
                 </div>
@@ -901,7 +889,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
 
                 {/* Atajos rápidos en píldoras */}
                 <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                  <span className="text-[10px] text-slate-500 font-bold mr-1">Opciones rápidas:</span>
+                  <span className="text-xs text-slate-500 font-bold mr-1">Opciones rápidas:</span>
                   {[1, 2, 3, 4, 6, 8].filter((h) => h >= minHours && h <= maxBlockHours).map((h) => (
                     <button
                       key={h}
@@ -915,7 +903,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                           ? undefined
                           : `Desde las ${pad2(hourStart)} solo caben ${maxFromStart} ${maxFromStart === 1 ? 'hora' : 'horas'} (cierre ${pad2(MAX_END_HOUR)})`
                       }
-                      className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg border transition cursor-pointer disabled:opacity-35 disabled:line-through disabled:cursor-not-allowed ${
+                      className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer disabled:opacity-35 disabled:line-through disabled:cursor-not-allowed ${
                         totalHours === h
                           ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
                           : 'bg-white text-slate-700 border-rose-200 hover:bg-rose-100/50'
@@ -930,8 +918,8 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
               {/* Selector de Fecha de Reserva */}
               <div className="space-y-1 bg-white p-3 rounded-2xl border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold text-slate-700">Fecha de reserva</label>
-                  <span className="text-[11px] font-bold text-slate-900">{formatIsoToDateDisplay(startDate)}</span>
+                  <label className="block text-xs font-bold text-slate-700">Fecha de reserva</label>
+                  <span className="text-xs font-bold text-slate-900">{formatIsoToDateDisplay(startDate)}</span>
                 </div>
                 <input
                   type="date"
@@ -950,7 +938,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
               {/* Rango de Horarios (Hora Inicio y Hora Término calculada) */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1 bg-white p-3 rounded-2xl border border-slate-200">
-                  <label className="block text-[11px] font-bold text-slate-700">Hora inicio</label>
+                  <label className="block text-xs font-bold text-slate-700">Hora inicio</label>
                   <select
                     value={hourStart}
                     onChange={(e) => {
@@ -971,24 +959,24 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       </option>
                     ))}
                   </select>
-                  <span className="text-[10px] text-slate-500 block">Entrada</span>
+                  <span className="text-xs text-slate-500 block">Entrada</span>
                 </div>
 
                 <div className="space-y-1 bg-white p-3 rounded-2xl border border-slate-200">
-                  <label className="block text-[11px] font-bold text-slate-700">Salida</label>
+                  <label className="block text-xs font-bold text-slate-700">Salida</label>
                   <div className="px-2.5 py-2 bg-slate-50 text-slate-900 font-bold text-xs rounded-xl border border-slate-200 flex items-center justify-between">
                     <span>{String(hourEnd).padStart(2, '0')}:00 hrs</span>
-                    <span className="text-[10px] font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
                       {totalHours} {totalHours === 1 ? 'hr' : 'hrs'}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 block">Salida</span>
+                  <span className="text-xs text-slate-500 block">Salida</span>
                 </div>
               </div>
 
               {/* Botones visuales de franjas horarias */}
               <div className="space-y-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
-                <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 uppercase">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-600">
                   <span>
                     Horas del día
                     {startDate === todayIso && pastHoursOnSelectedDate.size > 0
@@ -1002,7 +990,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 text-[10px] text-slate-500 py-0.5">
+                <div className="flex items-center gap-3 text-xs text-slate-500 py-0.5">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
                     Disponible
@@ -1018,25 +1006,25 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 </div>
 
                 {startDate === todayIso && pastHoursOnSelectedDate.size > 0 && (
-                  <p className="text-[10px] text-slate-500 leading-snug">
+                  <p className="text-xs text-slate-500 leading-snug">
                     Las horas que ya pasaron hoy no se muestran porque no se pueden reservar.
                   </p>
                 )}
 
                 {!openOnSelectedDate && (
-                  <p className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 leading-snug">
+                  <p className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 leading-snug">
                     Este espacio no atiende los {closedDayName(startDate)}. Horario: {schedule.daysLabel.toLowerCase()}, de {schedule.hoursLabel}.
                   </p>
                 )}
 
                 {openOnSelectedDate && validStartHours.length === 0 && (
-                  <p className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 leading-snug">
+                  <p className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 leading-snug">
                     No quedan horas libres este día. Elige otra fecha.
                   </p>
                 )}
 
                 {validStartHours.includes(hourStart) && maxFromStart < maxBlockHours && (
-                  <p className="text-[10px] text-slate-500 leading-snug">
+                  <p className="text-xs text-slate-500 leading-snug">
                     Desde las {pad2(hourStart)} puedes arrendar hasta {maxFromStart} {maxFromStart === 1 ? 'hora' : 'horas'}
                     {hourStart + maxFromStart >= MAX_END_HOUR ? ` (el espacio cierra a las ${pad2(MAX_END_HOUR)})` : ' (después hay una reserva)'}.
                   </p>
@@ -1060,7 +1048,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                         }}
                         disabled={isOccupied}
                         title={isOccupied ? `Franja ${h}:00 pedida u ocupada` : `Franja ${h}:00 disponible`}
-                        className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border transition cursor-pointer ${
+                        className={`text-xs font-bold px-2 py-1 rounded-lg border transition cursor-pointer ${
                           isOccupied
                             ? 'bg-rose-100 text-rose-600 line-through cursor-not-allowed border-rose-300 font-medium'
                             : isSelected
@@ -1080,7 +1068,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     const el = document.getElementById('calendario-disponibilidad');
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-                  className="w-full text-center text-[10px] font-bold text-rose-600 hover:text-rose-700 pt-1 flex items-center justify-center gap-1 cursor-pointer"
+                  className="w-full text-center text-xs font-bold text-rose-600 hover:text-rose-700 pt-1 flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <CalendarIcon className="w-3 h-3" />
                   <span>Ver calendario completo</span>
@@ -1091,7 +1079,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
 
           {/* DESGLOSE TRANSPARENTE DE COSTOS */}
           <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider pb-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-1">
               <span>Detalle</span>
               <span>Monto</span>
             </div>
@@ -1113,20 +1101,20 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
               <div className="flex items-center justify-between text-slate-700">
                 <span className="flex items-center gap-1">
                   Garantía (se devuelve)
-                  <Info className="w-3 h-3 text-slate-400" />
+                  <Info className="w-3 h-3 text-slate-500" />
                 </span>
                 <span className="font-bold">{formatClp(calculations.deposit)}</span>
               </div>
             )}
             {activeModality === 'mensual' && calculations.deposit === 0 && (
-              <div className="text-[11px] text-emerald-700 font-semibold">Este propietario no exige garantía.</div>
+              <div className="text-xs text-emerald-700 font-semibold">Este propietario no exige garantía.</div>
             )}
 
             {/* TOTAL EN CLP A PAGAR */}
             <div className="border-t border-slate-200 pt-3 flex items-baseline justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-900 block">Total a pagar</span>
-                <span className="text-[10px] text-slate-400">Precios en pesos chilenos</span>
+                <span className="text-xs text-slate-500">Precios en pesos chilenos</span>
               </div>
               <div className="text-xl sm:text-2xl font-bold text-rose-600 tracking-tight">
                 <AnimatedNumber text={formatClp(calculations.total)} duration={900} />
@@ -1144,7 +1132,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-xs font-bold text-amber-950">Inicia sesión para reservar</h4>
-                    <p className="text-[11px] text-amber-800/90 leading-relaxed mt-0.5">
+                    <p className="text-xs text-amber-800/90 leading-relaxed mt-0.5">
                       El contrato va a tu nombre y RUT, y la garantía la retiene Spotly hasta que termine el arriendo. Para eso necesitas una cuenta.</p>
                   </div>
                 </div>
@@ -1176,7 +1164,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 <span>Inicia sesión para reservar</span>
               </button>
 
-              <p className="text-[10px] text-center text-slate-400">
+              <p className="text-xs text-center text-slate-500">
                 Para firmar el contrato y pagar necesitas una cuenta con tu identidad verificada.
               </p>
             </div>
@@ -1203,7 +1191,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                         ? 'Solicitud de verificación rechazada'
                         : 'Se requiere verificación para reservar'}
                     </h4>
-                    <p className={`text-[11px] mt-0.5 leading-relaxed ${
+                    <p className={`text-xs mt-0.5 leading-relaxed ${
                       currentUser.verificationStatus === 'rejected' ? 'text-rose-800' : 'text-amber-800'
                     }`}>
                       {currentUser.verificationStatus === 'rejected' ? (
@@ -1246,7 +1234,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
               <button
                 type="button"
                 disabled
-                className="w-full py-3.5 bg-slate-100 text-slate-400 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200"
+                className="w-full py-3.5 bg-slate-100 text-slate-500 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200"
               >
                 <Lock className="w-4 h-4 opacity-50" />
                 <span>Falta verificar tu identidad</span>
@@ -1259,7 +1247,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 <div className="font-bold text-slate-900">
                   {isOwnSpace ? 'Este espacio es tuyo' : 'Espacio aún no disponible para reservas'}
                 </div>
-                <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                <div className="text-xs text-slate-600 mt-0.5 leading-snug">
                   {isOwnSpace
                     ? 'No puedes reservar tus propias publicaciones. Así es como lo verán los arrendatarios.'
                     : space.status === 'pending_approval'
@@ -1275,7 +1263,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <div>
                     <div className="font-bold">Horario o fecha bloqueada</div>
-                    <div className="text-[11px] text-rose-700 mt-0.5 leading-snug">
+                    <div className="text-xs text-rose-700 mt-0.5 leading-snug">
                       Este recinto ya cuenta con una reserva o solicitud activa para el {activeModality === 'por_hora' ? `horario ${hourStart}:00-${hourEnd}:00 hrs` : activeModality === 'mensual' ? 'período elegido' : 'día seleccionado'}. Selecciona otro rango para evitar doble reserva.
                     </div>
                   </div>
@@ -1288,13 +1276,13 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 disabled={hasCollision}
                 className={`w-full py-3.5 rounded-2xl font-bold text-xs shadow-md transition flex items-center justify-center gap-2 ${
                   hasCollision
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none'
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300 shadow-none'
                     : 'bg-rose-600 hover:bg-rose-700 text-white hover:shadow-lg cursor-pointer'
                 }`}
               >
                 {hasCollision ? (
                   <>
-                    <Lock className="w-4 h-4 text-slate-400" />
+                    <Lock className="w-4 h-4 text-slate-500" />
                     <span>Ese horario ya está ocupado</span>
                   </>
                 ) : (
@@ -1302,7 +1290,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                 )}
               </button>
 
-              <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-emerald-800 bg-emerald-50/80 py-1.5 px-3 rounded-xl border border-emerald-100">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50/80 py-1.5 px-3 rounded-xl border border-emerald-100">
                 <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
                 <span>Pago con Webpay (Transbank)</span>
               </div>
@@ -1314,7 +1302,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
         <div className="p-5 sm:p-6 space-y-4">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-800 block">Agendar una visita gratis</span>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-xs text-slate-500">
               Conócelo en persona o por videollamada antes de arrendar.
             </p>
           </div>
@@ -1326,11 +1314,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Visita registrada
                 </span>
-                <span className="font-mono text-[10px] bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                <span className="font-mono text-xs bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
                   {existingVisit.id}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-700">
+              <p className="text-xs text-emerald-700">
                 Fecha: <strong>{existingVisit.visitDate}</strong> ({existingVisit.visitTimeSlot}) • Modalidad:{' '}
                 <strong>{existingVisit.modality === 'presencial' ? 'Presencial' : 'Virtual'}</strong>
               </p>
@@ -1346,7 +1334,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
             <div className="space-y-3">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
                 <div className="font-bold text-slate-800">¿Cómo funciona?</div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   El anfitrión {space.ownerName} recibirá tu solicitud y confirmará la disponibilidad del horario en menos de 2 horas.
                 </p>
               </div>

@@ -227,7 +227,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           </div>
 
           <div className="space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full">
               Acceso restringido
             </span>
             <h2 className="text-2xl font-bold text-slate-900">
@@ -266,11 +266,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
               <ShieldCheck className="w-3.5 h-3.5" />
               Administración central
             </span>
-            <span className="text-xs text-slate-400">·</span>
+            <span className="text-xs text-slate-500">·</span>
             <span className="text-xs text-slate-500 font-medium">
               {currentUser.fullName}
             </span>
@@ -301,18 +301,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               <span>Revisiones KYC pendientes</span>
               <Clock className={`w-4 h-4 shrink-0 ${activeTab === 'kyc' ? 'text-indigo-600' : 'text-amber-500'}`} />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">
+            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums">
               {metrics.pendingVerifications}
             </div>
-            <div className="text-[11px] text-slate-500 mt-1">
+            <div className="text-xs text-slate-500 mt-1">
               {metrics.verifiedUsers} de {metrics.totalUsers} usuarios aprobados
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
             <span className={activeTab === 'kyc' ? 'text-indigo-600' : 'text-slate-500'}>
               {activeTab === 'kyc' ? '● Pantalla activa' : 'Ver verificación KYC'}
             </span>
-            <span className={activeTab === 'kyc' ? 'text-indigo-600' : 'text-slate-400'}>→</span>
+            <span className={activeTab === 'kyc' ? 'text-indigo-600' : 'text-slate-500'}>→</span>
           </div>
         </button>
 
@@ -331,19 +331,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               <span>Espacios activos</span>
               <Building className="w-4 h-4 text-emerald-600 shrink-0" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">
+            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums">
               {metrics.activeSpaces}{' '}
-              <span className="text-sm font-normal text-slate-400">/ {metrics.totalSpaces}</span>
+              <span className="text-sm font-normal text-slate-500">/ {metrics.totalSpaces}</span>
             </div>
-            <div className="text-[11px] text-slate-500 mt-1">
+            <div className="text-xs text-slate-500 mt-1">
               Publicados en el catálogo nacional
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
             <span className={activeTab === 'spaces' ? 'text-emerald-700' : 'text-slate-500'}>
               {activeTab === 'spaces' ? '● Pantalla activa' : 'Gestionar espacios'}
             </span>
-            <span className={activeTab === 'spaces' ? 'text-emerald-700' : 'text-slate-400'}>→</span>
+            <span className={activeTab === 'spaces' ? 'text-emerald-700' : 'text-slate-500'}>→</span>
           </div>
         </button>
 
@@ -362,18 +362,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               <span>Disputas en arbitraje</span>
               <Scale className="w-4 h-4 text-rose-600 shrink-0" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">
+            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums">
               {metrics.openDisputes}
             </div>
-            <div className="text-[11px] text-slate-500 mt-1">
+            <div className="text-xs text-slate-500 mt-1">
               {disputes.length} casos registrados en total
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
             <span className={activeTab === 'disputes' ? 'text-rose-600' : 'text-slate-500'}>
               {activeTab === 'disputes' ? '● Pantalla activa' : 'Revisar disputas'}
             </span>
-            <span className={activeTab === 'disputes' ? 'text-rose-600' : 'text-slate-400'}>→</span>
+            <span className={activeTab === 'disputes' ? 'text-rose-600' : 'text-slate-500'}>→</span>
           </div>
         </button>
 
@@ -392,18 +392,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               <span>Volumen transaccionado</span>
               <Banknote className="w-4 h-4 text-indigo-600 shrink-0" />
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2 tabular-nums truncate">
+            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums truncate">
               {formatClp(metrics.totalGmvClp)}
             </div>
-            <div className="text-[11px] text-emerald-700 font-semibold mt-1 truncate">
+            <div className="text-xs text-emerald-700 font-semibold mt-1 truncate">
               Comisión Spotly (5%): {formatClp(metrics.totalPlatformFeeClp)}
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold w-full">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
             <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-500'}>
               {activeTab === 'transactions' ? '● Pantalla activa' : 'Ver transacciones'}
             </span>
-            <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-400'}>→</span>
+            <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-500'}>→</span>
           </div>
         </button>
       </div>
@@ -464,7 +464,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             <div className="p-4 border-b border-slate-100 space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold text-slate-900">Expedientes de usuarios</h2>
-                <span className="text-xs font-semibold text-slate-400 tabular-nums">
+                <span className="text-xs font-semibold text-slate-500 tabular-nums">
                   {filteredUsers.length} registros
                 </span>
               </div>
@@ -473,7 +473,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
               {/* Buscador */}
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={userSearch}
@@ -495,7 +495,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   <button
                     key={f.id}
                     onClick={() => setKycStatusFilter(f.id as any)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                       kycStatusFilter === f.id
                         ? 'bg-slate-900 text-white'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
@@ -510,7 +510,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             {/* Lista seleccionable */}
             <div className="divide-y divide-slate-100 max-h-[680px] overflow-y-auto">
               {filteredUsers.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400">
+                <div className="p-8 text-center text-xs text-slate-500">
                   No se encontraron usuarios con ese criterio.
                 </div>
               ) : (
@@ -526,7 +526,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       }}
                       className={`w-full text-left p-3.5 flex items-center justify-between gap-3 transition cursor-pointer ${
                         isSelected
-                          ? 'bg-indigo-50/70 border-l-4 border-l-indigo-600'
+                          ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-300'
                           : 'hover:bg-slate-50'
                       }`}
                     >
@@ -536,12 +536,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           <div className="text-xs font-bold text-slate-900 truncate">
                             {u.fullName}
                           </div>
-                          <div className="text-[11px] text-slate-500 font-mono truncate">
+                          <div className="text-xs text-slate-500 font-mono truncate">
                             RUT {formatRut(u.rut)}
                           </div>
                           <div className="flex items-center gap-1.5 mt-1">
                             <span
-                              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                                 isOwner
                                   ? 'bg-amber-50 text-amber-800'
                                   : 'bg-slate-100 text-slate-600'
@@ -555,20 +555,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                       <div className="shrink-0">
                         {u.verificationStatus === 'verified' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" /> Verificado
                           </span>
                         ) : u.verificationStatus === 'pending_review' ||
                           u.verificationStatus === 'in_progress' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
                             <Clock className="w-3 h-3" /> Por revisar
                           </span>
                         ) : u.verificationStatus === 'rejected' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700">
                             <XCircle className="w-3 h-3" /> Rechazado
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
                             Sin enviar
                           </span>
                         )}
@@ -583,7 +583,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           {/* Columna Derecha: Comparador de Datos + Imágenes + Certificado PDF (8 columnas) */}
           <div className="lg:col-span-8">
             {!selectedUser ? (
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center text-xs text-slate-400">
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center text-xs text-slate-500">
                 Selecciona un usuario de la lista para comparar sus datos y visualizar su documentación.
               </div>
             ) : (
@@ -598,7 +598,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           {selectedUser.fullName}
                         </h3>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                             selectedUser.verificationStatus === 'verified'
                               ? 'bg-emerald-100 text-emerald-800'
                               : selectedUser.verificationStatus === 'pending_review'
@@ -699,11 +699,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 {/* =============================================================== */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <ArrowLeftRight className="w-4 h-4 text-indigo-600" />
                       1. Comparación de Datos: Perfil Registrado vs. Documentos y Biometría
                     </h4>
-                    <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
                       Revisión manual pendiente
                     </span>
                   </div>
@@ -719,7 +719,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         <div className="overflow-x-auto">
                           <table className="w-full text-left border-collapse text-xs">
                             <thead>
-                              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
                                 <th className="py-2.5 px-4">Campo evaluado</th>
                                 <th className="py-2.5 px-4">Datos declarados en cuenta</th>
                                 <th className="py-2.5 px-4">Revisión del administrador</th>
@@ -732,7 +732,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 <td className="py-2.5 px-4 font-bold text-slate-900">{selectedUser.fullName}</td>
                                 <td className="py-2.5 px-4 text-amber-700">Pendiente de cotejo visual</td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
                                     Pendiente
                                   </span>
                                 </td>
@@ -743,7 +743,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{registeredRut}</td>
                                 <td className="py-2.5 px-4 text-amber-700">Pendiente de lectura del documento</td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Pendiente</span>
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">Pendiente</span>
                                 </td>
                               </tr>
 
@@ -752,7 +752,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 <td className="py-2.5 px-4 text-slate-500">Cédula adjunta</td>
                                 <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{selectedUser.kycData?.documentSerialNumber || 'Pendiente de revisión'}</td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Pendiente</span>
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">Pendiente</span>
                                 </td>
                               </tr>
 
@@ -763,7 +763,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                   {selectedUser.kycData?.photoCaptured ? 'Selfie adjunta' : 'Sin selfie'}
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">Pendiente</span>
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">Pendiente</span>
                                 </td>
                               </tr>
 
@@ -775,11 +775,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
                                   {selectedUser.kycData?.criminalRecordSubmitted ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
                                       Pendiente de revisar
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
                                       No adjunto
                                     </span>
                                   )}
@@ -797,7 +797,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                   {selectedUser.commune || 'Providencia'}, {selectedUser.city || 'Santiago'}
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
                                     Verificado
                                   </span>
                                 </td>
@@ -815,11 +815,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 {/* =============================================================== */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <ScanFace className="w-4 h-4 text-indigo-600" />
                       2. Imágenes Capturadas: Cédula de Identidad (Frente y Dorso) y Selfie Biométrica
                     </h4>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-xs text-slate-500">
                       Haz clic en cualquier imagen para ampliarla
                     </span>
                   </div>
@@ -846,7 +846,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                   url: frontImg,
                                 })
                               }
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
                             >
                               <Eye className="w-3.5 h-3.5" /> Ampliar
                             </button>
@@ -864,7 +864,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               src={frontImg}
                               alt="Cédula Anverso"
                               className="w-full h-full object-cover group-hover:scale-105 transition"
-                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Documento no disponible</div>}
+                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Documento no disponible</div>}
                           </div>
                         </div>
 
@@ -883,7 +883,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                   url: backImg,
                                 })
                               }
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
                             >
                               <Eye className="w-3.5 h-3.5" /> Ampliar
                             </button>
@@ -901,7 +901,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               src={backImg}
                               alt="Cédula Reverso"
                               className="w-full h-full object-cover group-hover:scale-105 transition"
-                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Documento no disponible</div>}
+                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Documento no disponible</div>}
                           </div>
                         </div>
 
@@ -920,7 +920,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                   url: faceImg,
                                 })
                               }
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 enabled:cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed"
                             >
                               <Eye className="w-3.5 h-3.5" /> Ampliar
                             </button>
@@ -938,7 +938,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               src={faceImg}
                               alt="Selfie Biométrica"
                               className="w-full h-full object-cover group-hover:scale-105 transition"
-                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">Imagen no disponible</div>}
+                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Imagen no disponible</div>}
                           </div>
                         </div>
                       </div>
@@ -951,7 +951,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 {/* =============================================================== */}
                 <div className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <FileCheck2 className="w-4 h-4 text-amber-600" />
                       3. Certificado de antecedentes adjunto
                     </h4>
@@ -982,7 +982,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 sm:p-5 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-extrabold text-xs shrink-0 shadow-2xs">
+                        <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                           PDF
                         </div>
                         <div>
@@ -990,13 +990,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             {selectedUser.kycData?.criminalRecordDocCode ||
                               `Certificado_Antecedentes_${selectedUser.rut.replace(/\D/g, '')}.pdf`}
                           </div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-xs text-slate-500">
                             Servicio de registro civil e identificación · república de Chile
                           </div>
                         </div>
                       </div>
 
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
                         Documento PDF verificado
                       </span>
                     </div>
@@ -1008,14 +1008,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                     >
                       <div className="flex items-start justify-between border-b-2 border-indigo-900 pb-3">
                         <div>
-                          <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider">
+                          <div className="text-xs font-bold text-indigo-900">
                             República de Chile · servicio de registro civil e identificación
                           </div>
                           <div className="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">
                             CERTIFICADO DE ANTECEDENTES PARA FINES ESPECIALES
                           </div>
                         </div>
-                        <div className="text-right font-mono text-[10px] text-slate-500">
+                        <div className="text-right font-mono text-xs text-slate-500">
                           <div>FOLIO: 50049281</div>
                           <div>LEY N° 19.628</div>
                         </div>
@@ -1023,7 +1023,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold block uppercase">
+                          <span className="text-xs text-slate-500 font-bold block">
                             Nombre titular
                           </span>
                           <span className="font-bold text-slate-900">
@@ -1031,7 +1031,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold block uppercase">
+                          <span className="text-xs text-slate-500 font-bold block">
                             RUN / RUT
                           </span>
                           <span className="font-mono font-bold text-indigo-900">
@@ -1039,16 +1039,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold block uppercase">
+                          <span className="text-xs text-slate-500 font-bold block">
                             Registro general de condenas
                           </span>
-                          <span className="font-extrabold text-emerald-700">
+                          <span className="font-bold text-emerald-700">
                             SIN ANOTACIONES VIGENTES
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                      <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
                         <span>Timbre electrónico avanzado (Ley 19.799)</span>
                         <span className="text-indigo-600 font-bold flex items-center gap-1">
                           <Eye className="w-3.5 h-3.5" /> Clic para abrir documento completo
@@ -1080,7 +1080,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={spaceSearch}
@@ -1114,7 +1114,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
           <div className="divide-y divide-slate-100">
             {filteredSpaces.length === 0 ? (
-              <div className="p-12 text-center text-xs text-slate-400">
+              <div className="p-12 text-center text-xs text-slate-500">
                 No se encontraron espacios para el filtro seleccionado.
               </div>
             ) : (
@@ -1144,7 +1144,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             {sp.title}
                           </h3>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                               sp.status === 'active'
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : 'bg-slate-100 text-slate-600'
@@ -1155,7 +1155,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         </div>
                         <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
                           <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-slate-400" />
+                            <MapPin className="w-3 h-3 text-slate-500" />
                             {sp.commune}
                           </span>
                           <span>
@@ -1243,7 +1243,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <Banknote className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                 <span>1. ¿Qué incluye el Monto en Custodia?</span>
               </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 Cuando el arrendatario paga, Spotly retiene en custodia: <strong>Valor hora/Día</strong> + <strong>Garantía de daños</strong> + <strong>5% Comisión Spotly</strong>.
               </p>
             </div>
@@ -1253,7 +1253,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>2. Si reembolsas al Arrendatario</span>
               </div>
-              <p className="text-[11px] text-emerald-800 leading-relaxed">
+              <p className="text-xs text-emerald-800 leading-relaxed">
                 Por falla del lugar (ej. corte de luz, recinto cerrado), se devuelve el <strong>100% de todo lo pagado</strong> (Arriendo + Garantía + 5% Comisión). Spotly anula su 5%.
               </p>
             </div>
@@ -1263,7 +1263,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                 <span>3. Si liberas al Propietario</span>
               </div>
-              <p className="text-[11px] text-indigo-800 leading-relaxed">
+              <p className="text-xs text-indigo-800 leading-relaxed">
                 Si hubo daños o el reclamo no procede, el propietario recibe el <strong>Arriendo (menos 5% comisión) + la Garantía</strong>, y Spotly retiene su <strong>5% de comisión</strong>.
               </p>
             </div>
@@ -1271,7 +1271,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
           <div className="divide-y divide-slate-100">
             {filteredDisputes.length === 0 ? (
-              <div className="p-12 text-center text-xs text-slate-400">
+              <div className="p-12 text-center text-xs text-slate-500">
                 No hay disputas registradas en este estado.
               </div>
             ) : (
@@ -1298,7 +1298,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           #{d.id}
                         </span>
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             isResolved
                               ? 'bg-emerald-50 text-emerald-700'
                               : 'bg-rose-100 text-rose-800'
@@ -1315,7 +1315,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         </h3>
                       </div>
 
-                      <div className="text-sm font-extrabold text-rose-600 tabular-nums">
+                      <div className="text-sm font-bold text-rose-600 tabular-nums">
                         Total en Custodia: {formatClp(totalCustody)}
                       </div>
                     </div>
@@ -1323,49 +1323,49 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                     {/* Desglose Financiero Transparente de la Reserva en Disputa */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-indigo-50/40 border border-indigo-100 text-xs">
                       <div className="bg-white p-2.5 rounded-lg border border-slate-200/80">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        <span className="text-xs font-bold text-slate-500 block">
                           1. Valor Hora / Día
                         </span>
-                        <strong className="text-sm font-extrabold text-slate-900 tabular-nums">
+                        <strong className="text-sm font-bold text-slate-900 tabular-nums">
                           {formatClp(rentalSubtotal)}
                         </strong>
-                        <span className="block text-[10px] text-slate-500 mt-0.5">
+                        <span className="block text-xs text-slate-500 mt-0.5">
                           Tarifa base del espacio
                         </span>
                       </div>
 
                       <div className="bg-white p-2.5 rounded-lg border border-slate-200/80">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        <span className="text-xs font-bold text-slate-500 block">
                           2. Garantía en Custodia
                         </span>
-                        <strong className="text-sm font-extrabold text-slate-900 tabular-nums">
+                        <strong className="text-sm font-bold text-slate-900 tabular-nums">
                           {formatClp(securityDeposit)}
                         </strong>
-                        <span className="block text-[10px] text-slate-500 mt-0.5">
+                        <span className="block text-xs text-slate-500 mt-0.5">
                           Caución por daños
                         </span>
                       </div>
 
                       <div className="bg-white p-2.5 rounded-lg border border-slate-200/80">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        <span className="text-xs font-bold text-slate-500 block">
                           3. Comisión Spotly (5%)
                         </span>
-                        <strong className="text-sm font-extrabold text-indigo-700 tabular-nums">
+                        <strong className="text-sm font-bold text-indigo-700 tabular-nums">
                           {formatClp(platformFee5Pct)}
                         </strong>
-                        <span className="block text-[10px] text-slate-500 mt-0.5">
+                        <span className="block text-xs text-slate-500 mt-0.5">
                           {d.status === 'resolved_refund' ? 'Devuelta al cliente' : '5% sobre el arriendo'}
                         </span>
                       </div>
 
                       <div className="bg-white p-2.5 rounded-lg border border-rose-200">
-                        <span className="text-[10px] font-bold uppercase text-rose-600 block">
+                        <span className="text-xs font-bold text-rose-600 block">
                           Total pagado (1 + 2 + 3)
                         </span>
-                        <strong className="text-sm font-extrabold text-rose-700 tabular-nums">
+                        <strong className="text-sm font-bold text-rose-700 tabular-nums">
                           {formatClp(totalCustody)}
                         </strong>
-                        <span className="block text-[10px] text-slate-500 mt-0.5">
+                        <span className="block text-xs text-slate-500 mt-0.5">
                           {d.status === 'resolved_refund'
                             ? `Reembolsado: ${formatClp(totalCustody)}`
                             : d.status === 'resolved_owner'
@@ -1377,21 +1377,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                       <div>
-                        <span className="text-slate-400 block">Arrendatario</span>
+                        <span className="text-slate-500 block">Arrendatario</span>
                         <strong className="text-slate-800">{d.tenantName}</strong>
-                        <span className="block text-[11px] text-slate-500 font-mono">
+                        <span className="block text-xs text-slate-500 font-mono">
                           RUT {formatRut(d.tenantRut)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block">Propietario</span>
+                        <span className="text-slate-500 block">Propietario</span>
                         <strong className="text-slate-800">{d.ownerName}</strong>
-                        <span className="block text-[11px] text-slate-500 font-mono">
+                        <span className="block text-xs text-slate-500 font-mono">
                           RUT {formatRut(d.ownerRut)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block">Motivo del reclamo</span>
+                        <span className="text-slate-500 block">Motivo del reclamo</span>
                         <p className="text-slate-700 mt-0.5 leading-snug">{d.reason}</p>
                       </div>
                     </div>
@@ -1401,7 +1401,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         <div>
                           <strong>Dictamen final:</strong> {d.resolutionNotes}
                         </div>
-                        <div className="text-[11px] text-emerald-900 font-medium">
+                        <div className="text-xs text-emerald-900 font-medium">
                           {d.status === 'resolved_refund' ? (
                             <>
                               <strong>Liquidación ejecutada:</strong> Se reembolsó el 100% al arrendatario ({formatClp(totalCustody)}: {formatClp(rentalSubtotal)} de arriendo + {formatClp(securityDeposit)} de garantía + {formatClp(platformFee5Pct)} del 5% de comisión Spotly).
@@ -1482,13 +1482,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             <div className="flex flex-wrap items-center gap-3">
               <div className="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200/70 text-xs">
                 <span className="text-indigo-600 font-semibold">Total transaccionado: </span>
-                <strong className="text-indigo-950 font-extrabold tabular-nums">
+                <strong className="text-indigo-950 font-bold tabular-nums">
                   {formatClp(metrics.totalGmvClp)}
                 </strong>
               </div>
               <div className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200/70 text-xs">
                 <span className="text-emerald-700 font-semibold">Comisión Spotly (5%): </span>
-                <strong className="text-emerald-950 font-extrabold tabular-nums">
+                <strong className="text-emerald-950 font-bold tabular-nums">
                   {formatClp(metrics.totalPlatformFeeClp)}
                 </strong>
               </div>
@@ -1498,7 +1498,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
                   <th className="py-3 px-4">Reserva / fecha</th>
                   <th className="py-3 px-4">Espacio y anfitrión</th>
                   <th className="py-3 px-4">Arrendatario</th>
@@ -1512,21 +1512,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   <tr key={r.id} className="hover:bg-slate-50/70">
                     <td className="py-3.5 px-4">
                       <div className="font-mono font-bold text-slate-800">{r.id}</div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-xs text-slate-500">
                         {r.startDate} {r.endDate !== r.startDate ? `al ${r.endDate}` : ''}
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-slate-900">{r.spaceTitle}</div>
-                      <div className="text-[11px] text-slate-500">Propietario: {r.ownerName}</div>
+                      <div className="text-xs text-slate-500">Propietario: {r.ownerName}</div>
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-slate-800">{r.tenantName}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">RUT {formatRut(r.tenantRut)}</div>
+                      <div className="text-xs text-slate-500 font-mono">RUT {formatRut(r.tenantRut)}</div>
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${
                           r.status === 'confirmed' || r.status === 'completed'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : r.status === 'pending'
@@ -1541,10 +1541,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                           : 'Cancelada'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right font-extrabold text-slate-900 tabular-nums">
+                    <td className="py-3.5 px-4 text-right font-bold text-slate-900 tabular-nums">
                       {formatClp(r.totalClp)}
                     </td>
-                    <td className="py-3.5 px-4 text-right font-extrabold text-emerald-700 tabular-nums">
+                    <td className="py-3.5 px-4 text-right font-bold text-emerald-700 tabular-nums">
                       {formatClp(r.platformFeeClp)}
                     </td>
                   </tr>
@@ -1580,7 +1580,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               <h3 className="text-sm font-bold text-slate-900">{previewImage.title}</h3>
               <button
                 onClick={() => setPreviewImage(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+                className="p-1 text-slate-500 hover:text-slate-700 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1617,7 +1617,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                     {pdfModalUser.kycData?.criminalRecordDocCode ||
                       `Certificado_Antecedentes_${pdfModalUser.rut.replace(/\D/g, '')}.pdf`}
                   </h3>
-                  <p className="text-[11px] text-slate-400 truncate">
+                  <p className="text-xs text-slate-500 truncate">
                     Expediente KYC · {pdfModalUser.fullName} (RUT {formatRut(pdfModalUser.rut)})
                   </p>
                 </div>

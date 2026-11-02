@@ -12,7 +12,7 @@ export function buildCsp(extra: { connect?: string[]; img?: string[]; upgrade?: 
     'img-src': ["'self'", 'data:', 'blob:', 'https://*.supabase.co', 'https://images.unsplash.com', ...(extra.img || [])],
     'connect-src': ["'self'", ...supabase, 'https://images.unsplash.com', ...(extra.connect || [])],
     'media-src': ["'self'", 'blob:'],
-    'frame-src': ["'self'", 'blob:', 'https://*.supabase.co'],
+    'frame-src': ["'self'", 'blob:', 'https://*.supabase.co', 'https://www.google.com', 'https://maps.google.com'],
     'worker-src': ["'self'", 'blob:'],
     'form-action': ["'self'", 'https://webpay3g.transbank.cl', 'https://webpay3gint.transbank.cl'],
     'frame-ancestors': ["'none'"],

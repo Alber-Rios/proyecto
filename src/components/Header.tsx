@@ -325,7 +325,7 @@ export const Header: React.FC<HeaderProps> = ({
                             )}
                             <button
                               onClick={() => setShowNotifications(false)}
-                              className="sm:hidden p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                              className="sm:hidden p-1 text-slate-500 hover:text-slate-600 rounded-lg"
                               aria-label="Cerrar notificaciones"
                             >
                               <X className="w-4 h-4" />
@@ -334,7 +334,7 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                         <div className="max-h-[min(20rem,calc(100dvh-9rem))] overflow-y-auto overscroll-contain divide-y divide-slate-100">
                           {notifications.length === 0 ? (
-                            <p className="text-xs text-slate-400 py-8 text-center">
+                            <p className="text-xs text-slate-500 py-8 text-center">
                               No tienes notificaciones pendientes
                             </p>
                           ) : (
@@ -359,7 +359,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   <p className="break-words text-xs text-slate-600 leading-relaxed">
                                     {n.message}
                                   </p>
-                                  <span className="text-[11px] text-slate-400 block">
+                                  <span className="text-xs text-slate-500 block">
                                     {new Date(n.timestamp).toLocaleString('es-CL', {
                                       day: '2-digit',
                                       month: '2-digit',
@@ -370,7 +370,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 </div>
                                 <button
                                   onClick={() => dismissNotification(n.id)}
-                                  className="shrink-0 text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100"
+                                  className="shrink-0 text-slate-500 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100"
                                   aria-label="Descartar notificación"
                                 >
                                   <X className="w-3.5 h-3.5" />
@@ -404,7 +404,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="text-xs font-bold text-slate-900 leading-tight truncate">
                         {capitalizeInitial(currentUser.fullName.split(' ')[0])}
                       </div>
-                      <div className="text-[11px] leading-tight flex items-center gap-1 mt-0.5">
+                      <div className="text-xs leading-tight flex items-center gap-1 mt-0.5">
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${roleMeta.dotColor}`} />
                         <span className={`font-semibold truncate ${roleMeta.textColor}`}>
                           {roleMeta.shortLabel}
@@ -430,7 +430,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
 
                     <ChevronDown
-                      className={`w-3.5 h-3.5 text-slate-400 mr-1 sm:mr-0 transition-transform duration-200 ${
+                      className={`w-3.5 h-3.5 text-slate-500 mr-1 sm:mr-0 transition-transform duration-200 ${
                         showUserMenu ? 'rotate-180 text-slate-700' : ''
                       }`}
                     />
@@ -478,7 +478,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   </p>
                                   <button
                                     onClick={() => setShowUserMenu(false)}
-                                    className="sm:hidden -mr-1 p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                                    className="sm:hidden -mr-1 p-1 text-slate-500 hover:text-slate-600 rounded-lg"
                                     aria-label="Cerrar menú"
                                   >
                                     <X className="w-4 h-4" />
@@ -516,7 +516,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     <span className="block text-xs sm:text-sm font-bold leading-snug truncate">
                                       Panel administrador
                                     </span>
-                                    <span className="block text-[11px] text-indigo-100 truncate">
+                                    <span className="block text-xs text-indigo-100 truncate">
                                       Verificaciones, espacios y reclamos
                                     </span>
                                   </div>
@@ -538,7 +538,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     <span className="block text-xs sm:text-sm font-bold leading-snug truncate">
                                       Publica tu espacio en Spotly
                                     </span>
-                                    <span className="block text-[11px] text-rose-100 truncate">
+                                    <span className="block text-xs text-rose-100 truncate">
                                       Activa tu perfil de anfitrión
                                     </span>
                                   </div>
@@ -562,7 +562,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     <span className="block text-xs sm:text-sm font-bold leading-snug truncate">
                                       Mis espacios
                                     </span>
-                                    <span className="block text-[11px] text-white/85 truncate">
+                                    <span className="block text-xs text-white/85 truncate">
                                       Solicitudes, calendario y ganancias
                                     </span>
                                   </div>
@@ -596,7 +596,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   <span className="block text-sm font-semibold text-slate-800 group-hover:text-slate-900 truncate">
                                     Catálogo público
                                   </span>
-                                  <span className="block text-[11px] text-slate-400 truncate">
+                                  <span className="block text-xs text-slate-500 truncate">
                                     Todos los espacios publicados
                                   </span>
                                 </div>
@@ -626,7 +626,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   <span className="block text-sm font-semibold text-slate-800 group-hover:text-slate-900 truncate">
                                     Explorar espacios
                                   </span>
-                                  <span className="block text-[11px] text-slate-400 truncate">
+                                  <span className="block text-xs text-slate-500 truncate">
                                     Oficinas, salas, bodegas y más
                                   </span>
                                 </div>
@@ -665,7 +665,7 @@ export const Header: React.FC<HeaderProps> = ({
                                       </span>
                                     )}
                                   </div>
-                                  <span className="block text-[11px] text-slate-400 truncate">
+                                  <span className="block text-xs text-slate-500 truncate">
                                     Espacios que guardaste
                                   </span>
                                 </div>
@@ -693,7 +693,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   <span className="block text-sm font-semibold text-slate-800 group-hover:text-slate-900 truncate">
                                     Mis reservas
                                   </span>
-                                  <span className="block text-[11px] text-slate-400 truncate">
+                                  <span className="block text-xs text-slate-500 truncate">
                                     Tus arriendos y contratos
                                   </span>
                                 </div>
@@ -721,7 +721,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   <span className="block text-sm font-semibold text-slate-800 group-hover:text-slate-900 truncate">
                                     Billetera
                                   </span>
-                                  <span className="block text-[11px] text-slate-400 truncate">
+                                  <span className="block text-xs text-slate-500 truncate">
                                     Tarjetas guardadas y pagos
                                   </span>
                                 </div>
@@ -771,7 +771,7 @@ export const Header: React.FC<HeaderProps> = ({
                                         : 'Verificar mi cuenta'}
                                     </span>
                                   </div>
-                                  <span className="block text-[11px] text-slate-400 truncate">
+                                  <span className="block text-xs text-slate-500 truncate">
                                     {currentUser.verificationStatus === 'verified'
                                       ? 'Identidad biométrica y cédula al día'
                                       : currentUser.verificationStatus === 'rejected'
@@ -803,7 +803,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   <span className="block text-sm font-semibold text-slate-800 group-hover:text-slate-900 truncate">
                                     Ayuda y soporte
                                   </span>
-                                  <span className="block text-[11px] text-slate-400 truncate">
+                                  <span className="block text-xs text-slate-500 truncate">
                                     Reportar un problema
                                   </span>
                                 </div>

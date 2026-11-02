@@ -91,7 +91,7 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
         height={170}
       />
 
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         {rows.length} {rows.length === 1 ? 'reserva incluida' : 'reservas incluidas'} en el reporte exportable · Total neto{' '}
         <strong className="text-slate-900">{formatClp(rows.reduce((sum, r) => sum + r.net, 0))}</strong>
       </p>

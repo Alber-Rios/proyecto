@@ -144,7 +144,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <h1 className="font-display text-[2.6rem] sm:text-7xl leading-[1.02] tracking-tight">
               <SplitWords text="Un lugar para trabajar, crear o reunirte." />{' '}
               <motion.em
-                className="text-luxe inline-block"
+                className="inline-block text-rose-300"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1, ease: EASE_LUXE, delay: 0.55 }}
@@ -194,11 +194,11 @@ export const HomePage: React.FC<HomePageProps> = ({
                 className="flex gap-10 pt-5 border-t border-white/10"
               >
                 <div>
-                  <dt className="text-[11px] uppercase tracking-[0.2em] text-stone-400">Espacios</dt>
+                  <dt className="text-xs tracking-[0.2em] text-stone-400">Espacios</dt>
                   <dd className="font-display text-3xl"><AnimatedNumber text={String(activeSpaces.length)} duration={1600} /></dd>
                 </div>
                 <div>
-                  <dt className="text-[11px] uppercase tracking-[0.2em] text-stone-400">Comunas</dt>
+                  <dt className="text-xs tracking-[0.2em] text-stone-400">Comunas</dt>
                   <dd className="font-display text-3xl"><AnimatedNumber text={String(new Set(activeSpaces.map((sp) => sp.commune)).size)} duration={1600} /></dd>
                 </div>
               </motion.dl>
@@ -261,7 +261,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       ) : filteredSpaces.length === 0 ? (
         <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-slate-100 mx-auto flex items-center justify-center text-slate-400">
+          <div className="w-12 h-12 rounded-full bg-slate-100 mx-auto flex items-center justify-center text-slate-500">
             <Compass className="w-6 h-6" />
           </div>
           <h3 className="text-base font-bold text-slate-800">No encontramos espacios con esos filtros</h3>

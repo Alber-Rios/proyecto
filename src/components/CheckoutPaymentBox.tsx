@@ -161,7 +161,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
 
       {/* Código de descuento */}
       <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-        <label htmlFor="discount-code" className="text-xs font-extrabold text-slate-900 block">
+        <label htmlFor="discount-code" className="text-xs font-bold text-slate-900 block">
           ¿Tienes un código de descuento?
         </label>
         <div className="flex gap-2">
@@ -171,7 +171,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
             onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
             placeholder="Ej: SPOTLY10"
             disabled={Boolean(discount) || validating}
-            className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold uppercase text-slate-900 bg-white focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+            className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-white focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
           />
           {discount ? (
             <button
@@ -197,13 +197,13 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
           )}
         </div>
         {codeMessage && (
-          <p className={`text-[11px] font-semibold ${discount ? 'text-emerald-700' : 'text-rose-600'}`}>{codeMessage}</p>
+          <p className={`text-xs font-semibold ${discount ? 'text-emerald-700' : 'text-rose-600'}`}>{codeMessage}</p>
         )}
       </div>
 
       {/* Medio de pago */}
       <fieldset className="space-y-2">
-        <legend className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5 mb-2">
+        <legend className="text-xs font-bold text-slate-900 flex items-center gap-1.5 mb-2">
           <Wallet className="w-4 h-4 text-rose-600" /> ¿Cómo quieres pagar?
         </legend>
 
@@ -227,10 +227,10 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
               <span className="block text-xs font-bold text-slate-900">
                 {card.cardType} terminada en {card.last4}
               </span>
-              <span className="block text-[11px] text-slate-500">Tarjeta de tu billetera · pago inmediato</span>
+              <span className="block text-xs text-slate-500">Tarjeta de tu billetera · pago inmediato</span>
             </span>
             {card.isDefault && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 Predeterminada
               </span>
             )}
@@ -253,7 +253,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
           <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
           <span className="flex-1 min-w-0">
             <span className="block text-xs font-bold text-slate-900">Otra tarjeta con Webpay Plus</span>
-            <span className="block text-[11px] text-slate-500">Débito, crédito o prepago en el formulario de Transbank</span>
+            <span className="block text-xs text-slate-500">Débito, crédito o prepago en el formulario de Transbank</span>
           </span>
         </label>
 
@@ -267,13 +267,13 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
           {walletCards.length === 0 ? 'Agregar una tarjeta a mi billetera' : 'Agregar otra tarjeta'}
         </button>
         {walletCards.length === 0 && (
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500">
             Al agregarla te llevamos a Transbank y luego vuelves aquí con tu reserva lista para pagar.
           </p>
         )}
       </fieldset>
 
-      <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-[11px] text-indigo-900 flex gap-2">
+      <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex gap-2">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
           Ambiente de pruebas de Transbank (no se realizan cargos reales). Tarjeta VISA <strong>4051 8856 0044 6623</strong>, CVV{' '}

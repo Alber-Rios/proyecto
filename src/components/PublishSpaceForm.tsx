@@ -308,7 +308,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
             return (
               <li key={label} className="flex items-center gap-2 flex-1 min-w-0">
                 <span
-                  className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${
+                  className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
                     done ? 'bg-emerald-600 text-white' : active ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500'
                   }`}
                 >
@@ -332,7 +332,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   const items = SPACE_CATEGORIES.filter((c) => c.group === group.id);
                   return (
                     <div key={group.id}>
-                      <p className="text-[11px] font-semibold text-slate-500 mb-1.5">{group.label}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-1.5">{group.label}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {items.map((c) => {
                           const Icon = c.icon;
@@ -359,7 +359,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   );
                 })}
               </div>
-              <p className="text-[11px] text-slate-500 mt-2">Ejemplo: {categoryInfo.hint.toLowerCase()}.</p>
+              <p className="text-xs text-slate-500 mt-2">Ejemplo: {categoryInfo.hint.toLowerCase()}.</p>
             </div>
 
             <div>
@@ -420,7 +420,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 placeholder="Ej: Av. Irarrázaval 1234, depto 501"
                 className={inputClass}
               />
-              <p className="text-[11px] text-slate-500 mt-1">Solo la verán quienes reserven o agenden una visita.</p>
+              <p className="text-xs text-slate-500 mt-1">Solo la verán quienes reserven o agenden una visita.</p>
             </div>
 
             <div>
@@ -528,7 +528,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                           className={`${inputClass} pl-7`}
                         />
                       </div>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-xs text-slate-500">
                         Se cobra una sola vez al inicio y se devuelve al terminar el arriendo.
                         {monthPrice ? ` Lo habitual es un mes (${formatClp(Number(monthPrice))}).` : ''}
                       </p>
@@ -536,7 +536,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   )}
                 </div>
               </ModalityRow>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Spotly cobra al arrendatario una comisión de servicio de 5 % sobre el arriendo. Los arriendos por hora y por día no llevan garantía.
               </p>
             </div>
@@ -591,7 +591,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               />
               <span>
                 <span className="block text-xs font-bold text-slate-900">Reserva inmediata</span>
-                <span className="block text-[11px] text-slate-500">
+                <span className="block text-xs text-slate-500">
                   La reserva se confirma sola al aprobarse el pago. Si la desmarcas, tendrás que aceptar cada solicitud.
                 </span>
               </span>
@@ -608,7 +608,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               <label
                 className={`flex items-center justify-center gap-2 p-4 bg-white border-2 border-dashed rounded-xl text-sm font-semibold transition ${
                   images.length >= MAX_IMAGES
-                    ? 'border-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'border-slate-200 text-slate-500 cursor-not-allowed'
                     : 'border-slate-300 hover:border-rose-500 text-slate-700 hover:text-rose-600 cursor-pointer'
                 }`}
               >
@@ -629,7 +629,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                     <div key={idx} className="relative rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-100">
                       <img src={src} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
                       {idx === 0 && (
-                        <span className="absolute top-1 left-1 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Portada</span>
+                        <span className="absolute top-1 left-1 bg-rose-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">Portada</span>
                       )}
                       <button
                         type="button"
@@ -676,7 +676,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
 
             <div>
               <label htmlFor="ps-description" className={labelClass}>
-                Descripción <span className="font-normal text-slate-400">(opcional)</span>
+                Descripción <span className="font-normal text-slate-500">(opcional)</span>
               </label>
               <textarea
                 id="ps-description"
@@ -696,14 +696,14 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 aria-expanded={showExtras}
               >
                 <span>
-                  Comodidades y reglas <span className="font-normal text-slate-400">(opcional)</span>
+                  Comodidades y reglas <span className="font-normal text-slate-500">(opcional)</span>
                 </span>
-                <span className="text-slate-400">{showExtras ? 'Ocultar' : 'Agregar'}</span>
+                <span className="text-slate-500">{showExtras ? 'Ocultar' : 'Agregar'}</span>
               </button>
               {showExtras && (
                 <div className="px-4 pb-4 space-y-3">
                   <ChipGroup items={AMENITIES} selected={amenities} onToggle={(v) => toggle(amenities, v, setAmenities)} />
-                  <p className="text-[11px] font-semibold text-slate-500">Reglas</p>
+                  <p className="text-xs font-semibold text-slate-500">Reglas</p>
                   <ChipGroup items={RULES} selected={rules} onToggle={(v) => toggle(rules, v, setRules)} />
                 </div>
               )}
@@ -808,7 +808,7 @@ const ChipGroup: React.FC<{ items: string[]; selected: string[]; onToggle: (v: s
             on ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
         >
-          {on ? <Check className="w-3.5 h-3.5" /> : <PlusCircle className="w-3.5 h-3.5 text-slate-400" />}
+          {on ? <Check className="w-3.5 h-3.5" /> : <PlusCircle className="w-3.5 h-3.5 text-slate-500" />}
           {item}
         </button>
       );

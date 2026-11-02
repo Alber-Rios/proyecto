@@ -162,7 +162,7 @@ export const ContractDocument: React.FC<ContractDocumentProps> = ({
         <div className="space-y-[1.75em] px-[1.25em] py-[1.5em] sm:px-[2em]">
           {/* Cuadro resumen */}
           <section aria-labelledby={summaryId}>
-            <h3 id={summaryId} className="text-[0.8125em] font-bold tracking-[0.08em] text-slate-700 uppercase">
+            <h3 id={summaryId} className="text-[0.8125em] font-bold tracking-[0.08em] text-slate-700">
               Cuadro resumen
             </h3>
             <dl className="mt-[0.75em] grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-2">
@@ -231,7 +231,7 @@ export const ContractDocument: React.FC<ContractDocumentProps> = ({
 
           {/* Cláusulas */}
           <section aria-labelledby={clausesId}>
-            <h3 id={clausesId} className="text-[0.8125em] font-bold tracking-[0.08em] text-slate-700 uppercase">
+            <h3 id={clausesId} className="text-[0.8125em] font-bold tracking-[0.08em] text-slate-700">
               Cláusulas
             </h3>
             <ol className="mt-[0.75em] max-w-[72ch] space-y-[1.25em]">

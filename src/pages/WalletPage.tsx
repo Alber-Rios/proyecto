@@ -134,12 +134,12 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth }) => {
                     <CreditCard className="w-5 h-5 text-rose-300" /> {card.cardType}
                   </span>
                   {card.isDefault && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                       Predeterminada
                     </span>
                   )}
                 </div>
-                <p className="font-mono text-lg tracking-widest">•••• •••• •••• {card.last4}</p>
+                <p className="font-mono text-lg">•••• •••• •••• {card.last4}</p>
                 <div className="flex items-center gap-2">
                   {!card.isDefault && (
                     <button
@@ -189,7 +189,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth }) => {
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
           Las tarjetas se inscriben en Transbank (Oneclick). Spotly nunca ve ni guarda el número completo de tu tarjeta.
         </p>
-        <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-[11px] text-indigo-900 flex gap-2">
+        <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex gap-2">
           <Info className="w-4 h-4 shrink-0 mt-0.5" />
           <span>
             Ambiente de pruebas de Transbank: usa la tarjeta VISA <strong>4051 8856 0044 6623</strong>, CVV <strong>123</strong> y cualquier fecha
@@ -221,7 +221,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth }) => {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-bold text-slate-900">{formatClp(p.amountClp)}</p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${label.className}`}>{label.text}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${label.className}`}>{label.text}</span>
                   </div>
                 </li>
               );

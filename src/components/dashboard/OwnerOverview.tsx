@@ -198,7 +198,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Ingresos netos {text.per}</h3>
-            <span className="text-[10px] text-slate-500">{text.range} · después de comisión</span>
+            <span className="text-xs text-slate-500">{text.range} · después de comisión</span>
           </div>
           <VerticalBarChart
             key={period}
@@ -229,10 +229,10 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Ocupación de los próximos 14 días</h3>
-            <span className="text-[10px] text-slate-500">Reservas + bloqueos · todos tus espacios activos</span>
+            <span className="text-xs text-slate-500">Reservas + bloqueos · todos tus espacios activos</span>
           </div>
           {activeSpaces.length === 0 ? (
-            <p className="text-[11px] text-slate-400 py-4 text-center">Cuando tengas espacios activos verás aquí su ocupación.</p>
+            <p className="text-xs text-slate-500 py-4 text-center">Cuando tengas espacios activos verás aquí su ocupación.</p>
           ) : (
             <OccupancyHeatStrip
               title="Ocupación diaria próximos 14 días"
@@ -245,7 +245,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Tus espacios que más generan</h3>
-            <span className="text-[10px] text-slate-500">{text.range}</span>
+            <span className="text-xs text-slate-500">{text.range}</span>
           </div>
           <HorizontalBarList
             title="Ingresos netos por espacio"
@@ -260,17 +260,17 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
       <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-900">Próximas reservas</h3>
-          <button type="button" onClick={() => onGoTab('bookings')} className="text-[11px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer">
+          <button type="button" onClick={() => onGoTab('bookings')} className="text-xs font-bold text-rose-600 hover:text-rose-700 cursor-pointer">
             Ver todas →
           </button>
         </div>
         {upcoming.length === 0 ? (
-          <p className="text-[11px] text-slate-400 py-3 text-center">No tienes reservas próximas.</p>
+          <p className="text-xs text-slate-500 py-3 text-center">No tienes reservas próximas.</p>
         ) : (
           <div className="overflow-x-auto -mx-1">
-            <table className="w-full text-[11px] min-w-[520px]">
+            <table className="w-full text-xs min-w-[520px]">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                   <th className="py-2 px-1 font-bold">Fecha</th>
                   <th className="py-2 px-1 font-bold">Espacio</th>
                   <th className="py-2 px-1 font-bold">Arrendatario</th>
@@ -298,7 +298,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
                     <td className="py-2 px-1 text-right font-bold text-slate-900">{formatClp(netOf(r))}</td>
                     <td className="py-2 px-1 text-right">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                           r.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'
                         }`}
                       >

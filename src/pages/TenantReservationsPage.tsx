@@ -6,7 +6,7 @@ import { BookingResultModal, PaymentOutcome } from '../components/BookingResultM
 import { ReservationActions, PaymentStatusBadge, reservationStatusLabel } from '../components/ReservationActions.tsx';
 import { getReviewsByTenant } from '../lib/dataAccess.ts';
 import { useApp } from '../context/AppContext.tsx';
-import { formatClp, formatRut } from '../utils/formatters.ts';
+import { formatClp, formatHourRange, formatRut, formatUnits } from '../utils/formatters.ts';
 import { ContractModal } from '../components/ContractModal.tsx';
 import { DigitalContract, Reservation, Review } from '../types.ts';
 import {
@@ -151,7 +151,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           </div>
 
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+            <span className="text-xs font-bold text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
               Mis reservas
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
@@ -275,7 +275,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             Reserva #{booking.id.slice(-6)}
           </span>
           <span
-            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
               booking.status === 'confirmed'
                 ? 'bg-emerald-100 text-emerald-800'
                 : booking.status === 'pending'
@@ -287,13 +287,13 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           </span>
           <PaymentStatusBadge reservation={booking} />
           {booking.disputeStatus === 'opened' && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500 text-white">
               Reclamo en revisión
             </span>
           )}
         </div>
 
-        <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+        <h3 className="text-base sm:text-lg font-bold text-slate-900 break-words">
           {booking.spaceTitle}
         </h3>
         <div className="text-xs text-slate-500 flex items-center gap-1">
@@ -304,18 +304,16 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
           <span className="flex items-center gap-1 font-medium text-slate-800">
             <Calendar className="w-3.5 h-3.5 text-rose-500" />
-            {booking.startDate} al {booking.endDate} (
             {booking.rentalModality === 'por_hora'
-              ? `${booking.durationUnits || 1} hrs`
-              : `${booking.totalDays} ${booking.totalDays === 1 ? 'día' : 'días'}`}
-            )
+              ? `${booking.startDate} · ${formatHourRange(booking.hourStart, booking.hourEnd)}`
+              : `${booking.startDate} al ${booking.endDate} (${formatUnits(booking.totalDays, 'día')})`}
           </span>
           <span>
             Anfitrión: <strong className="text-slate-800">{booking.ownerName}</strong>
           </span>
           <span>
-            Total Pagado:{' '}
-            <strong className="text-slate-900 font-extrabold">{formatClp(booking.totalClp)}</strong>
+            Total:{' '}
+            <strong className="text-slate-900 font-bold">{formatClp(booking.totalClp)}</strong>
           </span>
           {booking.securityDepositClp > 0 && (
             <span className="text-slate-500">
@@ -342,7 +340,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
     </div>
 
     {/* Botones de Acción: Ver Detalle, Descargar Reserva, Ver/Descargar Contrato */}
-    <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100 w-full xl:w-auto xl:max-w-[27rem] xl:justify-end">
+    <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 pt-3 xl:pt-0 border-t xl:border-t-0 border-slate-100 w-full xl:w-auto xl:max-w-[27rem] xl:justify-end">
       <button
         onClick={() => setSelectedBookingDetail(booking)}
         className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
@@ -352,29 +350,11 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       </button>
 
       <button
-        onClick={() => downloadReservationDocument(booking)}
-        className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-        title="Descargar comprobante oficial de la reserva"
-      >
-        <Download className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-        Descargar reserva
-      </button>
-
-      <button
         onClick={() => handleOpenContract(booking)}
         className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
       >
         <FileText className="w-3.5 h-3.5 text-rose-400 shrink-0" />
         Ver contrato
-      </button>
-
-      <button
-        onClick={() => handleDownloadContract(booking)}
-        className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
-        title="Descargar contrato de arrendamiento digital"
-      >
-        <Download className="w-3.5 h-3.5 shrink-0" />
-        Descargar contrato
       </button>
 
       <ReservationActions
@@ -386,9 +366,8 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       {booking.disputeStatus !== 'opened' && (
         <button
           onClick={() => setDisputeReservationId(booking.id)}
-          className="w-full sm:w-auto px-3 py-2.5 sm:py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+          className="col-span-2 sm:col-span-1 w-full sm:w-auto px-3 py-2 text-sm text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline flex items-center justify-center gap-1 transition cursor-pointer"
         >
-          <Scale className="w-3.5 h-3.5 shrink-0" />
           Reportar un problema
         </button>
       )}
@@ -399,62 +378,29 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
   return (
     <div className="space-y-6 pb-16">
       {/* Cabecera */}
-      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
-              Mis reservas
-            </span>
-            <span className="text-xs text-slate-400 font-mono">RUT: {formatRut(currentUser.rut)}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            Tus reservas
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Revisa tus reservas y descarga el comprobante o el contrato.
-          </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Tus reservas</h1>
+          <p className="mt-1 text-sm text-slate-600">Revisa tus reservas y descarga el comprobante o el contrato.</p>
         </div>
-
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
-          <button
-            onClick={() => onNavigate('support')}
-            className="w-full sm:w-auto px-4 py-2.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Scale className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>Reportar un problema</span>
-          </button>
-          <button
-            onClick={() => onNavigate('home')}
-            className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Building className="w-4 h-4 shrink-0" />
-            <span>Buscar espacios</span>
-          </button>
-        </div>
-      </div>
+        <button
+          onClick={() => onNavigate('home')}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 cursor-pointer"
+        >
+          <Building className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Buscar espacios
+        </button>
+      </header>
 
       {/* KPIs de Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <dl className="grid grid-cols-3 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-white">
         {summaryCards.map((card) => (
-          <div
-            key={card.label}
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"
-          >
-            <div
-              className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                card.tone === 'emerald'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : card.tone === 'amber'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-indigo-100 text-indigo-800'
-              }`}
-            >
-              {card.label}
-            </div>
-            <div className="mt-2 text-2xl font-extrabold text-slate-900 tabular-nums">{card.value}</div>
+          <div key={card.label} className="min-w-0 px-3 py-3 sm:px-5 sm:py-4">
+            <dt className="text-xs text-slate-600 sm:text-sm">{card.label}</dt>
+            <dd className="mt-1 text-xl font-bold tabular-nums text-slate-950 sm:text-2xl">{card.value}</dd>
           </div>
         ))}
-      </div>
+      </dl>
 
       {/* Banner de conversión si aún no es propietario */}
       {!currentUser.ownerTermsAccepted && currentUser.role === 'tenant' && (
@@ -584,7 +530,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     <section key={g.key} aria-labelledby={`closed-${g.key}`} className="space-y-3">
                       <h3 id={`closed-${g.key}`} className="flex items-center gap-2 text-sm font-bold text-slate-800">
                         {g.title}
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">{g.items.length}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">{g.items.length}</span>
                       </h3>
                       <div className="space-y-4 opacity-80">{g.items.map(renderBooking)}</div>
                     </section>
@@ -646,11 +592,11 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                         <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
                           {visit.id}
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Visita confirmada
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 capitalize flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 capitalize flex items-center gap-1">
                           {visit.modality === 'presencial' ? (
                             <>
                               <MapPin className="w-3.5 h-3.5 text-indigo-600" />
@@ -676,7 +622,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                             {visit.visitDate} ({visit.visitTimeSlot})
                           </span>
                           <span className="flex items-center gap-1 text-slate-500">
-                            <Users className="w-3.5 h-3.5 text-slate-400" />
+                            <Users className="w-3.5 h-3.5 text-slate-500" />
                             {visit.attendeesCount} asistente{visit.attendeesCount > 1 ? 's' : ''}
                           </span>
                         </div>
@@ -718,11 +664,11 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           >
             <div className="bg-slate-900 text-white p-6 flex items-start justify-between">
               <div>
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-400/30 mb-2">
+                <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-400/30 mb-2">
                   Comprobante de reserva
                 </span>
                 <h3 className="text-lg sm:text-xl font-bold">{selectedBookingDetail.spaceTitle}</h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
                   Código Reserva: #{selectedBookingDetail.id} · Emitida el{' '}
                   {new Date(selectedBookingDetail.createdAt).toLocaleDateString('es-CL')}
                 </p>
@@ -738,25 +684,25 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             <div className="p-6 space-y-5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
-                  <span className="text-slate-400 block font-semibold">Arrendatario</span>
+                  <span className="text-slate-500 block font-semibold">Arrendatario</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedBookingDetail.tenantName}</span>
                   <span className="block font-mono text-slate-600">
                     RUT: {formatRut(selectedBookingDetail.tenantRut)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Anfitrión</span>
+                  <span className="text-slate-500 block font-semibold">Anfitrión</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedBookingDetail.ownerName}</span>
                   <span className="block text-slate-600">{selectedBookingDetail.spaceAddress}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Fecha</span>
+                  <span className="text-slate-500 block font-semibold">Fecha</span>
                   <span className="font-bold text-slate-900">
                     {selectedBookingDetail.startDate} al {selectedBookingDetail.endDate}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Estado</span>
+                  <span className="text-slate-500 block font-semibold">Estado</span>
                   <span className="font-bold text-emerald-700">
                     {selectedBookingDetail.status === 'confirmed'
                       ? 'Confirmada por el anfitrión'
@@ -768,7 +714,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
               </div>
 
               <div className="space-y-2 border-t border-slate-200 pt-4">
-                <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                <div className="font-bold text-slate-800 text-xs">
                   Pago
                 </div>
                 <div className="flex justify-between py-1 text-slate-600">
@@ -791,7 +737,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between p-3 bg-slate-100 rounded-xl font-extrabold text-sm text-slate-900">
+                <div className="flex justify-between p-3 bg-slate-100 rounded-xl font-bold text-sm text-slate-900">
                   <span>Total</span>
                   <span className="text-rose-600">{formatClp(selectedBookingDetail.totalClp)}</span>
                 </div>
@@ -804,7 +750,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                     Pagado con {selectedBookingDetail.paymentSimulation.cardBrand.toUpperCase()} ****{' '}
                     {selectedBookingDetail.paymentSimulation.last4}
                   </span>
-                  <span className="font-mono text-[11px]">
+                  <span className="font-mono text-xs">
                     Aut: {selectedBookingDetail.paymentSimulation.authorizationCode}
                   </span>
                 </div>

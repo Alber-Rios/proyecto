@@ -129,7 +129,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
   };
 
   const tabClass = (active: boolean) =>
-    `flex-1 py-2 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+    `flex-1 py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
       active ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
     }`;
   const inputClass =
@@ -153,10 +153,10 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
               <h3 id="space-block-title" className="text-sm font-bold text-slate-900">
                 Bloquear disponibilidad
               </h3>
-              <p className="text-[11px] text-slate-500 truncate">{space.title}</p>
+              <p className="text-xs text-slate-500 truncate">{space.title}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer" aria-label="Cerrar">
+          <button type="button" onClick={onClose} className="p-1.5 text-slate-500 hover:text-slate-700 rounded-lg cursor-pointer" aria-label="Cerrar">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -227,7 +227,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
                 </div>
               </div>
               {date === todayIso && (
-                <p className="text-[10px] text-slate-500">Hoy solo puedes bloquear horas que aún no comienzan.</p>
+                <p className="text-xs text-slate-500">Hoy solo puedes bloquear horas que aún no comienzan.</p>
               )}
             </div>
           )}
@@ -275,7 +275,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
                 ))}
               </select>
               {monthKey === todayIso.slice(0, 7) && (
-                <p className="text-[10px] text-slate-500 mt-1">El mes actual se bloquea desde hoy hasta fin de mes.</p>
+                <p className="text-xs text-slate-500 mt-1">El mes actual se bloquea desde hoy hasta fin de mes.</p>
               )}
             </div>
           )}
@@ -288,7 +288,7 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
                   key={r}
                   type="button"
                   onClick={() => setReason(r)}
-                  className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold cursor-pointer transition ${
+                  className={`px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer transition ${
                     reason === r ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -307,17 +307,17 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
           </div>
 
           {preview && (
-            <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+            <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
               Se bloqueará: <strong>{preview}</strong>. Nadie podrá reservar en ese período.
             </div>
           )}
           {error && (
-            <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-800" role="alert">
+            <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800" role="alert">
               {error}
             </div>
           )}
           {success && (
-            <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800" role="status">
+            <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800" role="status">
               {success}
             </div>
           )}
@@ -342,13 +342,13 @@ export const SpaceBlockModal: React.FC<SpaceBlockModalProps> = ({ space, initial
         </form>
 
         <div className="pt-3 border-t border-slate-100 space-y-2">
-          <h4 className="text-[11px] font-bold text-slate-600">Bloqueos vigentes de este espacio ({upcomingBlocks.length})</h4>
+          <h4 className="text-xs font-bold text-slate-600">Bloqueos vigentes de este espacio ({upcomingBlocks.length})</h4>
           {upcomingBlocks.length === 0 ? (
-            <p className="text-[11px] text-slate-400">No hay bloqueos programados.</p>
+            <p className="text-xs text-slate-500">No hay bloqueos programados.</p>
           ) : (
             <ul className="space-y-1.5 max-h-48 overflow-y-auto">
               {upcomingBlocks.map((b) => (
-                <li key={b.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
+                <li key={b.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                   <div className="min-w-0">
                     <div className="font-bold text-slate-800">{describeBlock(b)}</div>
                     {b.reason && <div className="text-slate-500 truncate">{b.reason}</div>}

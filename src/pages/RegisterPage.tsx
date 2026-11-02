@@ -220,7 +220,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                     onChange={(e) => setBirthDate(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-base sm:text-sm text-stone-900 placeholder:text-stone-400 transition duration-200 hover:border-stone-400 focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 font-medium"
                   />
-                  {birthDate && !isAtLeast18(birthDate) && <p className="mt-1 text-[11px] text-rose-600">Debes tener 18 años o más.</p>}
+                  {birthDate && !isAtLeast18(birthDate) && <p className="mt-1 text-xs text-rose-600">Debes tener 18 años o más.</p>}
                 </div>
               </div>
 
@@ -341,7 +341,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
                 />
-                <span className="text-[11px] text-slate-600 leading-snug">
+                <span className="text-xs text-slate-600 leading-snug">
                   Al tocar «Crear cuenta», aceptas los <Link to="/terminos" className="font-semibold text-blue-700 hover:underline">Términos y condiciones</Link> de Spotly y confirmas que has leído la <Link to="/privacidad" className="font-semibold text-blue-700 hover:underline">Política de privacidad</Link> y la <Link to="/cookies" className="font-semibold text-blue-700 hover:underline">Política de cookies</Link>.
                 </span>
               </label>

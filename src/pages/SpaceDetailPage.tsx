@@ -235,7 +235,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
   };
 
   // Precios dinámicos según modalidad
-  const rateLabel = activeModality === 'por_hora' ? 'TARIFA POR HORA' : activeModality === 'mensual' ? 'TARIFA MENSUAL' : 'TARIFA POR DÍA';
+  const rateLabel = activeModality === 'por_hora' ? 'Por hora' : activeModality === 'mensual' ? 'Por mes' : 'Por día';
   const displayPrice = activeModality === 'por_hora' ? (space.pricePerHour || 0) : activeModality === 'mensual' ? (space.pricePerMonth || 0) : space.pricePerDay;
   const unitSuffix = activeModality === 'por_hora' ? '/ hr' : activeModality === 'mensual' ? '/ mes' : '/ día';
   const minHoursLabel = Math.max(1, space.minBookingHours || 1);
@@ -260,11 +260,11 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
       {/* 1. TOP BREADCRUMB & TAGS (IDÉNTICO A LA REFERENCIA) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase bg-slate-900 text-white tracking-wider shadow-2xs">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white shadow-2xs">
             {getCategoryLabel(space.category)}
           </span>
 
-          <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>Espacio verificado</span>
           </span>
@@ -458,51 +458,51 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
           {/* B. BARRA DE KEY SPECS (4 FICHAS HORIZONTALES) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <span className="text-xs font-bold text-slate-500">
                 {rateLabel}
               </span>
               <div className="text-lg sm:text-xl font-bold text-rose-600 leading-tight">
                 {formatClp(displayPrice)}
                 <span className="text-xs font-normal text-slate-500">{unitSuffix}</span>
               </div>
-              <span className="text-[10px] text-slate-400 block">{subRateLabel}</span>
+              <span className="text-xs text-slate-500 block">{subRateLabel}</span>
             </div>
 
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <span className="text-xs font-bold text-slate-500">
                 Capacidad
               </span>
-              <div className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
-                <Users className="w-4 h-4 text-slate-400" />
+              <div className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-1.5 leading-tight">
+                <Users className="w-4 h-4 text-slate-500" />
                 {space.capacity} pers.
               </div>
-              <span className="text-[10px] text-slate-400 block">Capacidad máxima</span>
+              <span className="text-xs text-slate-500 block">Capacidad máxima</span>
             </div>
 
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <span className="text-xs font-bold text-slate-500">
                 Superficie
               </span>
-              <div className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
-                <Maximize2 className="w-4 h-4 text-slate-400" />
+              <div className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-1.5 leading-tight">
+                <Maximize2 className="w-4 h-4 text-slate-500" />
                 {space.surfaceM2} m²
               </div>
-              <span className="text-[10px] text-slate-400 block">Superficie aproximada</span>
+              <span className="text-xs text-slate-500 block">Superficie aproximada</span>
             </div>
 
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <span className="text-xs font-bold text-slate-500">
                 HORARIO
               </span>
               {(() => {
                 const schedule = parseOpeningHours(space.openingHours);
                 return (
                   <>
-                    <div className="text-sm sm:text-base font-extrabold text-slate-900 flex items-start gap-1.5 leading-tight">
-                      <Clock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="text-sm sm:text-base font-bold text-slate-900 flex items-start gap-1.5 leading-tight">
+                      <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                       <span>{space.openingHours ? schedule.hoursLabel : 'A convenir'}</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 block">
+                    <span className="text-xs text-slate-500 block">
                       {space.openingHours ? schedule.daysLabel : 'Días y horas disponibles'}
                     </span>
                   </>
@@ -531,7 +531,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <span>Lo que ofrece este espacio</span>
                 </h2>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                   {amenities.length}
                 </span>
               </div>
@@ -631,7 +631,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-base font-bold text-slate-900">{space.ownerName}</h3>
                   {space.ownerVerified && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Anfitrión verificado</span>
                     </span>
