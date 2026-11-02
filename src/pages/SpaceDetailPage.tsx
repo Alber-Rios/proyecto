@@ -470,7 +470,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
 
             <div className="space-y-0.5">
               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                CAPACIDAD MÁX
+                Capacidad
               </span>
               <div className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
                 <Users className="w-4 h-4 text-slate-400" />
@@ -481,7 +481,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
 
             <div className="space-y-0.5">
               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                SUPERFICIE TOTAL
+                Superficie
               </span>
               <div className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
                 <Maximize2 className="w-4 h-4 text-slate-400" />

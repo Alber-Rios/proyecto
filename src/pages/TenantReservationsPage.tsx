@@ -152,13 +152,13 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
 
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-rose-800 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
-              Acceso a mis arriendos
+              Mis reservas
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
               Inicia sesión para ver tus reservas
             </h2>
             <p className="text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
-              Tus solicitudes de arriendo, contratos digitales suscritos bajo la Ley 18.101 y comprobantes de reserva están asociados a tu cuenta.
+              Tus reservas, contratos y comprobantes quedan guardados en tu cuenta.
             </p>
           </div>
 
@@ -173,7 +173,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
               onClick={() => onOpenAuth?.('register', 'Crea tu cuenta de Arrendatario para reservar espacios en Chile.')}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              Registrarte gratis
+              Crear cuenta
             </button>
           </div>
         </div>
@@ -190,16 +190,16 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             <ShieldCheck className="w-7 h-7" />
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-xl font-bold text-slate-900">Sesión de administrador activa</h2>
+            <h2 className="text-xl font-bold text-slate-900">Estás como administrador</h2>
             <p className="text-xs text-slate-500 leading-relaxed">
-              La cuenta de Administrador no realiza reservas personales. Dirígete al Panel de Administración para auditar usuarios, moderar espacios y revisar disputas.
+              Las cuentas de administración no hacen reservas.
             </p>
           </div>
           <button
             onClick={() => onNavigate('admin')}
             className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer"
           >
-            Ir al panel administrador
+            Ir a administración
           </button>
         </div>
       </div>
@@ -288,7 +288,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           <PaymentStatusBadge reservation={booking} />
           {booking.disputeStatus === 'opened' && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
-              Disputa en arbitraje
+              Reclamo en revisión
             </span>
           )}
         </div>
@@ -389,7 +389,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           className="w-full sm:w-auto px-3 py-2.5 sm:py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
         >
           <Scale className="w-3.5 h-3.5 shrink-0" />
-          Reportar problema del lugar
+          Reportar un problema
         </button>
       )}
     </div>
@@ -403,15 +403,15 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
-              Mis reservas y contratos
+              Mis reservas
             </span>
             <span className="text-xs text-slate-400 font-mono">RUT: {formatRut(currentUser.rut)}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            Mis arriendos y comprobantes
+            Tus reservas
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Revisa el detalle de tus reservas, descarga tu comprobante de reserva o descarga el contrato digital Ley 18.101.
+            Revisa tus reservas y descarga el comprobante o el contrato.
           </p>
         </div>
 
@@ -421,14 +421,14 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             className="w-full sm:w-auto px-4 py-2.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Scale className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>Ayuda y soporte (Reportar problema)</span>
+            <span>Reportar un problema</span>
           </button>
           <button
             onClick={() => onNavigate('home')}
             className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Building className="w-4 h-4 shrink-0" />
-            <span>Explorar más espacios</span>
+            <span>Buscar espacios</span>
           </button>
         </div>
       </div>
@@ -464,9 +464,9 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
               <Info className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-amber-950">¿Tienes una oficina, estudio o local para arrendar?</h4>
+              <h4 className="text-sm font-bold text-amber-950">¿Tienes un espacio que no usas?</h4>
               <p className="text-xs text-amber-800">
-                Activa tu perfil de propietario para publicar tus espacios y recibir reservas en Spotly.
+                Publícalo en Spotly y recibe reservas.
               </p>
             </div>
           </div>
@@ -474,7 +474,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             onClick={onOpenOwnerUpgrade}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition whitespace-nowrap cursor-pointer"
           >
-            Quiero ser propietario
+            Publicar mi espacio
           </button>
         </div>
       )}
@@ -551,7 +551,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
           {confirmedBookings.length === 0 ? (
             <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
               <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-              <h3 className="text-base font-bold text-slate-800">Aún no tienes reservas confirmadas</h3>
+              <h3 className="text-base font-bold text-slate-800">Aún no tienes reservas</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 {waitlistBookings.length > 0
                   ? `Tienes ${waitlistBookings.length} ${waitlistBookings.length === 1 ? 'solicitud' : 'solicitudes'} en lista de espera: aparecerán aquí cuando el anfitrión las acepte.`
@@ -618,13 +618,13 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
               <MapPin className="w-12 h-12 text-slate-300 mx-auto" />
               <h3 className="text-base font-bold text-slate-800">No tienes visitas agendadas</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Puedes agendar una visita presencial o virtual gratuita desde la ficha de cualquier espacio.
+                Puedes agendar una visita gratis desde cualquier espacio.
               </p>
               <button
                 onClick={() => onNavigate('home')}
                 className="mt-2 px-5 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition inline-flex items-center gap-2 cursor-pointer"
               >
-                Explorar catálogo
+                Buscar espacios
               </button>
             </div>
           ) : (
@@ -719,7 +719,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             <div className="bg-slate-900 text-white p-6 flex items-start justify-between">
               <div>
                 <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-400/30 mb-2">
-                  Comprobante oficial de reserva
+                  Comprobante de reserva
                 </span>
                 <h3 className="text-lg sm:text-xl font-bold">{selectedBookingDetail.spaceTitle}</h3>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -738,25 +738,25 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
             <div className="p-6 space-y-5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
-                  <span className="text-slate-400 block font-semibold">Arrendatario titular</span>
+                  <span className="text-slate-400 block font-semibold">Arrendatario</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedBookingDetail.tenantName}</span>
                   <span className="block font-mono text-slate-600">
                     RUT: {formatRut(selectedBookingDetail.tenantRut)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Propietario / anfitrión</span>
+                  <span className="text-slate-400 block font-semibold">Anfitrión</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedBookingDetail.ownerName}</span>
                   <span className="block text-slate-600">{selectedBookingDetail.spaceAddress}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Periodo reservado</span>
+                  <span className="text-slate-400 block font-semibold">Fecha</span>
                   <span className="font-bold text-slate-900">
                     {selectedBookingDetail.startDate} al {selectedBookingDetail.endDate}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold">Estado de reserva</span>
+                  <span className="text-slate-400 block font-semibold">Estado</span>
                   <span className="font-bold text-emerald-700">
                     {selectedBookingDetail.status === 'confirmed'
                       ? 'Confirmada por el anfitrión'
@@ -769,30 +769,30 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
 
               <div className="space-y-2 border-t border-slate-200 pt-4">
                 <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                  Desglose de pago (CLP)
+                  Pago
                 </div>
                 <div className="flex justify-between py-1 text-slate-600">
-                  <span>Subtotal arriendo recinto</span>
+                  <span>Arriendo</span>
                   <span className="font-semibold text-slate-900">
                     {formatClp(selectedBookingDetail.subtotalClp)}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 text-slate-600">
-                  <span>Comisión servicio Spotly (5%)</span>
+                  <span>Comisión Spotly (5 %)</span>
                   <span className="font-semibold text-slate-900">
                     {formatClp(selectedBookingDetail.platformFeeClp)}
                   </span>
                 </div>
                 {selectedBookingDetail.securityDepositClp > 0 && (
                   <div className="flex justify-between py-1 text-slate-600">
-                    <span>Garantía (reembolsable)</span>
+                    <span>Garantía (se devuelve)</span>
                     <span className="font-semibold text-slate-900">
                       {formatClp(selectedBookingDetail.securityDepositClp)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between p-3 bg-slate-100 rounded-xl font-extrabold text-sm text-slate-900">
-                  <span>Total reserva</span>
+                  <span>Total</span>
                   <span className="text-rose-600">{formatClp(selectedBookingDetail.totalClp)}</span>
                 </div>
               </div>
@@ -843,9 +843,9 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       {disputeReservationId && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-            <h3 className="text-base font-bold text-slate-900">Abrir disputa con el anfitrión</h3>
+            <h3 className="text-base font-bold text-slate-900">Reportar un problema con esta reserva</h3>
             <p className="text-xs text-slate-500">
-              Explica el motivo del problema. El equipo de administración revisará el contrato y determinará la devolución de la garantía.
+              Cuéntanos qué pasó. Administración revisa el caso y decide qué pasa con la garantía.
             </p>
 
             <form onSubmit={handleSendDispute} className="space-y-3">
@@ -870,7 +870,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                   type="submit"
                   className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl cursor-pointer"
                 >
-                  Ingresar reclamo
+                  Enviar reclamo
                 </button>
               </div>
             </form>

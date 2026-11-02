@@ -220,7 +220,7 @@ export const Header: React.FC<HeaderProps> = ({
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                       }`}
                     >
-                      Panel propietario
+                      Mis espacios
                     </button>
                   )}
 
@@ -517,7 +517,7 @@ export const Header: React.FC<HeaderProps> = ({
                                       Panel administrador
                                     </span>
                                     <span className="block text-[11px] text-indigo-100 truncate">
-                                      Comparación KYC, certificados y moderación
+                                      Verificaciones, espacios y reclamos
                                     </span>
                                   </div>
                                 </div>
@@ -539,7 +539,7 @@ export const Header: React.FC<HeaderProps> = ({
                                       Publica tu espacio en Spotly
                                     </span>
                                     <span className="block text-[11px] text-rose-100 truncate">
-                                      Activa tu cuenta de propietario
+                                      Activa tu perfil de anfitrión
                                     </span>
                                   </div>
                                 </div>
@@ -560,10 +560,10 @@ export const Header: React.FC<HeaderProps> = ({
                                   </div>
                                   <div className="min-w-0">
                                     <span className="block text-xs sm:text-sm font-bold leading-snug truncate">
-                                      Panel propietario
+                                      Mis espacios
                                     </span>
                                     <span className="block text-[11px] text-white/85 truncate">
-                                      Gestiona espacios, reservas e ingresos
+                                      Solicitudes, calendario y ganancias
                                     </span>
                                   </div>
                                 </div>
@@ -597,7 +597,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     Catálogo público
                                   </span>
                                   <span className="block text-[11px] text-slate-400 truncate">
-                                    Supervisar recintos publicados en plataforma
+                                    Todos los espacios publicados
                                   </span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition" />
@@ -627,7 +627,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     Explorar espacios
                                   </span>
                                   <span className="block text-[11px] text-slate-400 truncate">
-                                    Catálogo de oficinas, estudios y salas
+                                    Oficinas, salas, bodegas y más
                                   </span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition" />
@@ -666,7 +666,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     )}
                                   </div>
                                   <span className="block text-[11px] text-slate-400 truncate">
-                                    Lugares guardados para comparar y reservar
+                                    Espacios que guardaste
                                   </span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition" />
@@ -694,7 +694,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     Mis reservas
                                   </span>
                                   <span className="block text-[11px] text-slate-400 truncate">
-                                    Arriendos activos y contratos digitales
+                                    Tus arriendos y contratos
                                   </span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition" />
@@ -804,7 +804,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     Ayuda y soporte
                                   </span>
                                   <span className="block text-[11px] text-slate-400 truncate">
-                                    Reportar problemas del lugar y disputas
+                                    Reportar un problema
                                   </span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 shrink-0 transition" />

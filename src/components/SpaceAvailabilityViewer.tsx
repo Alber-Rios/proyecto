@@ -197,7 +197,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
           const endH = r.hourEnd ?? (startH + (r.durationUnits || 4));
           for (let h = startH; h < endH; h++) {
             occupiedMap.set(h, {
-              title: r.intendedUse || 'Arriendo por hora en curso',
+              title: r.intendedUse || 'Arriendo por hora',
               use: r.tenantName ? `Solicitud por ${r.tenantName.split(' ')[0]}` : 'Solicitud activa',
               status: r.status,
               id: r.id,
@@ -213,7 +213,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
           // Bloqueado todo el día
           for (const h of OPERATING_HOURS) {
             occupiedMap.set(h, {
-              title: r.rentalModality === 'mensual' ? 'Residencia mensual activa' : 'Jornada diaria completa reservada',
+              title: r.rentalModality === 'mensual' ? 'Arriendo mensual' : 'Reservado todo el día',
               use: r.intendedUse || 'Espacio reservado todo el día',
               status: r.status,
               id: r.id,
@@ -289,7 +289,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
     };
   }, [activeModality, startDate, todayIso, chileNow, spaceReservations, spaceBlocksForThis, OPERATING_HOURS, selectedHourStart, selectedHourEnd, isOwnerView]);
 
-  // Cinta de días para por_hora y por_dia
+  // Semana para por_hora y por_dia
   const daysStrip = useMemo(() => {
     const baseDate = new Date();
     const startOffset = isOwnerView ? stripOffsetDays : 0;
@@ -535,38 +535,30 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
               <div className="min-w-0">
                 <h2 className="text-base sm:text-lg lg:text-xl font-bold tracking-tight text-white flex items-center gap-2 flex-wrap">
                   {activeModality === 'por_hora' && (
-                    <span>{isOwnerView ? 'Gestión y bitácora de horas' : 'Disponibilidad y horas del día'}</span>
+                    <span>{isOwnerView ? 'Horario del día' : 'Horas disponibles'}</span>
                   )}
                   {activeModality === 'por_dia' && (
-                    <span>{isOwnerView ? 'Gestión de jornadas diarias' : 'Disponibilidad por día (Jornada completa)'}</span>
+                    <span>{isOwnerView ? 'Días reservados' : 'Días disponibles'}</span>
                   )}
                   {activeModality === 'mensual' && (
-                    <span>{isOwnerView ? 'Gestión de residencia mensual' : 'Disponibilidad y selector mensual'}</span>
+                    <span>{isOwnerView ? 'Meses reservados' : 'Meses disponibles'}</span>
                   )}
-
-                  <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
-                    isOwnerView
-                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                  }`}>
-                    {isOwnerView ? 'Panel propietario' : 'En vivo'}
-                  </span>
                 </h2>
                 <p className="text-xs text-slate-300 mt-0.5">
                   {activeModality === 'por_hora' && (
                     isOwnerView
-                      ? 'Revisa el historial hacia atrás de horas ocupadas, solicitudes vigentes y gestiona el horario del recinto.'
-                      : 'Revisa qué horas están pedidas y cuáles están libres para tu bloque de reserva.'
+                      ? 'Elige un día para ver quién reservó, qué está libre y bloquear horas.'
+                      : 'Elige el día y las horas que necesitas.'
                   )}
                   {activeModality === 'por_dia' && (
                     isOwnerView
-                      ? 'Revisa qué días están reservados a jornada completa y gestiona la disponibilidad diaria.'
-                      : 'Selecciona las fechas de tu jornada completa. El recinto se arrienda por día cerrado.'
+                      ? 'Elige un día para ver si está reservado o bloquearlo.'
+                      : 'Elige los días que necesitas. Se arrienda el día completo.'
                   )}
                   {activeModality === 'mensual' && (
                     isOwnerView
-                      ? 'Revisa los meses contratados con residencia mensual y consulta el historial de contratos.'
-                      : 'Selecciona el mes para tu residencia comercial o contrato de arriendo continuo.'
+                      ? 'Revisa qué meses están arrendados.'
+                      : 'Elige el mes que necesitas.'
                   )}
                 </p>
               </div>
@@ -601,7 +593,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                   }`}
                 >
                   <CalendarDays className="w-3.5 h-3.5 shrink-0" />
-                  <span>Por Día</span>
+                  <span>Por día</span>
                 </button>
               )}
               {supportsMonthly && (
@@ -626,11 +618,11 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
         <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-4 text-xs font-medium">
           <span className="flex items-center gap-1.5 text-emerald-400">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <strong>Disponible / libre</strong>
+            <strong>Libre</strong>
           </span>
           <span className="flex items-center gap-1.5 text-rose-400">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            <strong>{activeModality === 'por_hora' ? 'Hora pedida / ocupada' : activeModality === 'por_dia' ? 'Día reservado' : 'Mes contratado'}</strong>
+            <strong>{activeModality === 'por_hora' ? 'Ocupada' : activeModality === 'por_dia' ? 'Día reservado' : 'Mes contratado'}</strong>
           </span>
           {activeModality === 'por_hora' && !isOwnerView && (
             <span className="flex items-center gap-1.5 text-blue-300">
@@ -652,7 +644,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>1. {isOwnerView ? 'Selecciona una fecha (Histórico o Futuro)' : 'Selecciona el día a consultar'}</span>
+                  <span>1. {isOwnerView ? 'Elige un día' : 'Elige un día'}</span>
                 </h3>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -787,7 +779,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                             </span>
                           ) : (
                             <span className={`text-[9px] font-bold block truncate ${isSelected ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                              100% Libre
+                              Libre
                             </span>
                           )}
                         </div>
@@ -909,7 +901,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                         ? 'bg-slate-200 text-slate-800 border-slate-300'
                         : 'bg-rose-50 text-rose-600 border-rose-200'
                     }`}>
-                      {dayScheduleData.isPastDate ? 'Fecha histórica' : 'Día seleccionado'}
+                      {dayScheduleData.isPastDate ? 'Día pasado' : 'Día elegido'}
                     </span>
                     <span className="text-sm font-bold text-slate-900">
                       {formatDateCl(dayScheduleData.date)}
@@ -917,17 +909,17 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     {dayScheduleData.isPastDate && isOwnerView && (
                       <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1">
                         <History className="w-3 h-3" />
-                        Bitácora histórica
+                        Día pasado
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
                     {isOwnerView ? (
                       dayScheduleData.isPastDate
-                        ? 'Modo Historial (Solo Lectura): Puedes revisar arriendos y contratos pasados, pero no bloquear ni modificar.'
-                        : 'Estado en tiempo real de solicitudes, horas comprometidas y franjas libres (modificable de hoy en adelante).'
+                        ? 'Este día ya pasó: puedes revisar lo que ocurrió, pero no cambiarlo.'
+                        : 'Solicitudes, horas reservadas y horas libres de este día.'
                     ) : (
-                      'Haz clic en cualquier hora verde para seleccionar o ajustar tu bloque de arriendo.'
+                      'Toca las horas verdes para elegirlas.'
                     )}
                   </p>
                 </div>
@@ -956,7 +948,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                 <div className="p-3 rounded-2xl bg-indigo-50/90 border border-indigo-200 text-indigo-900 text-xs flex items-center gap-2.5">
                   <History className="w-4 h-4 text-indigo-600 shrink-0" />
                   <span>
-                    <strong>Consulta de historial pasado:</strong> Estás visualizando una fecha anterior a hoy ({todayIso}). Puedes revisar los contratos y arriendos realizados, pero no se permite bloquear ni realizar modificaciones en fechas pasadas.
+                    <strong>Día pasado:</strong> Estás visualizando una fecha anterior a hoy ({todayIso}). Puedes revisar los contratos y arriendos realizados, pero no se permite bloquear ni realizar modificaciones en fechas pasadas.
                   </span>
                 </div>
               )}
@@ -1019,14 +1011,14 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-white border border-slate-200 text-xs">
                             <div className="space-y-1 min-w-0">
                               <div className="text-[10px] font-bold uppercase text-slate-400">
-                                Datos del arrendatario
+                                Arrendatario
                               </div>
                               <div className="font-bold text-slate-900 break-words">{booking.tenantName}</div>
                               <div className="text-slate-600">RUT: <strong>{formatRut(booking.tenantRut)}</strong></div>
                             </div>
                             <div className="space-y-1 min-w-0">
                               <div className="text-[10px] font-bold uppercase text-slate-400">
-                                Contacto directo
+                                Contacto
                               </div>
                               <div className="text-slate-700 font-medium break-all">
                                 {booking.tenantEmail || 'Sin correo'}
@@ -1045,7 +1037,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
 
                           {booking.intendedUse && (
                             <div className="text-xs text-slate-700 bg-white/80 px-3 py-2 rounded-xl border border-slate-200 break-words">
-                              <strong className="text-slate-900">¿Para qué va a utilizar este lugar?:</strong> "{booking.intendedUse}"
+                              <strong className="text-slate-900">Uso:</strong> "{booking.intendedUse}"
                             </div>
                           )}
 
@@ -1057,7 +1049,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                                 className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                                <span>Aprobar solicitud</span>
+                                <span>Aceptar solicitud</span>
                               </button>
                             )}
                             {onContactTenant && (
@@ -1084,7 +1076,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                                 className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                               >
                                 <FileText className="w-3.5 h-3.5 shrink-0" />
-                                <span>Ver contrato digital</span>
+                                <span>Ver contrato</span>
                               </button>
                             )}
                           </div>
@@ -1098,9 +1090,9 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
               {/* TIMELINE CONTINUA */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                  <span>08:00 hrs</span>
-                  <span>Línea de tiempo continua (08:00 a 22:00)</span>
-                  <span>22:00 hrs</span>
+                  <span>08:00</span>
+                  <span>Ocupación del día</span>
+                  <span>22:00</span>
                 </div>
                 <div className="h-3.5 w-full bg-slate-200 rounded-full overflow-hidden flex shadow-inner">
                   {dayScheduleData.slots.map((slot) => (
@@ -1290,7 +1282,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                               <div className="text-rose-700 space-y-0.5">
                                 <span className="font-bold block">Horario no disponible</span>
                                 <span className="text-[10px] text-slate-500 block">
-                                  Franja horaria reservada previamente
+                                  Alguien ya reservó esta hora
                                 </span>
                               </div>
                             )}
@@ -1308,10 +1300,10 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                           <div className="text-slate-600">
                             <span className={`font-bold block ${slot.isPastSlot && !dayScheduleData.isPastDate ? 'text-slate-400' : 'text-emerald-700'}`}>
                               {dayScheduleData.isPastDate
-                                ? 'Sin arriendo registrado'
+                                ? 'Sin reservas'
                                 : slot.isPastSlot
-                                ? 'Hora ya transcurrida'
-                                : 'Disponible para reservar'}
+                                ? 'Ya pasó'
+                                : 'Libre'}
                             </span>
                             <span className="text-[10px] text-slate-500 block">
                               Tarifa: {formatClp(priceHour)}/hr
@@ -1347,7 +1339,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
-                    Garantía legal custodiada y Contrato Digital regulado por Ley N° 18.101.
+                    Pago protegido y contrato digital (Ley N° 18.101).
                   </p>
                 </div>
 
@@ -1378,7 +1370,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                   <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
-                  <span>1. Selecciona la Fecha o Período de Jornada Completa</span>
+                  <span>Elige los días</span>
                 </h3>
 
                 <div className="flex items-center gap-2">
@@ -1418,7 +1410,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                         viewMode === 'strip' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      Cinta de días
+                      Semana
                     </button>
                     <button
                       type="button"
@@ -1427,7 +1419,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                         viewMode === 'month' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      Mes completo
+                      Mes
                     </button>
                   </div>
                 </div>
@@ -1608,7 +1600,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                         ? 'bg-slate-200 text-slate-800 border-slate-300'
                         : 'text-emerald-700 bg-emerald-50 border-emerald-200'
                     }`}>
-                      {dayDetailsForSelectedDate.isPastDate ? 'Fecha histórica' : 'Modalidad diaria'}
+                      {dayDetailsForSelectedDate.isPastDate ? 'Día pasado' : 'Por día'}
                     </span>
                     <span className="text-sm font-bold text-slate-900">
                       {formatDateCl(dayDetailsForSelectedDate.date)}
@@ -1616,13 +1608,13 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     {dayDetailsForSelectedDate.isPastDate && isOwnerView && (
                       <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1">
                         <History className="w-3 h-3" />
-                        Solo lectura (Historial)
+                        Día pasado
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
                     {dayDetailsForSelectedDate.isPastDate && isOwnerView
-                      ? 'Consulta histórica del día seleccionado. No se permiten bloqueos ni modificaciones en fechas pasadas.'
+                      ? 'Este día ya pasó: puedes revisar lo que ocurrió, pero no cambiarlo.'
                       : `Acceso completo al recinto durante toda la jornada comercial (${space.openingHours || '09:00 - 19:00 hrs'}).`}
                   </p>
                 </div>
@@ -1636,12 +1628,12 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     <span className={`w-2 h-2 rounded-full ${dayDetailsForSelectedDate.isOccupied ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
                     <span>
                       {dayDetailsForSelectedDate.dayMaintenance
-                        ? 'Bloqueado por mantención'
+                        ? 'Bloqueado por ti'
                         : dayDetailsForSelectedDate.isOccupied
-                        ? 'Día completo ocupado'
+                        ? 'Reservado todo el día'
                         : dayDetailsForSelectedDate.isPastDate
-                        ? 'Sin arriendo registrado'
-                        : 'Día completo disponible'}
+                        ? 'Sin reservas'
+                        : 'Libre todo el día'}
                     </span>
                   </span>
                 </div>
@@ -1651,7 +1643,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                 <div className="p-3 rounded-2xl bg-indigo-50/90 border border-indigo-200 text-indigo-900 text-xs flex items-center gap-2.5">
                   <History className="w-4 h-4 text-indigo-600 shrink-0" />
                   <span>
-                    <strong>Bitácora histórica:</strong> Esta fecha es anterior a hoy ({todayIso}). Solo está habilitada la visualización del historial; los bloqueos y modificaciones aplican de la fecha actual hacia adelante.
+                    <strong>Lo que pasó este día:</strong> Esta fecha es anterior a hoy ({todayIso}). Solo está habilitada la visualización del historial; los bloqueos y modificaciones aplican de la fecha actual hacia adelante.
                   </span>
                 </div>
               )}
@@ -1662,7 +1654,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                   <div className="space-y-1 text-xs">
                     <div className="font-bold text-amber-950 flex items-center gap-1.5">
                       <Wrench className="w-4 h-4 text-amber-600" />
-                      <span>Bloqueo por Mantención: {dayDetailsForSelectedDate.dayMaintenance.reason}</span>
+                      <span>Bloqueado: {dayDetailsForSelectedDate.dayMaintenance.reason}</span>
                     </div>
                     <p className="text-[11px] text-amber-800">
                       Bloqueo: {describeBlock(dayDetailsForSelectedDate.dayMaintenance)}
@@ -1678,7 +1670,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     </button>
                   ) : (
                     <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 text-[10px] font-bold shrink-0">
-                      Histórico (No modificable)
+                      Ya pasó
                     </span>
                   )}
                 </div>
@@ -1715,7 +1707,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     <div>RUT: <strong>{formatRut(dayDetailsForSelectedDate.primaryReservation.tenantRut)}</strong></div>
                     <div>Email: <strong>{dayDetailsForSelectedDate.primaryReservation.tenantEmail || 'Sin correo'}</strong></div>
                     <div>Teléfono: <strong>{getTenantPhone(dayDetailsForSelectedDate.primaryReservation)}</strong></div>
-                    <div>Uso: <em>"{dayDetailsForSelectedDate.primaryReservation.intendedUse || 'Arriendo diario'}"</em></div>
+                    <div>Uso: <em>"{dayDetailsForSelectedDate.primaryReservation.intendedUse || 'No indicado'}"</em></div>
                   </div>
                   <div className="pt-2 flex flex-wrap items-center gap-2">
                     {isActionableRequest(dayDetailsForSelectedDate.primaryReservation, chileNow) &&
@@ -1726,7 +1718,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                           className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Aprobar solicitud</span>
+                          <span>Aceptar solicitud</span>
                         </button>
                       )}
                     {onViewContract && (
@@ -1736,7 +1728,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                         className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-bold border border-rose-200 flex items-center gap-1 cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        <span>Ver contrato digital</span>
+                        <span>Ver contrato</span>
                       </button>
                     )}
                     {onContactTenant && (
@@ -1767,7 +1759,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded">
-                      Jornada diaria seleccionada
+                      Días elegidos
                     </span>
                     <span className="text-sm font-bold text-white">
                       {formatDateCl(dayDetailsForSelectedDate.date)}
@@ -1783,7 +1775,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
-                    Garantía legal custodiada y Contrato Digital regulado por Ley N° 18.101.
+                    Pago protegido y contrato digital (Ley N° 18.101).
                   </p>
                 </div>
 
@@ -1814,7 +1806,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-slate-400" />
                   <span>
-                    1. {isOwnerView ? 'Selecciona el mes (Historial o futuro)' : 'Selecciona el mes para tu residencia comercial'}
+                    1. {isOwnerView ? 'Elige un mes' : 'Elige un mes'}
                   </span>
                 </h3>
 
@@ -1915,9 +1907,9 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                         {m.isOccupied ? (
                           <span>Contrato Mensual {m.isPast ? '(Histórico)' : 'Vigente'}</span>
                         ) : m.isPast ? (
-                          <span>Sin arriendo mensual registrado</span>
+                          <span>Sin reservas este mes</span>
                         ) : (
-                          <span>Contrato digital Ley 18.101</span>
+                          <span>Con contrato digital</span>
                         )}
                       </div>
                     </button>
@@ -1932,7 +1924,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/20 px-2 py-0.5 rounded">
-                      Residencia mensual continua
+                      Arriendo mensual
                     </span>
                     <span className="text-sm font-bold text-white">
                       Mes: {selectedMonth || '2026-10'}
@@ -1956,7 +1948,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                       onClick={onStartBooking}
                       className="w-full md:w-auto px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <span>Solicitar residencia mensual</span>
+                      <span>Solicitar arriendo mensual</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   )}
@@ -1972,7 +1964,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
             <div className="space-y-1 min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/20 px-2 py-0.5 rounded whitespace-nowrap">
-                  Operaciones del recinto
+                  Bloquear el espacio
                 </span>
                 <span className="text-sm font-bold text-white truncate">
                   {space.title} ({space.commune})
@@ -1981,7 +1973,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
               <p className="text-xs text-slate-300">
                 {isSelectedDatePast
                   ? `Estás consultando el historial del ${startDate}. Los bloqueos y modificaciones solo están permitidos desde hoy (${todayIso}) en adelante.`
-                  : 'Gestiona bloqueos por mantención o sanitización y revisa contratos digitales de hoy en adelante.'}
+                  : 'Bloquea días u horas para mantención o uso propio. Nadie podrá reservarlos.'}
               </p>
             </div>
 
@@ -1993,7 +1985,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     title="No se pueden bloquear ni modificar fechas pasadas"
                   >
                     <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>Fecha pasada (Solo historial)</span>
+                    <span>Día pasado</span>
                   </span>
                 ) : (
                   <button
@@ -2002,7 +1994,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                   >
                     <Wrench className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Bloquear por Mantención ({startDate || todayIso})</span>
+                    <span>Bloquear este día</span>
                   </button>
                 )
               )}
