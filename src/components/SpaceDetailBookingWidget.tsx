@@ -586,7 +586,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                   <span className={`text-xs font-bold ${activeModality === 'por_hora' ? 'text-rose-600' : 'text-slate-500'}`}>
                     {formatClp(priceHour)}
                   </span>
-                  <span className="text-xs text-slate-500">Mínimo 2 hrs</span>
+                  <span className="text-xs text-slate-500">la hora</span>
                 </button>
               )}
 
@@ -600,11 +600,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
-                  <span className="text-xs font-bold">Por Día</span>
+                  <span className="text-xs font-bold">Por día</span>
                   <span className={`text-xs font-bold ${activeModality === 'por_dia' ? 'text-amber-400' : 'text-slate-500'}`}>
                     {formatClp(priceDay)}
                   </span>
-                  <span className={`text-xs ${activeModality === 'por_dia' ? 'text-slate-300' : 'text-slate-500'}`}>09:00 - 23:00</span>
+                  <span className={`text-xs ${activeModality === 'por_dia' ? 'text-slate-300' : 'text-slate-500'}`}>el día</span>
                 </button>
               )}
 
@@ -618,11 +618,11 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
                 >
-                  <span className="text-xs font-bold">Por Mes</span>
+                  <span className="text-xs font-bold">Por mes</span>
                   <span className={`text-xs font-bold ${activeModality === 'mensual' ? 'text-indigo-600' : 'text-slate-500'}`}>
-                    {priceMonth >= 1000000 ? `$${(priceMonth / 1000000).toFixed(1)}M` : formatClp(priceMonth)}
+                    {formatClp(priceMonth)}
                   </span>
-                  <span className="text-xs text-slate-500">Mensual</span>
+                  <span className="text-xs text-slate-500">el mes</span>
                 </button>
               )}
             </div>
@@ -886,6 +886,10 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
                     </button>
                   </div>
                 </div>
+
+                {minHours > 1 && (
+                  <p className="text-xs text-slate-600">Este espacio se arrienda por {minHours} horas como mínimo.</p>
+                )}
 
                 {/* Atajos rápidos en píldoras */}
                 <div className="flex items-center gap-1.5 flex-wrap pt-0.5">

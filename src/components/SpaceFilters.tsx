@@ -160,7 +160,7 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
               Modalidad de cobro:
             </span>
             <span className="text-xs font-semibold text-slate-600">
-              {selectedRateModality === 'all' ? 'Todas' : selectedRateModality === 'hour' ? 'Por hora' : selectedRateModality === 'day' ? 'Por Día' : 'Por Mes'}
+              {selectedRateModality === 'all' ? 'Todas' : selectedRateModality === 'hour' ? 'Por hora' : selectedRateModality === 'day' ? 'Por día' : 'Por mes'}
             </span>
           </div>
 
@@ -168,8 +168,8 @@ export const SpaceFilters: React.FC<SpaceFiltersProps> = ({
             {[
               { id: 'all', label: 'Todas' },
               { id: 'hour', label: 'Por hora' },
-              { id: 'day', label: 'Por Día' },
-              { id: 'month', label: 'Por Mes' },
+              { id: 'day', label: 'Por día' },
+              { id: 'month', label: 'Por mes' },
             ].map((item) => (
               <button
                 key={item.id}
