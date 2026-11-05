@@ -46,6 +46,23 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          // Librerías en archivos propios: se descargan en paralelo y quedan en la
+          // caché del navegador aunque cambie el código de la app.
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return undefined;
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) return 'react';
+            if (id.includes('/@supabase/') || id.includes('\\@supabase\\') || id.includes('iceberg-js')) return 'supabase';
+            if (/[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils|motion)[\\/]/.test(id)) return 'motion';
+            if (id.includes('/animejs/') || id.includes('\\animejs\\')) return 'anime';
+            if (id.includes('lucide-react')) return 'icons';
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       port: 3000,
       host: '0.0.0.0',
