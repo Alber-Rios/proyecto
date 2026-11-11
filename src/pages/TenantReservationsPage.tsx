@@ -35,12 +35,15 @@ interface TenantReservationsPageProps {
   onNavigate: (view: string) => void;
   onOpenOwnerUpgrade: () => void;
   onOpenAuth?: (mode: 'login' | 'register', notice?: string) => void;
+  /** Dentro del panel: sin título propio. */
+  embedded?: boolean;
 }
 
 export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
   onNavigate,
   onOpenOwnerUpgrade,
   onOpenAuth,
+  embedded = false,
 }) => {
   const { currentUser, reservations, contracts, visitRequests, createDispute, refreshReservations } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -380,8 +383,8 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
       {/* Cabecera */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Tus reservas</h1>
-          <p className="mt-1 text-sm text-slate-600">Revisa tus reservas y descarga el comprobante o el contrato.</p>
+          {!embedded && <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Tus reservas</h1>}
+          <p className={`text-sm text-slate-600 ${embedded ? '' : 'mt-1'}`}>Revisa tus reservas y descarga el comprobante o el contrato.</p>
         </div>
         <button
           onClick={() => onNavigate('home')}

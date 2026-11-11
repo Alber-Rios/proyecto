@@ -7,6 +7,8 @@ import type { PaymentRecord } from '../types.ts';
 
 interface WalletPageProps {
   onOpenAuth: (mode: 'login' | 'register', notice?: string) => void;
+  /** Dentro del panel: sin título propio ni márgenes de página. */
+  embedded?: boolean;
 }
 
 const STATUS_LABEL: Record<PaymentRecord['status'], { text: string; className: string }> = {
@@ -24,7 +26,7 @@ const RESULT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   error: { ok: false, text: 'No se pudo completar la inscripción. Inténtalo nuevamente.' },
 };
 
-export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth }) => {
+export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = false }) => {
   const { currentUser, walletCards, payments, reservations, addWalletCard, removeWalletCard, setDefaultWalletCard, refreshWalletCards } =
     useApp();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -81,13 +83,15 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8 sm:py-12 px-4 space-y-6">
+    <div className={embedded ? 'max-w-3xl space-y-6' : 'max-w-3xl mx-auto py-8 sm:py-12 px-4 space-y-6'}>
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Wallet className="w-6 h-6 text-rose-600" /> Billetera
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">Guarda tus tarjetas para pagar las reservas sin volver a ingresar los datos.</p>
+          {!embedded && (
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <Wallet className="w-6 h-6 text-rose-600" /> Billetera
+            </h1>
+          )}
+          <p className={`text-sm text-slate-600 ${embedded ? '' : 'mt-1'}`}>Guarda tus tarjetas para pagar las reservas sin volver a ingresar los datos.</p>
         </div>
         <button
           type="button"

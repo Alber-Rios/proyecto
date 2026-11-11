@@ -15,6 +15,8 @@ import {
 interface FavoritesPageProps {
   onNavigate: (view: string) => void;
   onSelectSpace: (space: Space) => void;
+  /** Dentro del panel: sin título propio. */
+  embedded?: boolean;
 }
 
 const CATEGORY_FILTERS: { id: 'all' | SpaceCategory; label: string }[] = [
@@ -25,6 +27,7 @@ const CATEGORY_FILTERS: { id: 'all' | SpaceCategory; label: string }[] = [
 export const FavoritesPage: React.FC<FavoritesPageProps> = ({
   onNavigate,
   onSelectSpace,
+  embedded = false,
 }) => {
   const { currentUser, spaces, favoriteSpaceIds, clearFavorites } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<'all' | SpaceCategory>('all');
@@ -107,9 +110,11 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <span aria-hidden="true">·</span>
               <span>{favoriteSpaceIds.length} {favoriteSpaceIds.length === 1 ? 'espacio guardado' : 'espacios guardados'}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Mis lugares favoritos
-            </h1>
+            {!embedded && (
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Mis lugares favoritos
+              </h1>
+            )}
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
               Guarda y compara tus oficinas, estudios y salones preferidos en Chile para reservarlos cuando estés listo.
             </p>

@@ -16,6 +16,9 @@ import { SpaceBlockModal } from '../components/SpaceBlockModal.tsx';
 import { OwnerOverview } from '../components/dashboard/OwnerOverview.tsx';
 import { DashboardShell } from '../components/dashboard/DashboardShell.tsx';
 import { OwnerCommissionNote } from '../components/dashboard/OwnerCommissionNote.tsx';
+import { WalletPage } from './WalletPage.tsx';
+import { TenantReservationsPage } from './TenantReservationsPage.tsx';
+import { FavoritesPage } from './FavoritesPage.tsx';
 import { blocksOnDay, describeBlock } from '../utils/spaceBlocks.ts';
 import { ContactTenantModal, ContactTenant } from '../components/ContactTenantModal.tsx';
 import {
@@ -82,6 +85,7 @@ interface OwnerDashboardPageProps {
 export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOwnerUpgrade, onNavigate, onOpenAuth }) => {
   const {
     currentUser,
+    favoriteSpaceIds,
     spaces,
     reservations,
     contracts,
@@ -98,7 +102,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   // Bloqueos de disponibilidad guardados en la base (space_blocks).
   const maintenanceBlocks = spaceBlocks;
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits' | 'wallet' | 'trips' | 'favorites'>('overview');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
@@ -632,15 +636,15 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             label: 'Dinero',
             items: [
               { id: 'finances', label: 'Ganancias', icon: TrendingUp },
-              { id: 'go-wallet', label: 'Billetera', icon: Wallet, action: () => onNavigate('wallet') },
+              { id: 'wallet', label: 'Billetera', icon: Wallet },
             ],
           },
           {
             label: 'Arrendar',
             items: [
               { id: 'go-explore', label: 'Explorar espacios', icon: Search, action: () => onNavigate('home') },
-              { id: 'go-bookings', label: 'Mis reservas', icon: FileText, action: () => onNavigate('my-bookings') },
-              { id: 'go-favorites', label: 'Mis favoritos', icon: Heart, action: () => onNavigate('favorites') },
+              { id: 'trips', label: 'Mis reservas', icon: FileText },
+              { id: 'favorites', label: 'Mis favoritos', icon: Heart, count: favoriteSpaceIds.length || undefined },
             ],
           },
           {
@@ -1738,6 +1742,13 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
             );
           })()}
         </div>
+      )}
+      {activeTab === 'wallet' && <WalletPage embedded onOpenAuth={onOpenAuth ?? (() => onNavigate('login'))} />}
+      {activeTab === 'trips' && (
+        <TenantReservationsPage embedded onNavigate={onNavigate} onOpenOwnerUpgrade={onOpenOwnerUpgrade} onOpenAuth={onOpenAuth} />
+      )}
+      {activeTab === 'favorites' && (
+        <FavoritesPage embedded onNavigate={onNavigate} onSelectSpace={(space) => routerNavigate(`/space/${space.id}`)} />
       )}
       </TabPanel>
       </div>
