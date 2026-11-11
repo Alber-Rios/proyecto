@@ -517,6 +517,11 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
               <FileText className="w-5 h-5 text-rose-600" />
               <span>Descripción</span>
             </h2>
+            {space.isFurnished && (
+              <p className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800">
+                Amoblado o equipado · precio con IVA incluido
+              </p>
+            )}
             {space.description?.trim() ? (
               <p className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">{space.description}</p>
             ) : (

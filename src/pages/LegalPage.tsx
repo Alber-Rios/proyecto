@@ -183,25 +183,32 @@ function TermsContent() {
         <p><strong>Cancelación y reembolso:</strong> si cancelas con 24 horas o más de anticipación se te devuelve todo lo pagado (arriendo, garantía y comisión). Si cancelas con menos de 24 horas se te devuelve el arriendo y la garantía, y se cobra solo la comisión de servicio de Spotly (5 %). Si el propietario rechaza o cancela la reserva se devuelve el 100 % de lo pagado. Los reembolsos se reversan al medio de pago original a través de Transbank. Los derechos irrenunciables de consumidores establecidos por la ley prevalecen sobre cualquier cláusula de estos términos.</p>
       </Section>
 
-      <Section title="5. Pagos y versión de prueba">
+      <Section title="5. Cobro por cuenta del propietario, comisión e impuestos">
+        <p><strong>Mandato de cobro:</strong> al publicar, el propietario encarga a Spotly cobrar el arriendo en su nombre a través de Transbank. Spotly retiene el dinero hasta que termina el arriendo y luego transfiere al propietario el arriendo menos su comisión. La garantía se devuelve al arrendatario si no hay un reclamo abierto.</p>
+        <p><strong>Comisión del propietario:</strong> Spotly descuenta 10 % del arriendo (5 % en arriendos mensuales). Durante la etapa de lanzamiento, hasta el 31 de mayo de 2027, y en las primeras 3 reservas de cada propietario, la comisión es 0 %. La tasa queda fija en cada reserva al crearla. Los descuentos promocionales los paga Spotly y no reducen lo que recibe el propietario.</p>
+        <p><strong>Impuestos:</strong> el arriendo de inmuebles amoblados o con instalaciones que permitan una actividad puede estar afecto a IVA. El propietario es el responsable de determinarlo, declararlo y emitir el documento tributario que corresponda por el arriendo; si le corresponde IVA, el precio publicado debe incluirlo. Spotly emite boleta o factura solo por sus propios servicios: el cargo de servicio al arrendatario y la comisión al propietario.</p>
+        <p><strong>Operar fuera de Spotly:</strong> pagar o cobrar por fuera de la plataforma una reserva iniciada en Spotly deja a ambas partes sin contrato, garantía, reembolso ni soporte, y puede llevar a la suspensión de la cuenta.</p>
+      </Section>
+
+      <Section title="6. Pagos y versión de prueba">
         <p>Los pagos se procesan con Transbank: Webpay Plus, o Oneclick cuando el usuario guarda una tarjeta en su billetera. Durante la etapa de prototipo la integración opera en el <strong>ambiente de integración</strong> de Transbank: no se realizan cargos reales y solo deben usarse las tarjetas de prueba publicadas por Transbank.</p>
         <p>Spotly no recibe ni almacena números de tarjeta ni códigos de seguridad: se ingresan directamente en el formulario de Transbank. Spotly conserva únicamente la orden de compra, el monto, el código de autorización, los últimos cuatro dígitos informados por Transbank y el estado de la transacción. Si guardas una tarjeta en tu billetera, Transbank entrega a Spotly un identificador de la inscripción con el que se cobran tus reservas; puedes eliminar la tarjeta en cualquier momento desde la billetera.</p>
       </Section>
 
-      <Section title="6. Contratos y firma">
+      <Section title="7. Contratos y firma">
         <p>La firma manuscrita digitalizada que se captura en Spotly constituye una <strong>firma electrónica simple</strong> conforme a la Ley N° 19.799; no sustituye una firma electrónica avanzada. Cada contrato queda sellado con una huella SHA-256 calculada sobre su contenido íntegro, que permite comprobar que el documento no fue alterado. Revisa las condiciones y obtén asesoría independiente si lo necesitas antes de aceptar un contrato.</p>
       </Section>
 
-      <Section title="7. Identidad y verificación">
+      <Section title="8. Identidad y verificación">
         <p>El flujo de verificación puede solicitar imágenes de cédula, selfie u otros antecedentes. La interfaz y algunas respuestas del sistema todavía pueden operar en modo de prueba; no uses una aprobación mostrada por esta versión como certificación de identidad ni como decisión definitiva de elegibilidad.</p>
         <p>Cuando exista verificación real, Spotly informará antes de capturar los datos qué se recopila, para qué, qué proveedores lo procesan y cuánto tiempo se conserva. Al abrir el paso de verificación, el navegador puede solicitar acceso a la cámara; puedes rechazar ese permiso y no continuar con ese flujo.</p>
       </Section>
 
-      <Section title="8. Uso responsable y contenido">
+      <Section title="9. Uso responsable y contenido">
         <p>Usa Spotly de buena fe, respeta las reglas del espacio, los derechos de otras personas y las instrucciones de seguridad del propietario. No publiques contenido ilegal, discriminatorio, engañoso, dañino o que infrinja propiedad intelectual o privacidad.</p>
       </Section>
 
-      <Section title="9. Disponibilidad, reclamos y cambios">
+      <Section title="10. Disponibilidad, reclamos y cambios">
         <p>La plataforma puede cambiar, interrumpirse o contener errores durante su etapa de desarrollo. Esto no elimina los derechos que te reconoce la ley ni las obligaciones que Spotly o el oferente hayan asumido expresamente.</p>
         <p>Para consultas o reclamos escribe a <strong>[correo de atención]</strong> o llama al <strong>[teléfono de atención]</strong>. Domicilio del proveedor: <strong>[domicilio legal]</strong>. Spotly informará los cambios materiales a estos términos y su fecha de vigencia antes de aplicarlos a nuevas operaciones.</p>
       </Section>

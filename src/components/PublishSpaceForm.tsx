@@ -174,6 +174,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
   const [capacity, setCapacity] = useState<number | ''>(initial?.capacity || '');
   const [surface, setSurface] = useState<number | ''>(initial?.surfaceM2 && initial.surfaceM2 > 1 ? initial.surfaceM2 : '');
   const [description, setDescription] = useState(initial?.description || '');
+  const [isFurnished, setIsFurnished] = useState(Boolean(initial?.isFurnished));
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities || []);
   const [rules, setRules] = useState<string[]>(initial?.rules || []);
   const [showExtras, setShowExtras] = useState(Boolean(initial && ((initial.amenities?.length || 0) + (initial.rules?.length || 0) > 0)));
@@ -283,6 +284,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
       surfaceM2: Number(surface),
       amenities,
       rules,
+      isFurnished,
       openingHours: scheduleText,
       securityDeposit: byMonth && requireDeposit ? Number(deposit) : 0,
       images,
@@ -537,7 +539,9 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 </div>
               </ModalityRow>
               <p className="text-xs text-slate-500">
-                Spotly cobra al arrendatario una comisión de servicio de 5 % sobre el arriendo. Los arriendos por hora y por día no llevan garantía.
+                Spotly cobra al arrendatario un cargo de servicio de 5 % y a ti una comisión de 10 % sobre el arriendo (5 % en arriendos
+                mensuales). Hasta el 31 de mayo de 2027 y en tus primeras 3 reservas tu comisión es 0 %. Los arriendos por hora y por día no
+                llevan garantía.
               </p>
             </div>
 
@@ -686,6 +690,24 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 placeholder="Cuenta qué hace especial a tu espacio y qué incluye."
                 className={inputClass}
               />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 p-3.5">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isFurnished}
+                  onChange={(e) => setIsFurnished(e.target.checked)}
+                  aria-describedby="ps-furnished-help"
+                  className="mt-0.5 h-5 w-5 shrink-0 accent-rose-600"
+                />
+                <span className="text-xs font-bold text-slate-800">¿Tu espacio es amoblado o equipado?</span>
+              </label>
+              <p id="ps-furnished-help" className="mt-1.5 pl-8 text-xs text-slate-600">
+                Por ejemplo, una oficina con escritorios o una cocina con equipos. En Chile ese arriendo puede llevar IVA (19 %): si te
+                corresponde, el precio que publiques debe incluirlo, porque el arrendatario ve el precio final. Tú declaras ese IVA; Spotly
+                solo emite boleta por su comisión. Ante dudas, consulta con tu contador o el SII.
+              </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200">

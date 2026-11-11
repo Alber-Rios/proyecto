@@ -1118,7 +1118,7 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
             <div className="border-t border-slate-200 pt-3 flex items-baseline justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-900 block">Total a pagar</span>
-                <span className="text-xs text-slate-500">Precios en pesos chilenos</span>
+                <span className="text-xs text-slate-500">Precio final en pesos, impuestos incluidos. No hay cobros después.</span>
               </div>
               <div className="text-xl sm:text-2xl font-bold text-rose-600 tracking-tight">
                 <AnimatedNumber text={formatClp(calculations.total)} duration={900} />

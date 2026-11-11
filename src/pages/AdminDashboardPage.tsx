@@ -3,7 +3,8 @@ import { getTodayIso } from '../utils/formatters.ts';
 import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
-import { AuditLogPanel, ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
+import { ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
+import { AuditPanel } from '../components/admin/AuditPanel.tsx';
 import { reservationLedger } from '../utils/ledger.ts';
 import { PlatformFinancePanel } from '../components/admin/PlatformFinancePanel.tsx';
 import { AdminSpaceDetailModal } from '../components/admin/AdminSpaceDetailModal.tsx';
@@ -450,7 +451,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           onGoTab={(tab) => setActiveTab(tab)}
         />
       )}
-      {activeTab === 'audit' && <AuditLogPanel />}
+      {activeTab === 'audit' && <AuditPanel />}
       {activeTab === 'reports' && <ReportsPanel />}
       {activeTab === 'kpi' && <KpiDashboard />}
       {activeTab === 'payments' && <PaymentsPanel />}

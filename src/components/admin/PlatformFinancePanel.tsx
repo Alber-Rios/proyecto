@@ -419,12 +419,12 @@ export const PlatformFinancePanel: React.FC = () => {
                     <th scope="col" className="px-4 py-2 font-semibold">Pago</th>
                     <th scope="col" className="px-4 py-2 font-semibold">Reserva</th>
                     <th scope="col" className="px-4 py-2 font-semibold">Estado</th>
-                    <th scope="col" className="px-4 py-2 text-right font-semibold">Cobrado</th>
-                    <th scope="col" className="px-4 py-2 text-right font-semibold">Cargo 5 %</th>
-                    <th scope="col" className="px-4 py-2 text-right font-semibold">Comisión anfitrión</th>
-                    <th scope="col" className="px-4 py-2 text-right font-semibold">Descuento</th>
-                    <th scope="col" className="px-4 py-2 text-right font-semibold">Spotly</th>
-                    <th scope="col" className="px-4 py-2 text-right font-semibold">Anfitrión</th>
+                    <th scope="col" className="px-4 py-2 text-right font-semibold whitespace-nowrap">Cobrado</th>
+                    <th scope="col" className="px-4 py-2 text-right font-semibold whitespace-nowrap">Cargo 5 %</th>
+                    <th scope="col" className="px-4 py-2 text-right font-semibold whitespace-nowrap">Comisión anfitrión</th>
+                    <th scope="col" className="px-4 py-2 text-right font-semibold whitespace-nowrap">Descuento</th>
+                    <th scope="col" className="px-4 py-2 text-right font-semibold whitespace-nowrap">Spotly</th>
+                    <th scope="col" className="px-4 py-2 text-right font-semibold whitespace-nowrap">Anfitrión</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -440,21 +440,21 @@ export const PlatformFinancePanel: React.FC = () => {
                         {STATUS_LABEL[r.status] || r.status}
                         {r.refund_pending_clp > 0 && <span className="block text-xs text-amber-800">Reembolso {formatClp(r.refund_pending_clp)} pendiente</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{formatClp(r.collected_clp)}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{formatClp(r.tenant_fee_clp)}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">
+                      <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">{formatClp(r.collected_clp)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">{formatClp(r.tenant_fee_clp)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">
                         {formatClp(r.owner_commission_clp)}
                         <span className="block text-xs text-slate-500">
                           {pct(r.owner_commission_rate)}
                           {r.owner_commission_reason === 'lanzamiento' ? ' · lanzamiento' : r.owner_commission_reason === 'bienvenida' ? ' · bienvenida' : ''}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-rose-700">{r.discount_clp ? `− ${formatClp(r.discount_clp)}` : '—'}</td>
-                      <td className="px-4 py-2.5 text-right font-bold tabular-nums text-slate-950">
+                      <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap text-rose-700">{r.discount_clp ? `− ${formatClp(r.discount_clp)}` : '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-bold tabular-nums whitespace-nowrap text-slate-950">
                         {formatClp(r.platform_revenue_clp)}
                         {r.cancellation_fee_clp > 0 && <span className="block text-xs font-normal text-slate-500">retenido</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{formatClp(r.owner_net_clp)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap">{formatClp(r.owner_net_clp)}</td>
                     </tr>
                   ))}
                   {ledger.length === 0 && (

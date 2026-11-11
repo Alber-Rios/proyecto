@@ -203,6 +203,7 @@ export async function updateSpaceInDb(id: string, updates: Partial<Space>): Prom
   if (updates.surfaceM2 !== undefined) dbRow.surface_m2 = updates.surfaceM2;
   if (updates.amenities !== undefined) dbRow.amenities = updates.amenities;
   if (updates.rules !== undefined) dbRow.rules = updates.rules;
+  if (updates.isFurnished !== undefined) dbRow.is_furnished = updates.isFurnished;
   if (updates.openingHours !== undefined) dbRow.opening_hours = updates.openingHours;
   if (updates.securityDeposit !== undefined) dbRow.security_deposit = updates.securityDeposit;
   if (updates.images !== undefined) dbRow.images = updates.images;
