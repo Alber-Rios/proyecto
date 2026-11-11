@@ -11,14 +11,20 @@ export interface RevenueRow {
   endDate: string;
   status: string;
   paymentStatus: string;
+  /** Arriendo bruto del anfitrión. */
   rent: number;
+  /** Comisión de Spotly al anfitrión (0 en lanzamiento o bienvenida). */
   platformFee: number;
+  /** Lo que recibe el anfitrión. El descuento lo paga Spotly, no se le resta. */
   net: number;
 }
 
-// Solo cuentan reservas vigentes con pago aprobado (o heredadas del prototipo).
+// Pago aprobado: también cuenta si después se devolvió la garantía.
+const PAID_STATES = new Set(['paid', 'partially_refunded', 'refund_pending', 'legacy_simulated']);
+
+// Solo cuentan reservas vigentes o finalizadas con pago aprobado.
 export function isRevenueReservation(r: Reservation): boolean {
-  const paid = !r.paymentStatus || r.paymentStatus === 'paid' || r.paymentStatus === 'legacy_simulated';
+  const paid = !r.paymentStatus || PAID_STATES.has(r.paymentStatus);
   return (r.status === 'confirmed' || r.status === 'completed') && paid;
 }
 
@@ -26,7 +32,8 @@ export function revenueRows(reservations: Reservation[]): RevenueRow[] {
   return reservations
     .filter(isRevenueReservation)
     .map((r) => {
-      const rent = Math.max(r.subtotalClp - (r.discountClp || 0), 0);
+      const rent = Number(r.subtotalClp) || 0;
+      const commission = Number(r.ownerCommissionClp) || 0;
       return {
         reservationId: r.id,
         spaceTitle: r.spaceTitle,
@@ -36,8 +43,8 @@ export function revenueRows(reservations: Reservation[]): RevenueRow[] {
         status: r.status,
         paymentStatus: r.paymentStatus || 'legacy_simulated',
         rent,
-        platformFee: r.platformFeeClp,
-        net: rent - r.platformFeeClp,
+        platformFee: commission,
+        net: rent - commission,
       };
     })
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -80,8 +87,8 @@ export function buildRevenueCsv(rows: RevenueRow[]): string {
     'Estado',
     'Estado de pago',
     'Arriendo (CLP)',
-    'Comisión Spotly (CLP)',
-    'Ingreso neto (CLP)',
+    'Comisión Spotly al anfitrión (CLP)',
+    'Para ti (CLP)',
   ];
   const lines = rows.map((r) =>
     [r.reservationId, r.spaceTitle, r.tenantName, r.startDate, r.endDate, r.status, r.paymentStatus, r.rent, r.platformFee, r.net]

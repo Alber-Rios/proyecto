@@ -56,7 +56,7 @@ export const OwnerRevenueReport: React.FC<{ reservations: Reservation[] }> = ({ 
             <BarChart3 className="w-4 h-4 text-rose-600" /> Ingresos netos {PERIOD_TEXT[period].per}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Reservas confirmadas o finalizadas con pago aprobado, descontada la comisión de la plataforma.
+            Lo que te queda de cada reserva confirmada o finalizada, ya descontada la comisión de Spotly.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

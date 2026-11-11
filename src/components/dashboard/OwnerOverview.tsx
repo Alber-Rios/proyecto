@@ -33,7 +33,8 @@ interface OwnerOverviewProps {
 const OPERATING_HOURS = 12; // franja comercial de referencia (09:00–21:00)
 const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const isEarning = (r: Reservation) => r.status === 'confirmed' || r.status === 'completed';
-const netOf = (r: Reservation) => r.subtotalClp - (r.platformFeeClp ?? Math.round(r.subtotalClp * 0.05));
+// Lo que recibe el anfitrión: arriendo menos su comisión (el 5 % lo paga el arrendatario).
+const netOf = (r: Reservation) => r.subtotalClp - (r.ownerCommissionClp || 0);
 const compactClp = (v: number) =>
   v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1).replace('.', ',')}M` : v >= 1000 ? `$${Math.round(v / 1000)}k` : formatClp(v);
 

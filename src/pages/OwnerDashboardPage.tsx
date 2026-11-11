@@ -3,7 +3,7 @@ import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { OwnerRevenueReport } from '../components/OwnerRevenueReport.tsx';
+import { OwnerEarningsPanel } from '../components/dashboard/OwnerEarningsPanel.tsx';
 import { Space, Reservation, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatHourRange, formatRut, formatUnits, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
@@ -323,7 +323,8 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     });
 
     myReceivedBookings.forEach((b) => {
-      const fee = b.platformFeeClp ?? Math.round(b.subtotalClp * 0.05);
+      // Comisión del anfitrión (el 5 % del arrendatario no se le descuenta).
+      const fee = b.ownerCommissionClp || 0;
       if (isActionableRequest(b, chileNow)) {
         if (bySpace[b.spaceId]) {
           bySpace[b.spaceId].pendingCount += 1;
@@ -1248,115 +1249,9 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
         </div>
       )}
 
-      {/* Pestaña: Métricas Financieras Reales por Lugar */}
+      {/* Pestaña: Ganancias */}
       {activeTab === 'finances' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 p-6 space-y-5 shadow-xs">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Lo que has ganado
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Calculado directamente a partir de tus {financialMetrics.confirmedCount} reservas confirmadas.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                  <span className="text-xs text-slate-600">
-                    Total Facturación Bruta Arriendos ({financialMetrics.confirmedCount} reservas confirmadas)
-                  </span>
-                  <span className="text-sm font-bold text-slate-900">{formatClp(financialMetrics.grossIncome)}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                  <span className="text-xs text-slate-600">Comisión Spotly (5 %)</span>
-                  <span className="text-sm font-bold text-rose-600">-{formatClp(financialMetrics.platformFeesPaid)}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                  <span className="text-xs text-slate-600">Garantías retenidas</span>
-                  <span className="text-sm font-bold text-indigo-600">{formatClp(financialMetrics.depositsHeld)}</span>
-                </div>
-                <div className="flex justify-between items-center p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-                  <div>
-                    <span className="text-xs font-bold text-emerald-950 block">Ganancia neta</span>
-                    <span className="text-xs text-emerald-700">Suma de todos tus espacios, ya descontada la comisión</span>
-                  </div>
-                  <span className="text-xl font-bold text-emerald-700">{formatClp(financialMetrics.netPayout)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
-              <h3 className="text-sm font-bold text-slate-900">Impuestos</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Si tu espacio está amoblado o tiene instalaciones para un negocio, el arriendo puede estar afecto a IVA (19 %). Consulta con tu contador cómo emitir la boleta o factura.
-              </p>
-              <div className="p-3.5 bg-slate-50 rounded-2xl text-xs space-y-1 text-slate-700">
-                <div className="font-bold text-slate-900">Emisión de boleta/Factura:</div>
-                <div>RUT Emisor: {formatRut(currentUser.rut)}</div>
-                <div>Titular: {currentUser.fullName}</div>
-              </div>
-            </div>
-          </div>
-
-          <OwnerRevenueReport reservations={myReceivedBookings} />
-
-          {/* Desglose Real por cada Lugar del Propietario */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">
-                Ganancias por espacio
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Según tus reservas confirmadas.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {financialMetrics.spaceBreakdownList.map((spMetric) => (
-                <div
-                  key={spMetric.spaceId}
-                  className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3 flex flex-col justify-between"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">{spMetric.spaceTitle}</h4>
-                      <p className="text-xs text-slate-500">
-                        {spMetric.commune} • {spMetric.confirmedCount} reservas confirmadas
-                        {spMetric.pendingCount > 0 ? ` • ${spMetric.pendingCount} por aprobar` : ''}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                        spMetric.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {spMetric.status === 'active' ? 'Activo' : 'En revisión'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-xs">
-                    <div>
-                      <span className="text-xs text-slate-500 block">Bruto</span>
-                      <span className="font-bold text-slate-800">{formatClp(spMetric.grossIncome)}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-500 block">Comisión (5 %)</span>
-                      <span className="font-bold text-rose-600">-{formatClp(spMetric.platformFeesPaid)}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-500 block">Ganancia neta</span>
-                      <span className="font-bold text-emerald-700">{formatClp(spMetric.netPayout)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <OwnerEarningsPanel reservations={myReceivedBookings} spaces={mySpaces} currentUser={currentUser} />
       )}
 
       {/* Pestaña: Calendario y Disponibilidad (Layout bien organizado y sin desbordes) */}

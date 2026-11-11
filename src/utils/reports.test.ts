@@ -38,12 +38,21 @@ describe('reporte de ingresos (RF-27 / RF-28)', () => {
     expect(isRevenueReservation(reservation({ paymentStatus: 'pending' }))).toBe(false);
     expect(isRevenueReservation(reservation({ status: 'cancelled' }))).toBe(false);
     expect(isRevenueReservation(reservation({ paymentStatus: 'legacy_simulated', status: 'completed' }))).toBe(true);
+    // Finalizada con la garantía devuelta (o por devolver): sigue siendo ingreso.
+    expect(isRevenueReservation(reservation({ paymentStatus: 'refund_pending', status: 'completed' }))).toBe(true);
+    expect(isRevenueReservation(reservation({ paymentStatus: 'partially_refunded', status: 'completed' }))).toBe(true);
   });
 
-  it('calcula el neto descontando comisión y descuento', () => {
-    const [row] = revenueRows([reservation({ discountClp: 10000 })]);
-    expect(row.rent).toBe(90000);
-    expect(row.net).toBe(85000);
+  it('descuenta la comisión del anfitrión; el descuento lo paga Spotly', () => {
+    const [row] = revenueRows([reservation({ discountClp: 10000, ownerCommissionClp: 10000 })]);
+    expect(row.rent).toBe(100000);
+    expect(row.platformFee).toBe(10000);
+    expect(row.net).toBe(90000);
+  });
+
+  it('en lanzamiento (0 %) el anfitrión recibe el arriendo completo', () => {
+    const [row] = revenueRows([reservation({ ownerCommissionClp: 0 })]);
+    expect(row.net).toBe(100000);
   });
 
   it('agrupa por mes', () => {
@@ -53,7 +62,7 @@ describe('reporte de ingresos (RF-27 / RF-28)', () => {
       new Date('2026-10-12T12:00:00Z')
     );
     expect(series.map((m) => m.key)).toEqual(['2026-08', '2026-09', '2026-10']);
-    expect(series[1].net).toBe(95000);
+    expect(series[1].net).toBe(100000);
     expect(series[2].count).toBe(1);
   });
 
@@ -62,7 +71,7 @@ describe('reporte de ingresos (RF-27 / RF-28)', () => {
     const [header, line] = csv.split('\r\n');
     expect(header.split(';')).toHaveLength(10);
     expect(line).toContain('"Sala; Centro"');
-    expect(line.endsWith(';95000')).toBe(true);
+    expect(line.endsWith(';100000')).toBe(true);
   });
 });
 

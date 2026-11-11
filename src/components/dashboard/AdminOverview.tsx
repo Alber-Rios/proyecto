@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { AlertTriangle, Building2, CreditCard, Percent, ShieldCheck, ShoppingBag, UserPlus, Wallet } from 'lucide-react';
 import type { Dispute, Reservation, Space, UserProfile } from '../../types.ts';
 import { formatClp } from '../../utils/formatters.ts';
+import { reservationLedger } from '../../utils/ledger.ts';
 import {
   ActionQueue,
   HorizontalBarList,
@@ -59,10 +60,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
       const m = map.get(k) || { gmv: 0, fee: 0, count: 0, cancelled: 0 };
       m.count++;
       if (r.status === 'cancelled' || r.status === 'rejected') m.cancelled++;
-      if (isEarning(r)) {
-        m.gmv += r.totalClp;
-        m.fee += r.platformFeeClp || 0;
-      }
+      if (isEarning(r)) m.gmv += r.totalClp;
+      // Ganancia real de Spotly: cargo 5 % + comisión del anfitrión − descuento,
+      // o lo retenido en cancelaciones (misma regla que el reporte financiero).
+      const l = reservationLedger(r);
+      if (!l.pending) m.fee += l.platformRevenueClp;
       map.set(k, m);
     }
     return map;
@@ -148,7 +150,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
           onClick={() => onGoTab('transactions')}
         />
         <StatTile
-          label={`Comisión Spotly ${text.current}`}
+          label={`Ganancia Spotly ${text.current}`}
           value={formatClp(now.fee)}
           delta={pctChange(now.fee, before.fee)}
           hint="ingreso de la plataforma"
@@ -184,7 +186,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ todayIso, users, s
             title={`Volumen transado ${text.per}`}
             data={months.map((m) => {
               const v = byMonth.get(m.key) || empty;
-              return { key: m.key, label: m.label, value: v.gmv, detail: `Comisión ${formatClp(v.fee)}` };
+              return { key: m.key, label: m.label, value: v.gmv, detail: `Ganancia Spotly ${formatClp(v.fee)}` };
             })}
             formatValue={compactClp}
           />
