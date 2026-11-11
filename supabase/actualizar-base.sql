@@ -1,19 +1,318 @@
 -- ==============================================================================
--- SPOTLY · PARCHE 2026-11-11: comisiones, liquidaciones, ganancias y auditoría
+-- SPOTLY · ACTUALIZAR BASE (script único, 2026-11-11)
 -- ==============================================================================
--- NO es destructivo. Úsalo si ya ejecutaste reset-and-setup.sql antes de esta
--- fecha. Supabase → SQL Editor → New query → pegar todo → Run.
+-- Úsalo si tu base ya existe y tiene datos: NO borra nada.
+-- Junta en orden todos los cambios hechos después de reset-and-setup.sql:
+--   1. Verificación de correo y seguridad de acceso
+--   2. Solicitudes que vencen sin respuesta
+--   3. Cancelación según 24 horas
+--   4. Comisiones, liquidaciones, ganancias y auditoría encadenada (SHA-256)
+-- Se puede ejecutar más de una vez sin problema.
 --
--- Qué agrega:
---   1. Comisión del anfitrión: 10 % (5 % mensual), en 0 % durante el lanzamiento
---      (hasta el 31-05-2027) y en sus primeras 3 reservas. Se congela por reserva.
---   2. Los descuentos los paga Spotly: el anfitrión recibe lo mismo.
---   3. Las reservas terminadas se finalizan solas, generan la liquidación del
---      anfitrión y devuelven la garantía si no hay reclamo abierto.
---   4. Reporte financiero exacto para administración (admin_finance_report).
---   5. Bitácora de auditoría encadenada con SHA-256, verificación de integridad
---      y búsqueda con filtros (admin_audit_search, admin_verify_audit_chain).
---   6. Campo "amoblado o equipado" en los espacios.
+-- Supabase → SQL Editor → New query → pegar TODO este archivo → Run.
+--
+-- ¿Base nueva o quieres empezar de cero? Ejecuta solo reset-and-setup.sql
+-- (ese sí borra todo y ya trae estos cambios incluidos).
+-- ==============================================================================
+
+-- ==============================================================================
+-- 1. VERIFICACIÓN DE CORREO Y SEGURIDAD DE ACCESO
+-- ==============================================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.auth_account_status(p_email TEXT)
+RETURNS TABLE (user_id UUID, email_confirmed BOOLEAN, created_at TIMESTAMPTZ)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT u.id, (u.email_confirmed_at IS NOT NULL), u.created_at
+  FROM auth.users u
+  WHERE lower(u.email) = left(lower(trim(COALESCE(p_email, ''))), 320)
+  LIMIT 1;
+$$;
+
+-- Las cuentas que no validaron su correo en 24 horas se eliminan (y con ellas su
+-- perfil, por ON DELETE CASCADE): un registro sin verificar no queda guardado.
+CREATE OR REPLACE FUNCTION public.purge_unconfirmed_accounts()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  DELETE FROM auth.users
+  WHERE email_confirmed_at IS NULL
+    AND created_at < now() - interval '24 hours';
+EXCEPTION WHEN insufficient_privilege THEN
+  RAISE NOTICE 'Sin permiso para depurar auth.users; se omite.';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.run_maintenance()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  PERFORM public.release_expired_payment_holds(NULL);
+  PERFORM public.expire_unanswered_requests();
+  PERFORM public.purge_old_login_attempts();
+  PERFORM public.purge_unconfirmed_accounts();
+  DELETE FROM public.space_views WHERE created_at < now() - interval '400 days';
+  DELETE FROM public.notifications WHERE read AND created_at < now() - interval '180 days';
+END;
+$$;
+
+-- Estas funciones solo las usa el backend (/api/auth con service_role): el navegador
+-- no puede consultarlas, así nadie puede averiguar qué correos o RUT están registrados.
+REVOKE ALL ON FUNCTION public.check_signup_availability(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.auth_account_status(TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.purge_unconfirmed_accounts() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.run_maintenance() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.check_signup_availability(TEXT, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.auth_account_status(TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.purge_unconfirmed_accounts() TO service_role;
+GRANT EXECUTE ON FUNCTION public.run_maintenance() TO service_role;
+
+NOTIFY pgrst, 'reload schema';
+COMMIT;
+
+-- ==============================================================================
+-- 2. SOLICITUDES QUE VENCEN SIN RESPUESTA
+-- ==============================================================================
+BEGIN;
+
+-- Vencimiento sin depender de pg_cron: la app llama esta función al cargar las
+-- reservas y cada pocos minutos. Solo toca las solicitudes de quien la llama
+-- (como anfitrión o arrendatario) y aplica la misma regla que
+-- expire_unanswered_requests(): al llegar la hora de inicio, rechazo con
+-- devolución del 100 %.
+CREATE OR REPLACE FUNCTION public.expire_my_unanswered_requests()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_prev TEXT;
+  v_count INTEGER;
+  v_hour INTEGER := extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN 0;
+  END IF;
+  v_prev := public.begin_trusted();
+  UPDATE public.reservations
+  SET status = 'rejected',
+      payment_status = CASE WHEN payment_status = 'paid' THEN 'refund_pending' ELSE payment_status END,
+      refund_amount_clp = CASE WHEN payment_status = 'paid' THEN total_clp ELSE 0 END,
+      cancelled_at = now(),
+      cancellation_reason = 'El anfitrión no respondió la solicitud antes de la fecha de inicio'
+  WHERE status = 'pending'
+    AND (owner_id = v_uid OR tenant_id = v_uid)
+    AND payment_status IN ('paid', 'legacy_simulated', 'not_required')
+    AND (start_date < public.chile_today()
+         OR (start_date = public.chile_today() AND (hour_start IS NULL OR hour_start <= v_hour)));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  PERFORM public.end_trusted(v_prev);
+  RETURN v_count;
+END;
+$$;
+
+-- Nadie puede aprobar una solicitud cuya hora de inicio ya llegó, aunque el
+-- trabajo de mantenimiento todavía no la haya vencido.
+CREATE OR REPLACE FUNCTION public.block_late_approval()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_hour INTEGER := extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int;
+BEGIN
+  IF NEW.start_date < public.chile_today()
+     OR (NEW.start_date = public.chile_today() AND (NEW.hour_start IS NULL OR NEW.hour_start <= v_hour)) THEN
+    RAISE EXCEPTION 'La solicitud venció: su hora de inicio ya pasó. Se rechaza automáticamente con devolución del 100 %%.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_block_late_approval ON public.reservations;
+CREATE TRIGGER trg_block_late_approval
+  BEFORE UPDATE OF status ON public.reservations
+  FOR EACH ROW
+  WHEN (OLD.status = 'pending' AND NEW.status = 'confirmed')
+  EXECUTE FUNCTION public.block_late_approval();
+
+REVOKE ALL ON FUNCTION public.expire_my_unanswered_requests() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.expire_my_unanswered_requests() TO authenticated;
+
+-- 4. Las solicitudes que ya vencieron se rechazan ahora (con devolución del 100 %).
+SELECT public.expire_unanswered_requests() AS solicitudes_vencidas;
+
+COMMIT;
+
+-- 3. Mantenimiento automático cada 5 minutos (si pg_cron está disponible).
+--    Si aparece un aviso "pg_cron no disponible", actívalo en
+--    Database → Extensions → pg_cron y vuelve a ejecutar solo este bloque.
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_cron;
+  PERFORM cron.schedule('spotly-maintenance', '*/5 * * * *', 'SELECT public.run_maintenance()');
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pg_cron no disponible (%): la app vencerá las solicitudes al cargar', SQLERRM;
+END $$;
+
+-- ==============================================================================
+-- 3. CANCELACIÓN SEGÚN 24 HORAS
+-- ==============================================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.compute_refund(
+  p_res public.reservations,
+  p_by_tenant BOOLEAN
+)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+STABLE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_start TIMESTAMP := p_res.start_date + make_interval(hours => COALESCE(p_res.hour_start, 0));
+  v_hours NUMERIC := EXTRACT(EPOCH FROM (v_start - (now() AT TIME ZONE 'America/Santiago'))) / 3600.0;
+  v_rent NUMERIC := GREATEST(p_res.subtotal_clp - COALESCE(p_res.discount_clp, 0), 0);
+BEGIN
+  IF NOT p_by_tenant THEN
+    RETURN p_res.total_clp;
+  END IF;
+  -- Con 24 h o más se devuelve todo; con menos de 24 h solo se cobra la comisión.
+  IF v_hours >= 24 THEN
+    RETURN v_rent + p_res.security_deposit_clp + COALESCE(p_res.platform_fee_clp, 0);
+  ELSE
+    RETURN v_rent + p_res.security_deposit_clp;
+  END IF;
+END;
+$$;
+
+-- Bloquea la cancelación del arrendatario después del inicio del arriendo.
+CREATE OR REPLACE FUNCTION public.guard_reservation_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_admin BOOLEAN;
+  v_tenant BOOLEAN;
+  v_owner BOOLEAN;
+  v_mutable TEXT[] := ARRAY['status', 'dispute_status', 'dispute_reason',
+                            'cancellation_reason', 'updated_at', 'booking_period'];
+  v_refund NUMERIC;
+BEGIN
+  IF public.is_trusted_context() THEN
+    RETURN NEW;
+  END IF;
+
+  v_admin := public.is_admin();
+  v_tenant := auth.uid() = OLD.tenant_id;
+  v_owner := auth.uid() = OLD.owner_id;
+
+  IF NOT v_admin THEN
+    -- El vínculo con el contrato lo fija el disparador de contratos.
+    NEW.digital_contract_id := OLD.digital_contract_id;
+    -- El estado de disputa se sincroniza desde la tabla disputes; el cliente
+    -- solo puede marcar la apertura (none -> opened) como parte de la reserva.
+    IF NEW.dispute_status IS DISTINCT FROM OLD.dispute_status
+       AND NOT (COALESCE(OLD.dispute_status, 'none') = 'none' AND NEW.dispute_status = 'opened'
+                AND (v_tenant OR v_owner)) THEN
+      RAISE EXCEPTION 'El estado de la disputa lo gestiona la administración';
+    END IF;
+    IF NEW.dispute_reason IS DISTINCT FROM OLD.dispute_reason
+       AND NEW.dispute_status IS NOT DISTINCT FROM OLD.dispute_status THEN
+      NEW.dispute_reason := OLD.dispute_reason;
+    END IF;
+  END IF;
+
+  IF NOT v_admin AND (to_jsonb(NEW) - v_mutable) IS DISTINCT FROM (to_jsonb(OLD) - v_mutable) THEN
+    RAISE EXCEPTION 'Solo se puede modificar el estado de la reserva; montos, fechas y pagos son inmutables';
+  END IF;
+
+  IF NEW.status IS DISTINCT FROM OLD.status THEN
+    IF NEW.status = 'cancelled' THEN
+      IF OLD.status NOT IN ('pending', 'confirmed') THEN
+        RAISE EXCEPTION 'Solo se pueden cancelar reservas pendientes o confirmadas';
+      END IF;
+      IF NOT (v_tenant OR v_owner OR v_admin) THEN
+        RAISE EXCEPTION 'No autorizado para cancelar esta reserva';
+      END IF;
+      -- El arrendatario solo puede cancelar antes de que empiece el arriendo;
+      -- después, un problema se reporta como reclamo (lo revisa administración).
+      IF v_tenant AND NOT v_owner AND NOT v_admin
+         AND (OLD.start_date + make_interval(hours => COALESCE(OLD.hour_start, 0)))
+             <= (now() AT TIME ZONE 'America/Santiago') THEN
+        RAISE EXCEPTION 'El arriendo ya comenzó y no se puede cancelar. Si hubo un problema, repórtalo desde la reserva.';
+      END IF;
+      v_refund := public.compute_refund(OLD, v_tenant AND NOT v_admin);
+      NEW.cancelled_at := now();
+      NEW.cancelled_by := auth.uid();
+      NEW.cancellation_reason := COALESCE(NULLIF(trim(NEW.cancellation_reason), ''),
+        CASE WHEN v_tenant THEN 'Cancelada por el arrendatario' WHEN v_owner THEN 'Cancelada por el propietario' ELSE 'Cancelada por administración' END);
+
+    ELSIF NEW.status = 'rejected' THEN
+      IF OLD.status <> 'pending' OR NOT (v_owner OR v_admin) THEN
+        RAISE EXCEPTION 'Solo el propietario puede rechazar solicitudes pendientes';
+      END IF;
+      v_refund := OLD.total_clp;
+      NEW.cancelled_at := now();
+      NEW.cancelled_by := auth.uid();
+
+    ELSIF NEW.status = 'confirmed' THEN
+      IF OLD.status <> 'pending' OR NOT (v_owner OR v_admin) THEN
+        RAISE EXCEPTION 'Solo el propietario puede aceptar solicitudes pendientes';
+      END IF;
+      IF OLD.payment_status NOT IN ('paid', 'legacy_simulated', 'not_required') THEN
+        RAISE EXCEPTION 'La reserva no se puede aceptar hasta que el pago esté aprobado';
+      END IF;
+      IF COALESCE(OLD.end_date, OLD.start_date) < public.chile_today() THEN
+        RAISE EXCEPTION 'No es posible aprobar una reserva cuya fecha ya transcurrió';
+      END IF;
+      NEW.confirmed_at := now();
+
+    ELSIF NEW.status = 'completed' THEN
+      IF OLD.status <> 'confirmed' OR NOT (v_owner OR v_admin) THEN
+        RAISE EXCEPTION 'Solo una reserva confirmada puede marcarse como finalizada';
+      END IF;
+
+    ELSIF NOT v_admin THEN
+      RAISE EXCEPTION 'Transición de estado no permitida';
+    END IF;
+
+    IF v_refund IS NOT NULL THEN
+      NEW.refund_amount_clp := v_refund;
+      NEW.payment_status := CASE
+        WHEN OLD.payment_status = 'paid' AND v_refund > 0 THEN 'refund_pending'
+        WHEN OLD.payment_status = 'pending' THEN 'failed'
+        ELSE OLD.payment_status
+      END;
+      IF OLD.payment_status = 'pending' THEN
+        NEW.refund_amount_clp := 0;
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+COMMIT;
+
+-- ==============================================================================
+-- 4. COMISIONES, LIQUIDACIONES, GANANCIAS Y AUDITORÍA
+-- ==============================================================================
 BEGIN;
 
 -- ==============================================================================
@@ -747,3 +1046,4 @@ COMMIT;
 
 -- Finaliza ahora las reservas que ya terminaron (genera sus liquidaciones).
 SELECT public.complete_finished_reservations(NULL) AS reservas_finalizadas;
+
