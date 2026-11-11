@@ -604,11 +604,6 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
         storageKey="spotly-owner-menu-collapsed"
         active={activeTab}
         onSelect={(id) => setActiveTab(id as typeof activeTab)}
-        identity={{
-          name: currentUser.fullName,
-          detail: currentUser.verificationStatus === 'verified' ? 'Propietario verificado' : 'Identidad en revisión',
-          initial: (currentUser.fullName || 'P').charAt(0).toUpperCase(),
-        }}
         primaryAction={{ id: 'owner-publish-space-btn', label: 'Publicar espacio', icon: PlusCircle, onClick: handleOpenPublishModal }}
         footer={
           <OwnerCommissionNote

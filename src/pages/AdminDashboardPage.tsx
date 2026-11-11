@@ -277,7 +277,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         storageKey="spotly-admin-menu-collapsed"
         active={activeTab}
         onSelect={(id) => setActiveTab(id as typeof activeTab)}
-        identity={{ name: currentUser.fullName, detail: 'Administración', initial: (currentUser.fullName || 'A').charAt(0).toUpperCase(), tone: 'indigo' }}
         onExit={() => navigate('/')}
         sections={[
           { label: 'General', items: [{ id: 'overview', label: 'Resumen', icon: LayoutDashboard }] },

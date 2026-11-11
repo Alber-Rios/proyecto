@@ -30,8 +30,6 @@ interface DashboardShellProps<T extends string> {
   sections: ShellSection<T>[];
   active: T;
   onSelect: (id: T) => void;
-  /** Tarjeta de quién está usando el panel. */
-  identity: { name: string; detail: string; initial: string; tone?: 'rose' | 'indigo' };
   primaryAction?: { id?: string; label: string; icon: LucideIcon; onClick: () => void };
   /** Bloque opcional al pie del menú (solo con el menú abierto). */
   footer?: React.ReactNode;
@@ -55,7 +53,6 @@ export function DashboardShell<T extends string>({
   sections,
   active,
   onSelect,
-  identity,
   primaryAction,
   footer,
   onExit,
@@ -137,8 +134,6 @@ export function DashboardShell<T extends string>({
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  const avatarTone = identity.tone === 'indigo' ? 'bg-indigo-50 text-indigo-700' : 'bg-rose-100 text-rose-700';
-
   /** Lista de secciones. `rail` = solo íconos (tablet o menú contraído). */
   const renderNav = (mode: 'side' | 'drawer') => {
     // En el lateral: contraído por el usuario → íconos; en tablet siempre íconos.
@@ -198,20 +193,6 @@ export function DashboardShell<T extends string>({
       </nav>
     );
   };
-
-  const identityCard = (mode: 'side' | 'drawer') => (
-    <div
-      className={`${mode === 'side' ? (collapsed ? 'hidden' : 'hidden xl:flex') : 'flex'} items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5`}
-    >
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${avatarTone}`} aria-hidden="true">
-        {identity.initial}
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold text-slate-900">{identity.name}</span>
-        <span className="block truncate text-xs text-slate-600">{identity.detail}</span>
-      </span>
-    </div>
-  );
 
   const primary = (mode: 'side' | 'drawer') => {
     if (!primaryAction) return null;
@@ -285,7 +266,6 @@ export function DashboardShell<T extends string>({
           collapsed ? '' : 'xl:w-64 xl:p-3'
         }`}
       >
-        {identityCard('side')}
         {primary('side')}
         <div className="flex-1">{renderNav('side')}</div>
         {footer && <div className={collapsed ? 'hidden' : 'hidden xl:block'}>{footer}</div>}
@@ -375,7 +355,6 @@ export function DashboardShell<T extends string>({
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
-              {identityCard('drawer')}
               {primary('drawer')}
               <div className="flex-1">{renderNav('drawer')}</div>
               {footer}

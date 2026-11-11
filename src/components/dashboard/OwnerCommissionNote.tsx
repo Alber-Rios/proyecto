@@ -20,9 +20,9 @@ export const OwnerCommissionNote: React.FC<{ acceptedBookings: number; onOpen?: 
   const freeLeft = Math.max(settings.ownerFreeBookings - acceptedBookings, 0);
   const free = inLaunch || freeLeft > 0;
 
-  const title = inLaunch ? 'Comisión 0 %' : freeLeft > 0 ? 'Comisión 0 %' : `Comisión ${pct(settings.ownerCommissionRate)}`;
+  const title = inLaunch || freeLeft > 0 ? 'Sin comisión' : `Comisión ${pct(settings.ownerCommissionRate)}`;
   const detail = inLaunch
-    ? `Lanzamiento hasta el ${formatLongDate(settings.launchEndsOn, false)}.`
+    ? `Recibes el 100 % hasta el ${formatLongDate(settings.launchEndsOn, false)}.`
     : freeLeft > 0
       ? freeLeft === 1
         ? 'Tu próxima reserva va sin comisión.'
