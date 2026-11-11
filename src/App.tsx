@@ -124,20 +124,31 @@ function AppContent() {
   const canAccessOwnerDashboard = currentUser?.role === 'admin'
     || currentUser?.role === 'owner'
     || Boolean(currentUser?.ownerTermsAccepted);
+  // Los paneles de propietario y administración traen su propio menú (sin encabezado ni pie).
+  const isDashboardRoute = Boolean(currentUser) && authReady && (
+    (location.pathname === '/owner' && canAccessOwnerDashboard) ||
+    (location.pathname === '/admin' && currentUser?.role === 'admin')
+  );
 
   return (
     <div className="min-h-screen bg-stone-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-rose-500 selection:text-white">
       <ScrollProgress />
       {/* Header Principal */}
-      <Header
+      {!isDashboardRoute && <Header
         currentView={currentViewString as any}
         onNavigate={handleNavigate}
         onOpenOwnerUpgrade={handleOpenOwnerUpgrade}
         onOpenAuth={handleOpenAuth}
-      />
+      />}
 
       {/* Contenido Principal */}
-      <main className="flex-1 max-w-7xl 2xl:max-w-[1536px] w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-clip">
+      <main
+        className={
+          isDashboardRoute
+            ? 'flex-1 w-full min-w-0 overflow-x-clip'
+            : 'flex-1 max-w-7xl 2xl:max-w-[1536px] w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-clip'
+        }
+      >
         <Suspense fallback={<div className="min-h-[100vh] py-24 text-center text-sm text-slate-500" role="status">Cargando…</div>}>
         <AnimatePresence mode="wait" initial={false}>
         <PageTransition key={location.pathname}>
@@ -202,7 +213,7 @@ function AppContent() {
             )} />
 
           <Route path="/admin" element={currentUser?.role === 'admin'
-            ? <AdminDashboardPage onOpenAuth={handleOpenAuth} />
+            ? <AdminDashboardPage onOpenAuth={handleOpenAuth} onNavigate={handleNavigate} />
             : <NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} restricted />
           } />
 
@@ -256,7 +267,8 @@ function AppContent() {
         )}
       </Suspense>
 
-      {/* Footer Institucional Chileno */}
+      {/* Footer Institucional Chileno (los paneles usan su propio menú) */}
+      {!isDashboardRoute && (
       <footer className="bg-slate-900 text-slate-500 text-sm mt-16 border-t border-slate-800">
         <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
@@ -317,6 +329,7 @@ function AppContent() {
           </div>
         </div>
       </footer>
+      )}
 
       <CookieBanner />
     </div>

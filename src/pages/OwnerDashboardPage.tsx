@@ -25,6 +25,11 @@ import {
 import {
   Building,
   LayoutDashboard,
+  Wallet,
+  Search,
+  Heart,
+  UserCheck,
+  HelpCircle,
   PlusCircle,
   Clock,
   CheckCircle2,
@@ -611,7 +616,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
             onOpen={() => setActiveTab('finances')}
           />
         }
-        onExit={() => onNavigate('home')}
+        onNavigate={onNavigate}
         sections={[
           {
             label: 'Mi negocio',
@@ -619,11 +624,45 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
               { id: 'overview', label: 'Resumen', icon: LayoutDashboard },
               { id: 'calendar', label: 'Calendario', icon: Calendar },
               { id: 'spaces', label: 'Mis espacios', icon: Building, count: mySpaces.length },
-              { id: 'bookings', label: 'Reservas', icon: Clock, badge: pendingValidBookings.length || undefined, count: myReceivedBookings.length },
+              { id: 'bookings', label: 'Reservas recibidas', icon: Clock, badge: pendingValidBookings.length || undefined, count: myReceivedBookings.length },
               { id: 'visits', label: 'Visitas', icon: MapPin, count: upcomingVisitRequests.length },
             ],
           },
-          { label: 'Dinero', items: [{ id: 'finances', label: 'Ganancias', icon: TrendingUp }] },
+          {
+            label: 'Dinero',
+            items: [
+              { id: 'finances', label: 'Ganancias', icon: TrendingUp },
+              { id: 'go-wallet', label: 'Billetera', icon: Wallet, action: () => onNavigate('wallet') },
+            ],
+          },
+          {
+            label: 'Arrendar',
+            items: [
+              { id: 'go-explore', label: 'Explorar espacios', icon: Search, action: () => onNavigate('home') },
+              { id: 'go-bookings', label: 'Mis reservas', icon: FileText, action: () => onNavigate('my-bookings') },
+              { id: 'go-favorites', label: 'Mis favoritos', icon: Heart, action: () => onNavigate('favorites') },
+            ],
+          },
+          {
+            label: 'Cuenta',
+            items: [
+              {
+                id: 'go-kyc',
+                label: 'Verificación',
+                icon: UserCheck,
+                action: () => onNavigate('onboarding'),
+                chip:
+                  currentUser.verificationStatus === 'verified'
+                    ? { label: 'Al día', tone: 'ok' }
+                    : currentUser.verificationStatus === 'rejected'
+                      ? { label: 'Rechazada', tone: 'bad' }
+                      : currentUser.verificationStatus === 'pending_review'
+                        ? { label: 'En revisión', tone: 'warn' }
+                        : { label: 'Pendiente', tone: 'warn' },
+              },
+              { id: 'go-support', label: 'Ayuda y soporte', icon: HelpCircle, action: () => onNavigate('support') },
+            ],
+          },
         ]}
       >
       <div className="space-y-6">

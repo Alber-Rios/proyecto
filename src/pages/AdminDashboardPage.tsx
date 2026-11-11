@@ -35,12 +35,13 @@ import {
   CreditCard,
   TicketPercent,
   Gauge,
+  HelpCircle,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { DashboardShell } from '../components/dashboard/DashboardShell.tsx';
 
 interface AdminDashboardPageProps {
   onOpenAuth?: (mode: 'login' | 'register', notice?: string) => void;
+  onNavigate: (view: string, options?: { replace?: boolean }) => void;
 }
 
 function useKycReviewUrl(fileReference?: string): string {
@@ -65,7 +66,7 @@ function useKycReviewUrl(fileReference?: string): string {
   return url;
 }
 
-export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAuth }) => {
+export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAuth, onNavigate }) => {
   const {
     currentUser,
     allUsers,
@@ -79,7 +80,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     adminResolveDispute,
     switchUser,
   } = useApp();
-  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<
     'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
@@ -277,7 +277,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         storageKey="spotly-admin-menu-collapsed"
         active={activeTab}
         onSelect={(id) => setActiveTab(id as typeof activeTab)}
-        onExit={() => navigate('/')}
+        onNavigate={onNavigate}
         sections={[
           { label: 'General', items: [{ id: 'overview', label: 'Resumen', icon: LayoutDashboard }] },
           {
@@ -302,6 +302,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               { id: 'audit', label: 'Auditoría', icon: FileCheck2 },
               { id: 'reports', label: 'Reportes y cuentas', icon: Users },
               { id: 'kpi', label: 'KPI', icon: Gauge },
+            ],
+          },
+          {
+            label: 'Sitio',
+            items: [
+              { id: 'go-catalog', label: 'Catálogo público', icon: Search, action: () => onNavigate('home') },
+              { id: 'go-support', label: 'Ayuda y soporte', icon: HelpCircle, action: () => onNavigate('support') },
             ],
           },
         ]}
