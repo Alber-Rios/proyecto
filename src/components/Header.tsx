@@ -449,10 +449,10 @@ export const Header: React.FC<HeaderProps> = ({
                       <div
                         role="menu"
                         aria-orientation="vertical"
-                        className="fixed inset-x-3 top-[4.5rem] z-50 max-h-[calc(100dvh-5.25rem)] flex flex-col bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgba(15,23,42,0.22)] border border-slate-200/90 overflow-hidden sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2.5 sm:w-[21.5rem] md:w-[23rem]"
+                        className="fixed inset-x-3 top-[4.5rem] z-50 max-h-[calc(100dvh-5.25rem)] sm:max-h-[calc(100dvh-6.5rem)] flex flex-col bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgba(15,23,42,0.22)] border border-slate-200/90 overflow-hidden sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2.5 sm:w-[21.5rem] md:w-[23rem]"
                       >
                         {/* Contenedor con scroll interno seguro para pantallas pequeñas o modo horizontal */}
-                        <div className="overflow-y-auto overscroll-contain divide-y divide-slate-100">
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain divide-y divide-slate-100 [scrollbar-width:thin]">
                           {/* 1. Cabecera de Perfil */}
                           <div className="p-4 sm:px-5 sm:py-4 bg-gradient-to-b from-slate-50/90 to-white">
                             <div className="flex items-center gap-3.5">
