@@ -437,6 +437,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               .from('profiles')
               .select('*')
               .eq('id', userId)
+              .abortSignal(AbortSignal.timeout(12_000))
               .single();
 
             if (profile && isMounted) {

@@ -19,6 +19,7 @@ import { OwnerCommissionNote } from '../components/dashboard/OwnerCommissionNote
 import { WalletPage } from './WalletPage.tsx';
 import { TenantReservationsPage } from './TenantReservationsPage.tsx';
 import { FavoritesPage } from './FavoritesPage.tsx';
+import { SupportPage } from './SupportPage.tsx';
 import { blocksOnDay, describeBlock } from '../utils/spaceBlocks.ts';
 import { ContactTenantModal, ContactTenant } from '../components/ContactTenantModal.tsx';
 import {
@@ -102,7 +103,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   // Bloqueos de disponibilidad guardados en la base (space_blocks).
   const maintenanceBlocks = spaceBlocks;
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits' | 'wallet' | 'trips' | 'favorites'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits' | 'wallet' | 'trips' | 'favorites' | 'support'>('overview');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
@@ -125,6 +126,16 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   const [ownerSelectedDate, setOwnerSelectedDate] = useState<string>(() => getTodayIso());
   const location = useLocation();
   const routerNavigate = useNavigate();
+  // Las secciones que viven dentro del panel se abren aquí, sin salir de él.
+  const navigateInPanel = (view: string) => {
+    const tab = ({ 'my-bookings': 'trips', 'tenant-reservations': 'trips', favorites: 'favorites', wallet: 'wallet', support: 'support', owner: 'overview' } as const)[
+      view as 'my-bookings'
+    ];
+    if (tab) {
+      setActiveTab(tab);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else onNavigate(view);
+  };
 
   // Al llegar desde un botón "Publicar", se abre el formulario de inmediato.
   useEffect(() => {
@@ -664,7 +675,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                         ? { label: 'En revisión', tone: 'warn' }
                         : { label: 'Pendiente', tone: 'warn' },
               },
-              { id: 'go-support', label: 'Ayuda y soporte', icon: HelpCircle, action: () => onNavigate('support') },
+              { id: 'support', label: 'Ayuda y soporte', icon: HelpCircle },
             ],
           },
         ]}
@@ -1745,11 +1756,12 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
       )}
       {activeTab === 'wallet' && <WalletPage embedded onOpenAuth={onOpenAuth ?? (() => onNavigate('login'))} />}
       {activeTab === 'trips' && (
-        <TenantReservationsPage embedded onNavigate={onNavigate} onOpenOwnerUpgrade={onOpenOwnerUpgrade} onOpenAuth={onOpenAuth} />
+        <TenantReservationsPage embedded onNavigate={navigateInPanel} onOpenOwnerUpgrade={onOpenOwnerUpgrade} onOpenAuth={onOpenAuth} />
       )}
       {activeTab === 'favorites' && (
-        <FavoritesPage embedded onNavigate={onNavigate} onSelectSpace={(space) => routerNavigate(`/space/${space.id}`)} />
+        <FavoritesPage embedded onNavigate={navigateInPanel} onSelectSpace={(space) => routerNavigate(`/space/${space.id}`)} />
       )}
+      {activeTab === 'support' && <SupportPage embedded onNavigate={navigateInPanel} onOpenAuth={onOpenAuth} />}
       </TabPanel>
       </div>
       </DashboardShell>

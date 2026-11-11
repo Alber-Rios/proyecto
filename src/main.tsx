@@ -3,6 +3,14 @@ import {createRoot} from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
+import { reloadOnceForNewVersion } from './lib/lazyWithRetry.ts';
+
+// Vite avisa cuando no puede precargar un archivo (p. ej. tras publicar una versión
+// nueva). Se recarga una vez para traer la versión actual en vez de quedar en blanco.
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  reloadOnceForNewVersion();
+});
 
 const AppRouter = window.location.pathname.startsWith('/spotly/') ? HashRouter : BrowserRouter;
 

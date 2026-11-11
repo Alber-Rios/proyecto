@@ -7,6 +7,7 @@ import { ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '.
 import { AuditPanel } from '../components/admin/AuditPanel.tsx';
 import { reservationLedger } from '../utils/ledger.ts';
 import { PlatformFinancePanel } from '../components/admin/PlatformFinancePanel.tsx';
+import { SupportPage } from './SupportPage.tsx';
 import { AdminSpaceDetailModal } from '../components/admin/AdminSpaceDetailModal.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceRateInfo } from '../utils/formatters.ts';
@@ -82,7 +83,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
+    'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments' | 'support'
   >('overview');
 
   // Filtros de Usuarios y KYC
@@ -308,7 +309,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             label: 'Sitio',
             items: [
               { id: 'go-catalog', label: 'Catálogo público', icon: Search, action: () => onNavigate('home') },
-              { id: 'go-support', label: 'Ayuda y soporte', icon: HelpCircle, action: () => onNavigate('support') },
+              { id: 'support', label: 'Ayuda y soporte', icon: HelpCircle },
             ],
           },
         ]}
@@ -1345,6 +1346,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
       {/* MÓDULO 4: VOLUMEN TRANSACCIONADO Y COMISIONES DE LA PLATAFORMA        */}
       {/* ===================================================================== */}
       {activeTab === 'transactions' && <PlatformFinancePanel />}
+      {activeTab === 'support' && <SupportPage embedded onNavigate={onNavigate} onOpenAuth={onOpenAuth} />}
       </TabPanel>
       </DashboardShell>
 

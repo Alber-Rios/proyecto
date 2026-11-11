@@ -1,4 +1,6 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { lazyWithRetry, preload } from './lib/lazyWithRetry.ts';
+import { AppErrorBoundary } from './components/AppErrorBoundary.tsx';
 import { BrandLogo } from './components/BrandLogo.tsx';
 import { AppProvider, useApp } from './context/AppContext.tsx';
 import { Header } from './components/Header.tsx';
@@ -11,29 +13,42 @@ import { PageTransition, ScrollProgress } from './components/motion/Motion.tsx';
 import { CookieBanner } from './components/CookieBanner.tsx';
 
 // Las páginas se cargan bajo demanda para que la portada descargue solo lo que necesita.
-const SpaceDetailPage = lazy(() => import('./pages/SpaceDetailPage.tsx').then((m) => ({ default: m.SpaceDetailPage })));
-const LoginPage = lazy(() => import('./pages/LoginPage.tsx').then((m) => ({ default: m.LoginPage })));
-const RegisterPage = lazy(() => import('./pages/RegisterPage.tsx').then((m) => ({ default: m.RegisterPage })));
-const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.tsx').then((m) => ({ default: m.VerifyEmailPage })));
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.tsx').then((m) => ({ default: m.ResetPasswordPage })));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.tsx').then((m) => ({ default: m.ForgotPasswordPage })));
-const OwnerDashboardPage = lazy(() => import('./pages/OwnerDashboardPage.tsx').then((m) => ({ default: m.OwnerDashboardPage })));
-const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage.tsx').then((m) => ({ default: m.AdminDashboardPage })));
-const TenantReservationsPage = lazy(() => import('./pages/TenantReservationsPage.tsx').then((m) => ({ default: m.TenantReservationsPage })));
-const OnboardingPage = lazy(() => import('./pages/OnboardingPage.tsx').then((m) => ({ default: m.OnboardingPage })));
-const ProfilePage = lazy(() => import('./pages/ProfilePage.tsx').then((m) => ({ default: m.ProfilePage })));
-const FavoritesPage = lazy(() => import('./pages/FavoritesPage.tsx').then((m) => ({ default: m.FavoritesPage })));
-const SupportPage = lazy(() => import('./pages/SupportPage.tsx').then((m) => ({ default: m.SupportPage })));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage.tsx').then((m) => ({ default: m.NotFoundPage })));
-const LegalPage = lazy(() => import('./pages/LegalPage.tsx').then((m) => ({ default: m.LegalPage })));
-const OwnerUpgradeModal = lazy(() => import('./components/OwnerUpgradeModal.tsx').then((m) => ({ default: m.OwnerUpgradeModal })));
-const WalletPage = lazy(() => import('./pages/WalletPage.tsx').then((m) => ({ default: m.WalletPage })));
-const SiteMapPage = lazy(() => import('./pages/SiteMapPage.tsx').then((m) => ({ default: m.SiteMapPage })));
+const SpaceDetailPage = lazyWithRetry(() => import('./pages/SpaceDetailPage.tsx').then((m) => ({ default: m.SpaceDetailPage })));
+const LoginPage = lazyWithRetry(() => import('./pages/LoginPage.tsx').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazyWithRetry(() => import('./pages/RegisterPage.tsx').then((m) => ({ default: m.RegisterPage })));
+const VerifyEmailPage = lazyWithRetry(() => import('./pages/VerifyEmailPage.tsx').then((m) => ({ default: m.VerifyEmailPage })));
+const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage.tsx').then((m) => ({ default: m.ResetPasswordPage })));
+const ForgotPasswordPage = lazyWithRetry(() => import('./pages/ForgotPasswordPage.tsx').then((m) => ({ default: m.ForgotPasswordPage })));
+const OwnerDashboardPage = lazyWithRetry(() => import('./pages/OwnerDashboardPage.tsx').then((m) => ({ default: m.OwnerDashboardPage })));
+const AdminDashboardPage = lazyWithRetry(() => import('./pages/AdminDashboardPage.tsx').then((m) => ({ default: m.AdminDashboardPage })));
+const TenantReservationsPage = lazyWithRetry(() => import('./pages/TenantReservationsPage.tsx').then((m) => ({ default: m.TenantReservationsPage })));
+const OnboardingPage = lazyWithRetry(() => import('./pages/OnboardingPage.tsx').then((m) => ({ default: m.OnboardingPage })));
+const ProfilePage = lazyWithRetry(() => import('./pages/ProfilePage.tsx').then((m) => ({ default: m.ProfilePage })));
+const FavoritesPage = lazyWithRetry(() => import('./pages/FavoritesPage.tsx').then((m) => ({ default: m.FavoritesPage })));
+const SupportPage = lazyWithRetry(() => import('./pages/SupportPage.tsx').then((m) => ({ default: m.SupportPage })));
+const NotFoundPage = lazyWithRetry(() => import('./pages/NotFoundPage.tsx').then((m) => ({ default: m.NotFoundPage })));
+const LegalPage = lazyWithRetry(() => import('./pages/LegalPage.tsx').then((m) => ({ default: m.LegalPage })));
+const OwnerUpgradeModal = lazyWithRetry(() => import('./components/OwnerUpgradeModal.tsx').then((m) => ({ default: m.OwnerUpgradeModal })));
+const WalletPage = lazyWithRetry(() => import('./pages/WalletPage.tsx').then((m) => ({ default: m.WalletPage })));
+const SiteMapPage = lazyWithRetry(() => import('./pages/SiteMapPage.tsx').then((m) => ({ default: m.SiteMapPage })));
 
 // Páginas que dependen de la sesión: mientras se comprueba si hay sesión activa
 // se muestra un aviso de carga en vez de la pantalla "Inicia sesión".
 const PROTECTED_PREFIXES = ['/my-bookings', '/owner', '/admin', '/onboarding', '/profile', '/favorites', '/support', '/billetera'];
 const isProtectedPath = (path: string) => PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+
+/** Carga de una página: logo que late y un texto, sin saltos de diseño. */
+function PageLoading({ label = 'Cargando…' }: { label?: string }) {
+  return (
+    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4" role="status" aria-live="polite">
+      <span className="relative flex h-12 w-12 items-center justify-center">
+        <span className="absolute inset-0 rounded-full bg-rose-500/15 motion-safe:animate-ping" />
+        <span className="h-4 w-4 rounded-full bg-rose-600" />
+      </span>
+      <span className="text-sm text-slate-600">{label}</span>
+    </div>
+  );
+}
 
 function AppContent() {
   const { currentUser, spaces, authReady } = useApp();
@@ -124,6 +139,14 @@ function AppContent() {
   const canAccessOwnerDashboard = currentUser?.role === 'admin'
     || currentUser?.role === 'owner'
     || Boolean(currentUser?.ownerTermsAccepted);
+  // Precarga el panel que esta persona usa, para que abra al instante.
+  useEffect(() => {
+    if (!currentUser) return;
+    if (currentUser.role === 'admin') preload(() => import('./pages/AdminDashboardPage.tsx'));
+    else if (canAccessOwnerDashboard) preload(() => import('./pages/OwnerDashboardPage.tsx'));
+    preload(() => import('./pages/SpaceDetailPage.tsx'));
+  }, [currentUser?.id, currentUser?.role, canAccessOwnerDashboard]);
+
   // Los paneles de propietario y administración traen su propio menú (sin encabezado ni pie).
   const isDashboardRoute = Boolean(currentUser) && authReady && (
     (location.pathname === '/owner' && canAccessOwnerDashboard) ||
@@ -149,11 +172,12 @@ function AppContent() {
             : 'flex-1 max-w-7xl 2xl:max-w-[1536px] w-full mx-auto px-3 sm:px-5 lg:px-8 pt-3 sm:pt-5 pb-8 sm:pb-10 min-w-0 overflow-x-clip'
         }
       >
-        <Suspense fallback={<div className="min-h-[100vh] py-24 text-center text-sm text-slate-500" role="status">Cargando…</div>}>
+        <AppErrorBoundary resetKey={location.pathname}>
+        <Suspense fallback={<PageLoading />}>
         <AnimatePresence mode="wait" initial={false}>
         <PageTransition key={location.pathname}>
         {!authReady && isProtectedPath(location.pathname) ? (
-          <div className="min-h-[60vh] py-24 text-center text-sm text-slate-500" role="status">Cargando tu sesión…</div>
+          <PageLoading label="Cargando tu sesión…" />
         ) : (
         <Routes location={location}>
           <Route path="/" element={
@@ -252,6 +276,7 @@ function AppContent() {
         </PageTransition>
         </AnimatePresence>
         </Suspense>
+        </AppErrorBoundary>
       </main>
 
       {/* Modal de Conversión de Arrendatario a Propietario (Aceptación de Términos) */}

@@ -42,7 +42,14 @@ export async function authRequest<T = any>(action: string, body: unknown = {}, w
   if (withBearer && current) headers.Authorization = `Bearer ${current.access_token}`;
   let response: Response;
   try {
-    response = await fetch(authUrl(action), { method: 'POST', credentials: 'include', headers, body: JSON.stringify(body) });
+    // Tope de espera: si el servidor no responde, la página no queda cargando para siempre.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), action === 'refresh' ? 12_000 : 25_000);
+    try {
+      response = await fetch(authUrl(action), { method: 'POST', credentials: 'include', headers, body: JSON.stringify(body), signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
   } catch {
     throw new AuthApiError('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.', 0);
   }

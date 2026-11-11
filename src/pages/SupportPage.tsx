@@ -18,6 +18,8 @@ import {
 interface SupportPageProps {
   onNavigate: (view: string) => void;
   onOpenAuth?: (mode: 'login' | 'register', notice?: string) => void;
+  /** Dentro de un panel: sin márgenes de página y el título como subtítulo. */
+  embedded?: boolean;
 }
 
 const PROBLEM_CATEGORIES = [
@@ -29,7 +31,7 @@ const PROBLEM_CATEGORIES = [
   'Otro problema con el lugar',
 ];
 
-export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth }) => {
+export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth, embedded = false }) => {
   const { currentUser, reservations, disputes, createDispute } = useApp();
 
   // Reservas del usuario actual (solo lugares que reservó)
@@ -137,7 +139,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-4 space-y-6 pb-20">
+    <div className={embedded ? 'space-y-6' : 'max-w-6xl mx-auto py-4 space-y-6 pb-20'}>
       {/* Encabezado Principal */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1.5">
@@ -145,9 +147,11 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
             <Scale className="w-3.5 h-3.5 text-rose-600" />
             Ayuda, soporte y centro de disputas
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            ¿Tuviste un problema con el lugar?
-          </h1>
+          {React.createElement(
+            embedded ? 'h2' : 'h1',
+            { className: `${embedded ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'} font-bold text-slate-900 tracking-tight` },
+            '¿Tuviste un problema con el lugar?'
+          )}
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
             Comenta aquí cualquier inconveniente ocurrido en el espacio arrendado. Tu reporte quedará registrado automáticamente como una <strong>Disputa oficial</strong> para que el Administrador revise el caso y gestione la garantía o reembolso.
           </p>

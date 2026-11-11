@@ -1,10 +1,11 @@
-import React, { lazy, Suspense, useState, useMemo } from 'react';
+import React, { Suspense, useState, useMemo } from 'react';
+import { lazyWithRetry } from '../lib/lazyWithRetry.ts';
 import { Space, DigitalContract } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { SpaceCard } from '../components/SpaceCard.tsx';
 import { SpaceFilters } from '../components/SpaceFilters.tsx';
-const BookingModal = lazy(() => import('../components/BookingModal.tsx').then((m) => ({ default: m.BookingModal })));
-const ContractModal = lazy(() => import('../components/ContractModal.tsx').then((m) => ({ default: m.ContractModal })));
+const BookingModal = lazyWithRetry(() => import('../components/BookingModal.tsx').then((m) => ({ default: m.BookingModal })));
+const ContractModal = lazyWithRetry(() => import('../components/ContractModal.tsx').then((m) => ({ default: m.ContractModal })));
 
 import { motion, AnimatePresence } from 'motion/react';
 import { HeroBackdrop } from '../components/HeroBackdrop.tsx';
