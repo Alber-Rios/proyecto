@@ -133,6 +133,7 @@ export async function getFinanceReport(from: string, to: string): Promise<Financ
   const { data, error } = await supabase.rpc('admin_finance_report', { p_from: from, p_to: to });
   if (error) throw new Error(error.message);
   const d = data as any;
+  if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('El reporte no respondió con el formato esperado.');
   const totals = Object.fromEntries(Object.entries(d.totals || {}).map(([k, v]) => [k, num(v)])) as unknown as FinanceTotals;
   return {
     ...d,
@@ -249,6 +250,7 @@ export async function searchAudit(params: {
   });
   if (error) throw new Error(error.message);
   const d = data as any;
+  if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('La auditoría no respondió con el formato esperado.');
   return {
     total: num(d.total),
     rows: d.rows || [],

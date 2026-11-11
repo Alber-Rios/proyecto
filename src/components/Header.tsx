@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <>
                   <button
                     onClick={() => onNavigate('admin')}
-                    className={`px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
+                    className={`whitespace-nowrap px-2.5 lg:px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
                       currentView === 'admin'
                         ? 'text-indigo-700 bg-indigo-50/90'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -169,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                   <button
                     onClick={() => onNavigate('home')}
-                    className={`px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
+                    className={`whitespace-nowrap px-2.5 lg:px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
                       currentView === 'home' || currentView === 'space-detail'
                         ? 'text-slate-900 bg-slate-100/90'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -182,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <>
                   <button
                     onClick={() => onNavigate('home')}
-                    className={`px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
+                    className={`whitespace-nowrap px-2.5 lg:px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
                       currentView === 'home' || currentView === 'space-detail'
                         ? 'text-slate-900 bg-slate-100/90'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -193,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                   <button
                     onClick={handleHowItWorks}
-                    className="px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    className="hidden lg:inline-flex whitespace-nowrap px-2.5 lg:px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   >
                     Cómo funciona
                   </button>
@@ -201,7 +201,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {currentUser && (
                     <button
                       onClick={() => onNavigate('my-bookings')}
-                      className={`px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
+                      className={`whitespace-nowrap px-2.5 lg:px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
                         currentView === 'my-bookings'
                           ? 'text-slate-900 bg-slate-100/90'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -214,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {currentUser && (currentUser.role === 'owner' || currentUser.ownerTermsAccepted) && (
                     <button
                       onClick={() => onNavigate('owner')}
-                      className={`px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
+                      className={`whitespace-nowrap px-2.5 lg:px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
                         currentView === 'owner'
                           ? 'text-rose-600 bg-rose-50/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -227,13 +227,14 @@ export const Header: React.FC<HeaderProps> = ({
                   {currentUser && (
                     <button
                       onClick={() => onNavigate('support')}
-                      className={`px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
+                      className={`whitespace-nowrap px-2.5 lg:px-3.5 py-2 rounded-xl text-xs lg:text-sm font-semibold transition cursor-pointer ${
                         currentView === 'support'
                           ? 'text-rose-600 bg-rose-50/80'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                       }`}
                     >
-                      Ayuda y soporte
+                      <span className="lg:hidden">Ayuda</span>
+                      <span className="hidden lg:inline">Ayuda y soporte</span>
                     </button>
                   )}
                 </>

@@ -30,7 +30,14 @@ import {
   ScanFace,
   FileCheck2,
   ArrowLeftRight,
+  LayoutDashboard,
+  TrendingUp,
+  CreditCard,
+  TicketPercent,
+  Gauge,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { DashboardShell } from '../components/dashboard/DashboardShell.tsx';
 
 interface AdminDashboardPageProps {
   onOpenAuth?: (mode: 'login' | 'register', notice?: string) => void;
@@ -72,6 +79,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     adminResolveDispute,
     switchUser,
   } = useApp();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<
     'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
@@ -263,183 +271,42 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
   };
 
   return (
-    <div className="space-y-6 pb-16">
-      {/* 1. CABECERA EJECUTIVA LIMPIA (Sin pestañas duplicadas arriba) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Administración central
-            </span>
-            <span className="text-xs text-slate-500">·</span>
-            <span className="text-xs text-slate-500 font-medium">
-              {currentUser.fullName}
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1 tracking-tight">
-            Panel de administración
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Resumen de la operación, pendientes y módulos de control. Haz clic en una tarjeta o pestaña para ir al detalle.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. TARJETAS INTERACTIVAS DE NAVEGACIÓN Y RESUMEN OPERATIVO (Haz clic para cambiar de pantalla) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Tarjeta 1: Revisiones KYC Pendientes -> Cambia a pantalla KYC */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('kyc')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
-            activeTab === 'kyc'
-              ? 'bg-white border-indigo-600 ring-2 ring-indigo-600/20 shadow-md'
-              : 'bg-white border-slate-200/90 hover:border-indigo-300 hover:shadow-sm shadow-2xs'
-          }`}
-        >
-          <div className="w-full">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Revisiones KYC pendientes</span>
-              <Clock className={`w-4 h-4 shrink-0 ${activeTab === 'kyc' ? 'text-indigo-600' : 'text-amber-500'}`} />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums">
-              {metrics.pendingVerifications}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {metrics.verifiedUsers} de {metrics.totalUsers} usuarios aprobados
-            </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
-            <span className={activeTab === 'kyc' ? 'text-indigo-600' : 'text-slate-500'}>
-              {activeTab === 'kyc' ? '● Pantalla activa' : 'Ver verificación KYC'}
-            </span>
-            <span className={activeTab === 'kyc' ? 'text-indigo-600' : 'text-slate-500'}>→</span>
-          </div>
-        </button>
-
-        {/* Tarjeta 2: Espacios Activos -> Cambia a pantalla Espacios */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('spaces')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
-            activeTab === 'spaces'
-              ? 'bg-white border-emerald-600 ring-2 ring-emerald-600/20 shadow-md'
-              : 'bg-white border-slate-200/90 hover:border-emerald-300 hover:shadow-sm shadow-2xs'
-          }`}
-        >
-          <div className="w-full">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Espacios activos</span>
-              <Building className="w-4 h-4 text-emerald-600 shrink-0" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums">
-              {metrics.activeSpaces}{' '}
-              <span className="text-sm font-normal text-slate-500">/ {metrics.totalSpaces}</span>
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Publicados en el catálogo nacional
-            </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
-            <span className={activeTab === 'spaces' ? 'text-emerald-700' : 'text-slate-500'}>
-              {activeTab === 'spaces' ? '● Pantalla activa' : 'Gestionar espacios'}
-            </span>
-            <span className={activeTab === 'spaces' ? 'text-emerald-700' : 'text-slate-500'}>→</span>
-          </div>
-        </button>
-
-        {/* Tarjeta 3: Disputas en Arbitraje -> Cambia a pantalla Disputas */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('disputes')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
-            activeTab === 'disputes'
-              ? 'bg-white border-rose-600 ring-2 ring-rose-600/20 shadow-md'
-              : 'bg-white border-slate-200/90 hover:border-rose-300 hover:shadow-sm shadow-2xs'
-          }`}
-        >
-          <div className="w-full">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Disputas en arbitraje</span>
-              <Scale className="w-4 h-4 text-rose-600 shrink-0" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums">
-              {metrics.openDisputes}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {disputes.length} casos registrados en total
-            </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
-            <span className={activeTab === 'disputes' ? 'text-rose-600' : 'text-slate-500'}>
-              {activeTab === 'disputes' ? '● Pantalla activa' : 'Revisar disputas'}
-            </span>
-            <span className={activeTab === 'disputes' ? 'text-rose-600' : 'text-slate-500'}>→</span>
-          </div>
-        </button>
-
-        {/* Tarjeta 4: Volumen Transaccionado -> Cambia a pantalla Transacciones */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('transactions')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
-            activeTab === 'transactions'
-              ? 'bg-white border-indigo-600 ring-2 ring-indigo-600/20 shadow-md'
-              : 'bg-white border-slate-200/90 hover:border-indigo-300 hover:shadow-sm shadow-2xs'
-          }`}
-        >
-          <div className="w-full">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Ganancia Spotly</span>
-              <Banknote className="w-4 h-4 text-indigo-600 shrink-0" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums truncate">
-              {formatClp(metrics.totalPlatformFeeClp)}
-            </div>
-            <div className="text-xs text-slate-600 mt-1 truncate">
-              Volumen total: {formatClp(metrics.totalGmvClp)}
-            </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
-            <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-500'}>
-              {activeTab === 'transactions' ? '● Pantalla activa' : 'Ver ganancias'}
-            </span>
-            <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-500'}>→</span>
-          </div>
-        </button>
-      </div>
-
-      {/* Módulos de control: auditoría, reportes, KPI, descuentos y pagos */}
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Módulos de administración">
-        {(
-          [
-            ['overview', 'Resumen'],
-            ['transactions', 'Ganancias'],
-            ['audit', 'Auditoría'],
-            ['reports', 'Reportes y cuentas'],
-            ['kpi', 'KPI'],
-            ['payments', 'Pagos Webpay'],
-            ['discounts', 'Códigos de descuento'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === key}
-            onClick={() => setActiveTab(key)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
-              activeTab === key
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
+    <div className="pb-16">
+      <DashboardShell
+        area="Administración"
+        storageKey="spotly-admin-menu-collapsed"
+        active={activeTab}
+        onSelect={(id) => setActiveTab(id as typeof activeTab)}
+        identity={{ name: currentUser.fullName, detail: 'Administración', initial: (currentUser.fullName || 'A').charAt(0).toUpperCase(), tone: 'indigo' }}
+        onExit={() => navigate('/')}
+        sections={[
+          { label: 'General', items: [{ id: 'overview', label: 'Resumen', icon: LayoutDashboard }] },
+          {
+            label: 'Operación',
+            items: [
+              { id: 'kyc', label: 'Verificación KYC', icon: ShieldCheck, badge: metrics.pendingVerifications || undefined },
+              { id: 'spaces', label: 'Espacios', icon: Building, count: metrics.totalSpaces },
+              { id: 'disputes', label: 'Disputas', icon: Scale, badge: metrics.openDisputes || undefined },
+            ],
+          },
+          {
+            label: 'Dinero',
+            items: [
+              { id: 'transactions', label: 'Ganancias', icon: TrendingUp },
+              { id: 'payments', label: 'Pagos Webpay', icon: CreditCard },
+              { id: 'discounts', label: 'Códigos de descuento', icon: TicketPercent },
+            ],
+          },
+          {
+            label: 'Control',
+            items: [
+              { id: 'audit', label: 'Auditoría', icon: FileCheck2 },
+              { id: 'reports', label: 'Reportes y cuentas', icon: Users },
+              { id: 'kpi', label: 'KPI', icon: Gauge },
+            ],
+          },
+        ]}
+      >
       <TabPanel tabKey={activeTab} className="space-y-6">
       {activeTab === 'overview' && (
         <AdminOverview
@@ -1473,6 +1340,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
       {/* ===================================================================== */}
       {activeTab === 'transactions' && <PlatformFinancePanel />}
       </TabPanel>
+      </DashboardShell>
 
       {/* Ficha completa de una publicación */}
       {detailSpace && (

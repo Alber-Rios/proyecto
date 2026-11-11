@@ -22,17 +22,21 @@ const BAR_COLOR = 'bg-rose-500';
 const BAR_COLOR_MUTED = 'bg-rose-200';
 
 const SrTable: React.FC<{ caption: string; rows: { label: string; value: string }[] }> = ({ caption, rows }) => (
-  <table className="sr-only">
-    <caption>{caption}</caption>
-    <tbody>
-      {rows.map((r) => (
-        <tr key={r.label}>
-          <th scope="row">{r.label}</th>
-          <td>{r.value}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
+  // El contenedor sr-only recorta la tabla: una <table> no respeta el ancho de 1 px
+  // y, sola, ensanchaba la página en pantallas medianas.
+  <div className="sr-only">
+    <table>
+      <caption>{caption}</caption>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.label}>
+            <th scope="row">{r.label}</th>
+            <td>{r.value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
 );
 
 /** Barras verticales (p. ej. ingresos por mes). Resalta la última barra (período actual). */

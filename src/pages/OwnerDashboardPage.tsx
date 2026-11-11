@@ -14,6 +14,8 @@ import { PublishSpaceForm, SpaceFormData } from '../components/PublishSpaceForm.
 import { SpaceAvailabilityViewer } from '../components/SpaceAvailabilityViewer.tsx';
 import { SpaceBlockModal } from '../components/SpaceBlockModal.tsx';
 import { OwnerOverview } from '../components/dashboard/OwnerOverview.tsx';
+import { DashboardShell } from '../components/dashboard/DashboardShell.tsx';
+import { OwnerCommissionNote } from '../components/dashboard/OwnerCommissionNote.tsx';
 import { blocksOnDay, describeBlock } from '../utils/spaceBlocks.ts';
 import { ContactTenantModal, ContactTenant } from '../components/ContactTenantModal.tsx';
 import {
@@ -22,6 +24,7 @@ import {
 } from '../utils/documentDownloader.ts';
 import {
   Building,
+  LayoutDashboard,
   PlusCircle,
   Clock,
   CheckCircle2,
@@ -595,30 +598,45 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Encabezado del Panel de Propietario */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-            Hola, {currentUser.fullName.split(' ')[0]}
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            {currentUser.verificationStatus === 'verified' ? (
-              <>Responde solicitudes, revisa tu calendario y sigue lo que ganas.</>
-            ) : (
-              <span className="text-amber-800">Tu identidad está en revisión. Puedes preparar tus espacios mientras tanto.</span>
-            )}
-          </p>
-        </div>
-        <button
-          id="owner-publish-space-btn"
-          onClick={handleOpenPublishModal}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 cursor-pointer"
-        >
-          <PlusCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          Publicar espacio
-        </button>
-      </header>
+    <div className="pb-16">
+      <DashboardShell
+        area="Mis espacios"
+        storageKey="spotly-owner-menu-collapsed"
+        active={activeTab}
+        onSelect={(id) => setActiveTab(id as typeof activeTab)}
+        identity={{
+          name: currentUser.fullName,
+          detail: currentUser.verificationStatus === 'verified' ? 'Propietario verificado' : 'Identidad en revisión',
+          initial: (currentUser.fullName || 'P').charAt(0).toUpperCase(),
+        }}
+        primaryAction={{ id: 'owner-publish-space-btn', label: 'Publicar espacio', icon: PlusCircle, onClick: handleOpenPublishModal }}
+        footer={
+          <OwnerCommissionNote
+            acceptedBookings={myReceivedBookings.filter((b) => b.status === 'confirmed' || b.status === 'completed').length}
+            onOpen={() => setActiveTab('finances')}
+          />
+        }
+        onExit={() => onNavigate('home')}
+        sections={[
+          {
+            label: 'Mi negocio',
+            items: [
+              { id: 'overview', label: 'Resumen', icon: LayoutDashboard },
+              { id: 'calendar', label: 'Calendario', icon: Calendar },
+              { id: 'spaces', label: 'Mis espacios', icon: Building, count: mySpaces.length },
+              { id: 'bookings', label: 'Reservas', icon: Clock, badge: pendingValidBookings.length || undefined, count: myReceivedBookings.length },
+              { id: 'visits', label: 'Visitas', icon: MapPin, count: upcomingVisitRequests.length },
+            ],
+          },
+          { label: 'Dinero', items: [{ id: 'finances', label: 'Ganancias', icon: TrendingUp }] },
+        ]}
+      >
+      <div className="space-y-6">
+      {currentUser.verificationStatus !== 'verified' && (
+        <p role="status" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Tu identidad está en revisión. Puedes preparar tus espacios mientras tanto.
+        </p>
+      )}
 
       {nextPendingRequest && (
         <div
@@ -660,86 +678,6 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
           </button>
         </div>
       )}
-
-      {/* Pestañas del Dashboard */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'overview'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          Resumen
-          {pendingValidBookings.length > 0 && (
-            <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-900 text-xs font-bold">
-              {pendingValidBookings.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('calendar')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'calendar'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Calendar className="w-4 h-4" />
-          Calendario
-        </button>
-
-        <button
-          onClick={() => setActiveTab('spaces')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'spaces'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Building className="w-4 h-4" />
-          Mis espacios ({mySpaces.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('bookings')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'bookings'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          Reservas ({myReceivedBookings.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('finances')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'finances'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          Ganancias
-        </button>
-
-        <button
-          onClick={() => setActiveTab('visits')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'visits'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <MapPin className="w-4 h-4" />
-          Visitas ({upcomingVisitRequests.length})
-        </button>
-      </div>
 
       <TabPanel tabKey={activeTab} className="space-y-8">
       {/* Contenido según Pestaña */}
@@ -1768,6 +1706,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
         </div>
       )}
       </TabPanel>
+      </div>
+      </DashboardShell>
 
       {/* Modal para Publicar o Modificar Espacio */}
       {isPublishModalOpen && createPortal(

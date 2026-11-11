@@ -111,7 +111,6 @@ export const AuditPanel: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold text-slate-950">Auditoría</h2>
         <p className="text-sm text-slate-600">
           Todo lo importante que pasa en Spotly: accesos, pagos, reservas, verificaciones y acciones de administración. Los registros no se
           pueden editar ni borrar, y cada uno está encadenado al anterior con SHA-256.

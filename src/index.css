@@ -18,9 +18,11 @@
 }
 
 @layer base {
+  /* clip (no hidden): con hidden el body pasa a ser un contenedor de scroll y
+     los elementos sticky (encabezado, menú lateral) dejan de quedarse fijos. */
   html,
   body {
-    overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100vw;
     -webkit-text-size-adjust: 100%;
   }
