@@ -4,6 +4,8 @@ import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
 import { AuditLogPanel, ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
+import { reservationLedger } from '../utils/ledger.ts';
+import { PlatformFinancePanel } from '../components/admin/PlatformFinancePanel.tsx';
 import { AdminSpaceDetailModal } from '../components/admin/AdminSpaceDetailModal.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceRateInfo } from '../utils/formatters.ts';
@@ -101,10 +103,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     let totalPlatformFeeClp = 0;
 
     reservations.forEach((r) => {
-      if (r.status === 'confirmed' || r.status === 'completed') {
-        totalGmvClp += r.totalClp;
-        totalPlatformFeeClp += r.platformFeeClp;
-      }
+      if (r.status === 'confirmed' || r.status === 'completed') totalGmvClp += r.totalClp;
+      const l = reservationLedger(r);
+      if (!l.pending) totalPlatformFeeClp += l.platformRevenueClp;
     });
 
     const nonAdminUsers = allUsers.filter((u) => u.role !== 'admin');
@@ -389,19 +390,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         >
           <div className="w-full">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-2">
-              <span>Volumen transaccionado</span>
+              <span>Ganancia Spotly</span>
               <Banknote className="w-4 h-4 text-indigo-600 shrink-0" />
             </div>
             <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 tabular-nums truncate">
-              {formatClp(metrics.totalGmvClp)}
+              {formatClp(metrics.totalPlatformFeeClp)}
             </div>
-            <div className="text-xs text-emerald-700 font-semibold mt-1 truncate">
-              Comisión Spotly (5%): {formatClp(metrics.totalPlatformFeeClp)}
+            <div className="text-xs text-slate-600 mt-1 truncate">
+              Volumen total: {formatClp(metrics.totalGmvClp)}
             </div>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold w-full">
             <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-500'}>
-              {activeTab === 'transactions' ? '● Pantalla activa' : 'Ver transacciones'}
+              {activeTab === 'transactions' ? '● Pantalla activa' : 'Ver ganancias'}
             </span>
             <span className={activeTab === 'transactions' ? 'text-indigo-600' : 'text-slate-500'}>→</span>
           </div>
@@ -413,6 +414,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         {(
           [
             ['overview', 'Resumen'],
+            ['transactions', 'Ganancias'],
             ['audit', 'Auditoría'],
             ['reports', 'Reportes y cuentas'],
             ['kpi', 'KPI'],
@@ -1468,92 +1470,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
       {/* ===================================================================== */}
       {/* MÓDULO 4: VOLUMEN TRANSACCIONADO Y COMISIONES DE LA PLATAFORMA        */}
       {/* ===================================================================== */}
-      {activeTab === 'transactions' && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Detalle de volumen transaccionado y comisiones Spotly
-              </h2>
-              <p className="text-xs text-slate-500">
-                Registro consolidado de arriendos confirmados, garantías en custodia y comisión operativa del 5%.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200/70 text-xs">
-                <span className="text-indigo-600 font-semibold">Total transaccionado: </span>
-                <strong className="text-indigo-950 font-bold tabular-nums">
-                  {formatClp(metrics.totalGmvClp)}
-                </strong>
-              </div>
-              <div className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200/70 text-xs">
-                <span className="text-emerald-700 font-semibold">Comisión Spotly (5%): </span>
-                <strong className="text-emerald-950 font-bold tabular-nums">
-                  {formatClp(metrics.totalPlatformFeeClp)}
-                </strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
-                  <th className="py-3 px-4">Reserva / fecha</th>
-                  <th className="py-3 px-4">Espacio y anfitrión</th>
-                  <th className="py-3 px-4">Arrendatario</th>
-                  <th className="py-3 px-4">Estado</th>
-                  <th className="py-3 px-4 text-right">Total pagado</th>
-                  <th className="py-3 px-4 text-right">Comisión Spotly (5%)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {reservations.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/70">
-                    <td className="py-3.5 px-4">
-                      <div className="font-mono font-bold text-slate-800">{r.id}</div>
-                      <div className="text-xs text-slate-500">
-                        {r.startDate} {r.endDate !== r.startDate ? `al ${r.endDate}` : ''}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900">{r.spaceTitle}</div>
-                      <div className="text-xs text-slate-500">Propietario: {r.ownerName}</div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-800">{r.tenantName}</div>
-                      <div className="text-xs text-slate-500 font-mono">RUT {formatRut(r.tenantRut)}</div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                          r.status === 'confirmed' || r.status === 'completed'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : r.status === 'pending'
-                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                            : 'bg-rose-50 text-rose-700'
-                        }`}
-                      >
-                        {r.status === 'confirmed' || r.status === 'completed'
-                          ? 'Confirmada'
-                          : r.status === 'pending'
-                          ? 'Pendiente'
-                          : 'Cancelada'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-bold text-slate-900 tabular-nums">
-                      {formatClp(r.totalClp)}
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-bold text-emerald-700 tabular-nums">
-                      {formatClp(r.platformFeeClp)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeTab === 'transactions' && <PlatformFinancePanel />}
       </TabPanel>
 
       {/* Ficha completa de una publicación */}
