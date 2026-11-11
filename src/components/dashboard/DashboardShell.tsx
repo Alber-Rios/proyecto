@@ -2,7 +2,7 @@ import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'reac
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bell, ChevronsLeft, ChevronsRight, LogOut, Menu, X, type LucideIcon } from 'lucide-react';
+import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, LogOut, Menu, X, type LucideIcon } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
 import { useReducedMotion } from '../../lib/motionPreference.ts';
 import { getNameInitial } from '../../utils/formatters.ts';
@@ -85,6 +85,21 @@ export function DashboardShell<T extends string>({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const updateMore = () => {
+    const el = scrollRef.current;
+    if (el) setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+  };
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateMore();
+    const ro = new ResizeObserver(updateMore);
+    ro.observe(el);
+    Array.from(el.children).forEach((c) => ro.observe(c));
+    return () => ro.disconnect();
+  }, [collapsed]);
 
   const unread = notifications.filter((n) => !n.read).length;
   const current = (() => {
@@ -231,7 +246,7 @@ export function DashboardShell<T extends string>({
   );
 
   const renderNav = (mode: Mode) => (
-    <nav aria-label={`Menú de ${area.toLowerCase()}`} className="flex flex-col gap-4">
+    <nav aria-label={`Menú de ${area.toLowerCase()}`} className={`flex flex-col ${mode === 'side' ? 'gap-3' : 'gap-4'}`}>
       {sections.map((section, si) => (
         <motion.div
           key={section.label}
@@ -253,7 +268,7 @@ export function DashboardShell<T extends string>({
                 aria-current={on ? 'page' : undefined}
                 aria-label={`${it.label}${extra}`}
                 title={mode === 'side' ? it.label : undefined}
-                className={`group relative isolate flex min-h-11 w-full items-center gap-3 rounded-xl text-sm transition-[color,background-color,transform] duration-150 ease-out cursor-pointer active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 xl:min-h-10 ${rowPad(mode)} ${
+                className={`group relative isolate flex min-h-11 w-full items-center gap-3 rounded-xl text-sm transition-[color,background-color,transform] duration-150 ease-out cursor-pointer active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 xl:min-h-9 ${rowPad(mode)} ${
                   on ? 'font-semibold text-white' : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950'
                 }`}
               >
@@ -455,30 +470,52 @@ export function DashboardShell<T extends string>({
               <BrandMark className="h-6 w-6" />
             </span>
           </button>
-          {bellButton('side', 'h-10 w-10')}
+          <div className={`flex items-center gap-1.5 ${collapsed ? 'flex-col' : 'flex-col xl:flex-row'}`}>
+            {bellButton('side', 'h-10 w-10')}
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
+              title={collapsed ? 'Expandir menú' : 'Contraer menú'}
+              className="hidden h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition-[background-color,transform] duration-150 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.94] cursor-pointer xl:flex"
+            >
+              {collapsed ? <ChevronsRight className="h-5 w-5" aria-hidden="true" /> : <ChevronsLeft className="h-5 w-5" aria-hidden="true" />}
+            </button>
+          </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-3 pb-3 no-scrollbar">
-          {primary('side')}
-          {renderNav('side')}
-          {footer && <div className={collapsed ? 'hidden' : 'hidden xl:block'}>{footer}</div>}
-        </div>
-
-        <div className="flex flex-col gap-1.5 border-t border-slate-200 px-3 pb-3 pt-2.5">
-          {profile('side')}
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            aria-expanded={!collapsed}
-            title={collapsed ? 'Expandir menú' : 'Contraer menú'}
-            className={`hidden min-h-10 w-full items-center gap-3 rounded-xl text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 cursor-pointer xl:flex ${
-              collapsed ? 'justify-center px-0' : 'px-3'
-            }`}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={scrollRef}
+            onScroll={updateMore}
+            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-3 pb-3 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]"
           >
-            {collapsed ? <ChevronsRight className="h-5 w-5" aria-hidden="true" /> : <ChevronsLeft className="h-5 w-5" aria-hidden="true" />}
-            <span className={collapsed ? 'sr-only' : ''}>{collapsed ? 'Expandir menú' : 'Contraer menú'}</span>
-          </button>
+            {primary('side')}
+            {renderNav('side')}
+            {footer && <div className={collapsed ? 'hidden' : 'hidden xl:block'}>{footer}</div>}
+          </div>
+          {/* Indica que hay más opciones abajo */}
+          <AnimatePresence>
+            {more && (
+              <motion.button
+                type="button"
+                tabIndex={-1}
+                aria-hidden="true"
+                onClick={() => scrollRef.current?.scrollBy({ top: 200, behavior: reduce ? 'auto' : 'smooth' })}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t from-white via-white/85 to-transparent pb-1 cursor-pointer"
+              >
+                <ChevronDown className="h-4 w-4 text-slate-500" />
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
+
+        <div className="border-t border-slate-200 px-3 pb-3 pt-2.5">{profile('side')}</div>
       </aside>
 
       <div className="min-w-0 flex-1">
