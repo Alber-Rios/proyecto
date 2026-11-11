@@ -1041,6 +1041,7 @@ END $$;
 ALTER TABLE public.audit_logs ENABLE TRIGGER audit_logs_no_update_delete;
 
 GRANT SELECT ON public.platform_settings TO anon, authenticated;
+GRANT SELECT (is_furnished) ON public.spaces TO anon, authenticated;
 
 COMMIT;
 

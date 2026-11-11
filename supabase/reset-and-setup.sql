@@ -3956,7 +3956,8 @@ GRANT SELECT (
   space_environment, rental_modality, enabled_modalities, price_unit, commune, region,
   price_per_day, price_per_hour, price_per_month, capacity, surface_m2, amenities,
   rules, opening_hours, security_deposit, images, is_verified, status, rating,
-  reviews_count, min_booking_days, min_booking_hours, instant_booking, created_at, updated_at
+  reviews_count, min_booking_days, min_booking_hours, instant_booking, created_at, updated_at,
+  is_furnished
 ) ON public.spaces TO anon, authenticated;
 GRANT SELECT ON public.reviews TO anon;
 GRANT INSERT (space_id, viewer_id) ON public.space_views TO anon, authenticated;
@@ -4040,6 +4041,13 @@ GRANT EXECUTE ON FUNCTION public.admin_set_user_suspension(UUID, BOOLEAN, TEXT) 
 GRANT EXECUTE ON FUNCTION public.admin_anonymize_user(UUID) TO authenticated;              -- valida is_admin()
 GRANT EXECUTE ON FUNCTION public.expire_my_unanswered_requests() TO authenticated;      -- solo las del usuario
 GRANT EXECUTE ON FUNCTION public.period_range(DATE, DATE, INTEGER, INTEGER) TO anon, authenticated;
+-- Comisiones, liquidaciones, ganancias y auditoría (las admin_* validan is_admin()).
+GRANT EXECUTE ON FUNCTION public.complete_my_finished_reservations() TO authenticated;     -- solo las del usuario
+GRANT EXECUTE ON FUNCTION public.admin_mark_payout_paid(TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_update_platform_settings(NUMERIC, NUMERIC, DATE, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_finance_report(DATE, DATE) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_verify_audit_chain() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_audit_search(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 
 -- ==============================================================================
 -- 11. TIEMPO REAL

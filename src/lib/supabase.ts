@@ -60,7 +60,7 @@ export const SPACE_PUBLIC_COLUMNS = [
   'space_environment', 'rental_modality', 'enabled_modalities', 'price_unit', 'commune', 'region',
   'price_per_day', 'price_per_hour', 'price_per_month', 'capacity', 'surface_m2', 'amenities',
   'rules', 'opening_hours', 'security_deposit', 'images', 'is_verified', 'status', 'rating',
-  'reviews_count', 'min_booking_days', 'min_booking_hours', 'instant_booking', 'created_at',
+  'reviews_count', 'min_booking_days', 'min_booking_hours', 'instant_booking', 'created_at', 'is_furnished',
 ].join(',');
 
 export async function getSpacePrivateDetails(): Promise<Record<string, { ownerRut: string; address: string }>> {
