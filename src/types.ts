@@ -125,6 +125,8 @@ export interface Space {
   rules?: string[];
   openingHours?: string;
   securityDeposit?: number;
+  /** Amoblado o equipado: su arriendo puede estar afecto a IVA (lo declara el anfitrión). */
+  isFurnished?: boolean;
   images: string[];
   isVerified: boolean;
   status: 'active' | 'pending_approval' | 'paused' | 'deleted';
@@ -216,6 +218,10 @@ export interface Reservation {
   paymentStatus?: PaymentStatus;
   discountCode?: string;
   discountClp?: number;
+  /** Comisión del anfitrión congelada al crear la reserva (0 en lanzamiento/bienvenida). */
+  ownerCommissionRate?: number;
+  ownerCommissionClp?: number;
+  ownerCommissionReason?: 'lanzamiento' | 'bienvenida' | 'estandar' | 'mensual' | string;
   refundAmountClp?: number;
   cancelledAt?: string;
   cancellationReason?: string;

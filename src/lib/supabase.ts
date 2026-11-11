@@ -116,6 +116,7 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     rules: row.rules || [],
     openingHours: row.opening_hours || '',
     securityDeposit: Number(row.security_deposit || 0),
+    isFurnished: Boolean(row.is_furnished),
     images: row.images || [],
     isVerified: row.is_verified,
     status: row.status,
@@ -155,6 +156,7 @@ export async function insertSpaceToDb(space: Space): Promise<{ success: boolean;
     rules: space.rules,
     opening_hours: space.openingHours,
     security_deposit: space.securityDeposit || 0,
+    is_furnished: Boolean(space.isFurnished),
     images: space.images,
     is_verified: space.isVerified,
     status: space.status,
@@ -247,9 +249,26 @@ export async function expireMyUnansweredRequests(): Promise<number> {
   return Number(data) || 0;
 }
 
+// Finaliza las reservas propias cuyo período ya terminó: genera la liquidación
+// del anfitrión y pide la devolución de la garantía. Respaldo de pg_cron.
+let warnedMissingCompletion = false;
+export async function completeMyFinishedReservations(): Promise<number> {
+  if (!isSupabaseConfigured() || !currentSessionUserId()) return 0;
+  const { data, error } = await supabase.rpc('complete_my_finished_reservations');
+  if (error) {
+    if (!warnedMissingCompletion) {
+      warnedMissingCompletion = true;
+      console.warn('No se pudieron finalizar las reservas terminadas (¿falta el parche SQL 2026-11-11?):', error.message);
+    }
+    return 0;
+  }
+  return Number(data) || 0;
+}
+
 export async function getReservationsFromDb(): Promise<Reservation[]> {
   if (!isSupabaseConfigured()) return [];
   await expireMyUnansweredRequests();
+  await completeMyFinishedReservations();
   const { data, error } = await supabase
     .from('reservations')
     .select('*')
@@ -304,6 +323,9 @@ export function mapReservationRow(row: any): Reservation {
     paymentStatus: row.payment_status,
     discountCode: row.discount_code || undefined,
     discountClp: row.discount_clp ? Number(row.discount_clp) : 0,
+    ownerCommissionRate: Number(row.owner_commission_rate || 0),
+    ownerCommissionClp: Number(row.owner_commission_clp || 0),
+    ownerCommissionReason: row.owner_commission_reason || undefined,
     refundAmountClp: row.refund_amount_clp !== null && row.refund_amount_clp !== undefined ? Number(row.refund_amount_clp) : undefined,
     cancelledAt: row.cancelled_at || undefined,
     cancellationReason: row.cancellation_reason || undefined,

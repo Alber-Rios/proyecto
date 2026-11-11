@@ -51,8 +51,9 @@ DROP TABLE IF EXISTS
   public.payments, public.wallet_cards, public.discount_codes, public.login_attempts,
   public.kyc_verifications, public.notifications, public.saved_cards,
   public.visit_requests, public.disputes, public.audit_logs, public.contracts,
-  public.reservations, public.spaces, public.profiles
+  public.reservations, public.spaces, public.profiles, public.platform_settings
 CASCADE;
+DROP SEQUENCE IF EXISTS public.audit_logs_seq;
 
 -- Elimina todas las funciones de public (versiones antiguas incluidas), salvo las
 -- que pertenecen a extensiones. CASCADE quita también las políticas de Storage que
@@ -1841,6 +1842,10 @@ BEGIN
   IF TG_OP = 'INSERT' THEN
     PERFORM public.write_audit('RESERVATION_CREATED', 'info', NEW.tenant_id::text,
       jsonb_build_object('reservationId', NEW.id, 'spaceId', NEW.space_id, 'totalClp', NEW.total_clp,
+                         'subtotalClp', NEW.subtotal_clp, 'tenantFeeClp', NEW.platform_fee_clp,
+                         'ownerCommissionRate', NEW.owner_commission_rate,
+                         'ownerCommissionClp', NEW.owner_commission_clp,
+                         'ownerCommissionReason', NEW.owner_commission_reason,
                          'discountClp', NEW.discount_clp, 'period', NEW.booking_period::text));
     RETURN NEW;
   END IF;
@@ -1867,10 +1872,14 @@ BEGIN
       ELSE NEW.status END;
 
     -- Reserva finalizada y pagada: queda pendiente la liquidación al propietario.
-    IF NEW.status = 'completed' AND NEW.payment_status IN ('paid', 'partially_refunded') THEN
-      INSERT INTO public.owner_payouts (reservation_id, owner_id, gross_clp, platform_fee_clp, discount_clp, amount_clp)
+    -- Recibe el arriendo menos su comisión; el descuento lo absorbe Spotly.
+    -- Con un reclamo abierto la liquidación queda retenida.
+    IF NEW.status = 'completed' AND NEW.payment_status IN ('paid', 'partially_refunded', 'refund_pending') THEN
+      INSERT INTO public.owner_payouts (reservation_id, owner_id, gross_clp, platform_fee_clp, discount_clp,
+                                        owner_commission_clp, amount_clp, status)
       VALUES (NEW.id, NEW.owner_id, NEW.subtotal_clp, NEW.platform_fee_clp, NEW.discount_clp,
-              GREATEST(NEW.subtotal_clp - NEW.discount_clp, 0))
+              NEW.owner_commission_clp, GREATEST(NEW.subtotal_clp - NEW.owner_commission_clp, 0),
+              CASE WHEN COALESCE(NEW.dispute_status, 'none') IN ('opened', 'in_review') THEN 'on_hold' ELSE 'pending' END)
       ON CONFLICT (reservation_id) DO NOTHING;
     END IF;
 
@@ -2419,6 +2428,7 @@ AS $$
 BEGIN
   PERFORM public.release_expired_payment_holds(NULL);
   PERFORM public.expire_unanswered_requests();
+  PERFORM public.complete_finished_reservations(NULL);
   PERFORM public.purge_old_login_attempts();
   PERFORM public.purge_unconfirmed_accounts();
   DELETE FROM public.space_views WHERE created_at < now() - interval '400 days';
@@ -2971,6 +2981,612 @@ CREATE TRIGGER user_reports_events
   FOR EACH ROW EXECUTE FUNCTION public.report_events();
 
 -- ==============================================================================
+-- Comisiones, liquidaciones, reporte financiero y bitácora encadenada (2026-11-11)
+-- ==============================================================================
+-- Modelo de cobro:
+--   · Arrendatario: cargo de servicio del 5 % sobre el arriendo (platform_fee_clp).
+--   · Anfitrión: comisión del 10 % (5 % en arriendos mensuales) que se descuenta
+--     de su liquidación. Queda en 0 % durante la etapa de lanzamiento y en sus
+--     primeras reservas (bienvenida). La tasa se congela al crear la reserva.
+--   · Los códigos de descuento los paga Spotly: el anfitrión recibe lo mismo.
+
+-- ---------- Configuración de comisiones (una sola fila) ----------
+CREATE TABLE IF NOT EXISTS public.platform_settings (
+  id BOOLEAN PRIMARY KEY DEFAULT true CHECK (id),
+  owner_commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.10
+    CHECK (owner_commission_rate BETWEEN 0 AND 0.30),
+  owner_commission_rate_monthly NUMERIC(5,4) NOT NULL DEFAULT 0.05
+    CHECK (owner_commission_rate_monthly BETWEEN 0 AND 0.30),
+  launch_ends_on DATE NOT NULL DEFAULT DATE '2027-05-31',
+  owner_free_bookings INTEGER NOT NULL DEFAULT 3 CHECK (owner_free_bookings BETWEEN 0 AND 50),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by UUID
+);
+COMMENT ON TABLE public.platform_settings IS 'Comisiones vigentes de la plataforma (una fila)';
+INSERT INTO public.platform_settings (id) VALUES (true) ON CONFLICT (id) DO NOTHING;
+ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Comisiones visibles para todos" ON public.platform_settings;
+CREATE POLICY "Comisiones visibles para todos"
+  ON public.platform_settings FOR SELECT TO anon, authenticated USING (true);
+REVOKE ALL ON public.platform_settings FROM anon, authenticated;
+GRANT SELECT ON public.platform_settings TO anon, authenticated;
+
+-- ---------- Columnas nuevas ----------
+ALTER TABLE public.reservations
+  ADD COLUMN IF NOT EXISTS owner_commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0
+    CHECK (owner_commission_rate BETWEEN 0 AND 0.30),
+  ADD COLUMN IF NOT EXISTS owner_commission_clp NUMERIC(12,0) NOT NULL DEFAULT 0
+    CHECK (owner_commission_clp >= 0),
+  ADD COLUMN IF NOT EXISTS owner_commission_reason TEXT
+    CHECK (owner_commission_reason IS NULL OR length(owner_commission_reason) <= 40);
+ALTER TABLE public.owner_payouts
+  ADD COLUMN IF NOT EXISTS owner_commission_clp NUMERIC(12,0) NOT NULL DEFAULT 0
+    CHECK (owner_commission_clp >= 0);
+ALTER TABLE public.spaces
+  ADD COLUMN IF NOT EXISTS is_furnished BOOLEAN NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.spaces.is_furnished IS
+  'Amoblado o equipado: su arriendo puede estar afecto a IVA (lo declara el anfitrión)';
+
+-- ---------- Tasa de comisión del anfitrión ----------
+CREATE OR REPLACE FUNCTION public.owner_commission_terms(p_owner UUID, p_price_unit TEXT)
+RETURNS TABLE (rate NUMERIC, reason TEXT)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  s public.platform_settings;
+  v_done INTEGER;
+BEGIN
+  SELECT * INTO s FROM public.platform_settings WHERE id;
+  IF NOT FOUND THEN
+    rate := 0.10; reason := 'estandar'; RETURN NEXT; RETURN;
+  END IF;
+  IF public.chile_today() <= s.launch_ends_on THEN
+    rate := 0; reason := 'lanzamiento'; RETURN NEXT; RETURN;
+  END IF;
+  SELECT count(*) INTO v_done
+  FROM public.reservations
+  WHERE owner_id = p_owner
+    AND status IN ('confirmed', 'completed')
+    AND payment_status IN ('paid', 'partially_refunded', 'refund_pending');
+  IF v_done < s.owner_free_bookings THEN
+    rate := 0; reason := 'bienvenida'; RETURN NEXT; RETURN;
+  END IF;
+  IF p_price_unit = 'month' THEN
+    rate := s.owner_commission_rate_monthly; reason := 'mensual';
+  ELSE
+    rate := s.owner_commission_rate; reason := 'estandar';
+  END IF;
+  RETURN NEXT;
+END;
+$$;
+
+-- La tasa se fija al crear la reserva y no cambia después (ni por el cliente
+-- ni por cambios posteriores de configuración).
+CREATE OR REPLACE FUNCTION public.reservations_owner_commission()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v RECORD;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    SELECT * INTO v FROM public.owner_commission_terms(NEW.owner_id, COALESCE(NEW.price_unit, 'day'));
+    NEW.owner_commission_rate := v.rate;
+    NEW.owner_commission_reason := v.reason;
+    NEW.owner_commission_clp := round(COALESCE(NEW.subtotal_clp, 0) * v.rate);
+  ELSE
+    NEW.owner_commission_rate := OLD.owner_commission_rate;
+    NEW.owner_commission_reason := OLD.owner_commission_reason;
+    NEW.owner_commission_clp := OLD.owner_commission_clp;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS reservations_owner_commission ON public.reservations;
+CREATE TRIGGER reservations_owner_commission
+  BEFORE INSERT OR UPDATE ON public.reservations
+  FOR EACH ROW EXECUTE FUNCTION public.reservations_owner_commission();
+
+-- ---------- Finalización automática y liquidación ----------
+-- Una reserva confirmada cuyo período terminó pasa a 'completed'. Eso genera la
+-- liquidación del anfitrión (reservation_events) y, si había garantía y no hay
+-- reclamo abierto, pide su devolución al arrendatario.
+CREATE OR REPLACE FUNCTION public.complete_finished_reservations(p_user UUID DEFAULT NULL)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_prev TEXT;
+  v_count INTEGER;
+  v_hour INTEGER := extract(hour FROM (now() AT TIME ZONE 'America/Santiago'))::int;
+BEGIN
+  v_prev := public.begin_trusted();
+  UPDATE public.reservations r
+  SET status = 'completed',
+      payment_status = CASE
+        WHEN r.security_deposit_clp > 0 AND r.payment_status = 'paid'
+             AND COALESCE(r.dispute_status, 'none') IN ('none', 'resolved')
+          THEN 'refund_pending' ELSE r.payment_status END,
+      refund_amount_clp = CASE
+        WHEN r.security_deposit_clp > 0 AND r.payment_status = 'paid'
+             AND COALESCE(r.dispute_status, 'none') IN ('none', 'resolved')
+          THEN r.security_deposit_clp ELSE r.refund_amount_clp END
+  WHERE r.status = 'confirmed'
+    AND (p_user IS NULL OR r.owner_id = p_user OR r.tenant_id = p_user)
+    AND (r.end_date < public.chile_today()
+         OR (r.end_date = public.chile_today() AND r.hour_end IS NOT NULL AND r.hour_end <= v_hour));
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  PERFORM public.end_trusted(v_prev);
+  RETURN v_count;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.complete_my_finished_reservations()
+RETURNS INTEGER
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT CASE WHEN auth.uid() IS NULL THEN 0 ELSE public.complete_finished_reservations(auth.uid()) END;
+$$;
+
+-- Liquidaciones: se audita su creación y cada cambio de estado.
+CREATE OR REPLACE FUNCTION public.owner_payout_events()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM public.write_audit('PAYOUT_CREATED', 'info', NEW.owner_id::text,
+      jsonb_build_object('payoutId', NEW.id, 'reservationId', NEW.reservation_id,
+                         'grossClp', NEW.gross_clp, 'ownerCommissionClp', NEW.owner_commission_clp,
+                         'amountClp', NEW.amount_clp, 'status', NEW.status));
+    PERFORM public.notify_user(NEW.owner_id, 'Liquidación generada',
+      format('Tu arriendo terminó. Te corresponden $%s CLP (arriendo $%s menos comisión $%s).',
+        to_char(NEW.amount_clp, 'FM999G999G999'), to_char(NEW.gross_clp, 'FM999G999G999'),
+        to_char(NEW.owner_commission_clp, 'FM999G999G999')),
+      'success', '/owner');
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    PERFORM public.write_audit('PAYOUT_' || upper(NEW.status), 'security',
+      COALESCE(auth.uid()::text, 'system'),
+      jsonb_build_object('payoutId', NEW.id, 'reservationId', NEW.reservation_id, 'ownerId', NEW.owner_id,
+                         'from', OLD.status, 'to', NEW.status, 'amountClp', NEW.amount_clp,
+                         'transferReference', NEW.transfer_reference));
+    IF NEW.status = 'paid' THEN
+      PERFORM public.notify_user(NEW.owner_id, 'Transferencia enviada',
+        format('Te transferimos $%s CLP. Referencia: %s.', to_char(NEW.amount_clp, 'FM999G999G999'),
+               COALESCE(NEW.transfer_reference, 'sin referencia')),
+        'success', '/owner');
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS owner_payout_events ON public.owner_payouts;
+CREATE TRIGGER owner_payout_events
+  AFTER INSERT OR UPDATE ON public.owner_payouts
+  FOR EACH ROW EXECUTE FUNCTION public.owner_payout_events();
+
+CREATE OR REPLACE FUNCTION public.admin_mark_payout_paid(p_payout_id TEXT, p_reference TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  IF COALESCE(length(trim(p_reference)), 0) < 3 THEN
+    RAISE EXCEPTION 'Indica el número o referencia de la transferencia';
+  END IF;
+  UPDATE public.owner_payouts
+  SET status = 'paid', transfer_reference = left(trim(p_reference), 200), paid_at = now()
+  WHERE id = p_payout_id AND status IN ('pending', 'on_hold');
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La liquidación no existe o ya fue pagada';
+  END IF;
+END;
+$$;
+
+-- ---------- Cambiar comisiones (solo admin, auditado) ----------
+CREATE OR REPLACE FUNCTION public.admin_update_platform_settings(
+  p_owner_commission_rate NUMERIC,
+  p_owner_commission_rate_monthly NUMERIC,
+  p_launch_ends_on DATE,
+  p_owner_free_bookings INTEGER
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_before public.platform_settings;
+  v_after public.platform_settings;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  SELECT * INTO v_before FROM public.platform_settings WHERE id;
+  UPDATE public.platform_settings
+  SET owner_commission_rate = p_owner_commission_rate,
+      owner_commission_rate_monthly = p_owner_commission_rate_monthly,
+      launch_ends_on = p_launch_ends_on,
+      owner_free_bookings = p_owner_free_bookings,
+      updated_at = now(),
+      updated_by = auth.uid()
+  WHERE id
+  RETURNING * INTO v_after;
+  PERFORM public.write_audit('PLATFORM_SETTINGS_CHANGED', 'critical', auth.uid()::text,
+    jsonb_build_object('before', to_jsonb(v_before) - 'id', 'after', to_jsonb(v_after) - 'id'));
+END;
+$$;
+
+-- ---------- Reporte financiero de la plataforma ----------
+-- Una fila por reserva pagada. La fecha es la del pago autorizado por Transbank.
+--   ingreso Spotly = cargo al arrendatario + comisión al anfitrión − descuento
+--                    (reservas vigentes o finalizadas)
+--                  = lo que no se devolvió (canceladas o rechazadas)
+CREATE OR REPLACE FUNCTION public.platform_ledger(p_from DATE, p_to DATE)
+RETURNS TABLE (
+  reservation_id TEXT, paid_at TIMESTAMPTZ, space_id TEXT, space_title TEXT,
+  tenant_name TEXT, owner_id UUID, owner_name TEXT, status TEXT, payment_status TEXT,
+  collected_clp NUMERIC, subtotal_clp NUMERIC, deposit_clp NUMERIC, tenant_fee_clp NUMERIC,
+  owner_commission_rate NUMERIC, owner_commission_reason TEXT, owner_commission_clp NUMERIC,
+  discount_clp NUMERIC, cancellation_fee_clp NUMERIC, platform_revenue_clp NUMERIC,
+  owner_net_clp NUMERIC, refunded_clp NUMERIC, refund_pending_clp NUMERIC, payout_status TEXT
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  WITH pay AS (
+    SELECT DISTINCT ON (p.reservation_id)
+      p.reservation_id,
+      COALESCE(p.committed_at, p.transaction_date, p.created_at) AS paid_at,
+      p.amount_clp,
+      p.refunded_amount_clp
+    FROM public.payments p
+    WHERE p.status IN ('authorized', 'refunded', 'partially_refunded')
+    ORDER BY p.reservation_id, p.created_at DESC
+  ), base AS (
+    SELECT r.*, pay.paid_at AS charged_at, pay.amount_clp AS collected, pay.refunded_amount_clp AS refunded,
+           (r.status IN ('pending', 'confirmed', 'completed')) AS live
+    FROM public.reservations r
+    JOIN pay ON pay.reservation_id = r.id
+    WHERE (pay.paid_at AT TIME ZONE 'America/Santiago')::date BETWEEN p_from AND p_to
+  )
+  SELECT
+    b.id, b.charged_at, b.space_id, b.space_title, b.tenant_name, b.owner_id, b.owner_name,
+    b.status, b.payment_status, b.collected, b.subtotal_clp, b.security_deposit_clp,
+    CASE WHEN b.live THEN b.platform_fee_clp ELSE 0 END,
+    b.owner_commission_rate, b.owner_commission_reason,
+    CASE WHEN b.live THEN b.owner_commission_clp ELSE 0 END,
+    CASE WHEN b.live THEN b.discount_clp ELSE 0 END,
+    CASE WHEN b.live THEN 0 ELSE GREATEST(b.total_clp - COALESCE(b.refund_amount_clp, b.total_clp), 0) END,
+    CASE WHEN b.live THEN b.platform_fee_clp + b.owner_commission_clp - b.discount_clp
+         ELSE GREATEST(b.total_clp - COALESCE(b.refund_amount_clp, b.total_clp), 0) END,
+    CASE WHEN b.status IN ('confirmed', 'completed') THEN b.subtotal_clp - b.owner_commission_clp ELSE 0 END,
+    COALESCE(b.refunded, 0),
+    CASE WHEN b.payment_status = 'refund_pending' THEN COALESCE(b.refund_amount_clp, 0) ELSE 0 END,
+    (SELECT op.status FROM public.owner_payouts op WHERE op.reservation_id = b.id)
+  FROM base b
+$$;
+REVOKE ALL ON FUNCTION public.platform_ledger(DATE, DATE) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_finance_report(p_from DATE, p_to DATE)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_totals JSONB;
+  v_monthly JSONB;
+  v_spaces JSONB;
+  v_rows JSONB;
+  v_payouts JSONB;
+  v_settings JSONB;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  IF p_from IS NULL OR p_to IS NULL OR p_to < p_from THEN
+    RAISE EXCEPTION 'Rango de fechas inválido';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'reservations', count(*),
+    'collectedClp', COALESCE(sum(collected_clp), 0),
+    'refundedClp', COALESCE(sum(refunded_clp), 0),
+    'refundPendingClp', COALESCE(sum(refund_pending_clp), 0),
+    'tenantFeesClp', COALESCE(sum(tenant_fee_clp) FILTER (WHERE status <> 'pending'), 0),
+    'ownerCommissionsClp', COALESCE(sum(owner_commission_clp) FILTER (WHERE status <> 'pending'), 0),
+    'discountsClp', COALESCE(sum(discount_clp) FILTER (WHERE status <> 'pending'), 0),
+    'cancellationFeesClp', COALESCE(sum(cancellation_fee_clp), 0),
+    'platformRevenueClp', COALESCE(sum(platform_revenue_clp) FILTER (WHERE status <> 'pending'), 0),
+    'pendingRevenueClp', COALESCE(sum(platform_revenue_clp) FILTER (WHERE status = 'pending'), 0),
+    'ownerNetClp', COALESCE(sum(owner_net_clp), 0),
+    'gmvClp', COALESCE(sum(subtotal_clp) FILTER (WHERE status IN ('confirmed', 'completed')), 0),
+    'depositsHeldClp', COALESCE(sum(deposit_clp) FILTER (
+       WHERE status IN ('pending', 'confirmed') AND payment_status = 'paid'), 0),
+    'cancelledCount', count(*) FILTER (WHERE status IN ('cancelled', 'rejected')),
+    'completedCount', count(*) FILTER (WHERE status = 'completed')
+  ) INTO v_totals
+  FROM public.platform_ledger(p_from, p_to);
+
+  SELECT COALESCE(jsonb_agg(m ORDER BY m->>'month'), '[]'::jsonb) INTO v_monthly
+  FROM (
+    SELECT jsonb_build_object(
+      'month', to_char(paid_at AT TIME ZONE 'America/Santiago', 'YYYY-MM'),
+      'tenantFeesClp', COALESCE(sum(tenant_fee_clp) FILTER (WHERE status <> 'pending'), 0),
+      'ownerCommissionsClp', COALESCE(sum(owner_commission_clp) FILTER (WHERE status <> 'pending'), 0),
+      'discountsClp', COALESCE(sum(discount_clp) FILTER (WHERE status <> 'pending'), 0),
+      'cancellationFeesClp', COALESCE(sum(cancellation_fee_clp), 0),
+      'platformRevenueClp', COALESCE(sum(platform_revenue_clp) FILTER (WHERE status <> 'pending'), 0),
+      'collectedClp', COALESCE(sum(collected_clp), 0),
+      'reservations', count(*)
+    ) AS m
+    FROM public.platform_ledger(p_from, p_to)
+    GROUP BY to_char(paid_at AT TIME ZONE 'America/Santiago', 'YYYY-MM')
+  ) s;
+
+  SELECT COALESCE(jsonb_agg(x ORDER BY (x->>'platformRevenueClp')::numeric DESC), '[]'::jsonb) INTO v_spaces
+  FROM (
+    SELECT jsonb_build_object(
+      'spaceId', space_id, 'spaceTitle', max(space_title), 'ownerName', max(owner_name),
+      'reservations', count(*),
+      'platformRevenueClp', COALESCE(sum(platform_revenue_clp) FILTER (WHERE status <> 'pending'), 0),
+      'ownerNetClp', COALESCE(sum(owner_net_clp), 0)
+    ) AS x
+    FROM public.platform_ledger(p_from, p_to)
+    GROUP BY space_id
+    ORDER BY COALESCE(sum(platform_revenue_clp) FILTER (WHERE status <> 'pending'), 0) DESC
+    LIMIT 10
+  ) s;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(l) ORDER BY l.paid_at DESC), '[]'::jsonb) INTO v_rows
+  FROM (SELECT * FROM public.platform_ledger(p_from, p_to) ORDER BY paid_at DESC LIMIT 500) l;
+
+  SELECT jsonb_build_object(
+    'pendingCount', count(*) FILTER (WHERE status IN ('pending', 'on_hold')),
+    'pendingClp', COALESCE(sum(amount_clp) FILTER (WHERE status IN ('pending', 'on_hold')), 0),
+    'paidClp', COALESCE(sum(amount_clp) FILTER (WHERE status = 'paid'), 0),
+    'items', COALESCE(jsonb_agg(jsonb_build_object(
+        'id', op.id, 'reservationId', op.reservation_id, 'ownerId', op.owner_id,
+        'ownerName', pr.full_name, 'grossClp', op.gross_clp,
+        'ownerCommissionClp', op.owner_commission_clp, 'amountClp', op.amount_clp,
+        'status', op.status, 'transferReference', op.transfer_reference,
+        'paidAt', op.paid_at, 'createdAt', op.created_at)
+      ORDER BY op.created_at DESC) FILTER (WHERE op.status IN ('pending', 'on_hold')), '[]'::jsonb)
+  ) INTO v_payouts
+  FROM public.owner_payouts op
+  LEFT JOIN public.profiles pr ON pr.id = op.owner_id;
+
+  SELECT to_jsonb(s) - 'id' INTO v_settings FROM public.platform_settings s WHERE id;
+
+  RETURN jsonb_build_object('from', p_from, 'to', p_to, 'totals', v_totals, 'monthly', v_monthly,
+                            'topSpaces', v_spaces, 'rows', v_rows, 'payouts', v_payouts,
+                            'settings', v_settings, 'generatedAt', now());
+END;
+$$;
+
+-- ---------- Bitácora de auditoría encadenada (a prueba de alteraciones) ----------
+-- Cada registro guarda el SHA-256 de su contenido más el hash del registro
+-- anterior. Si alguien modifica o borra una fila directamente en la base, la
+-- cadena deja de cuadrar y admin_verify_audit_chain() lo detecta.
+CREATE SEQUENCE IF NOT EXISTS public.audit_logs_seq;
+ALTER TABLE public.audit_logs
+  ADD COLUMN IF NOT EXISTS seq BIGINT,
+  ADD COLUMN IF NOT EXISTS prev_hash TEXT,
+  ADD COLUMN IF NOT EXISTS row_hash TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_logs_seq ON public.audit_logs (seq);
+
+CREATE OR REPLACE FUNCTION public.audit_row_hash(
+  p_prev TEXT, p_id TEXT, p_seq BIGINT, p_ts TIMESTAMPTZ, p_action TEXT, p_user_id TEXT,
+  p_user_email TEXT, p_user_role TEXT, p_severity TEXT, p_ip TEXT, p_details JSONB
+)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT encode(sha256(convert_to(concat_ws('|',
+    COALESCE(p_prev, 'GENESIS'), p_id, p_seq::text,
+    to_char(p_ts AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US'),
+    p_action, p_user_id, p_user_email, p_user_role, p_severity,
+    COALESCE(p_ip, ''), COALESCE(p_details, '{}'::jsonb)::text), 'UTF8')), 'hex');
+$$;
+
+CREATE OR REPLACE FUNCTION public.audit_logs_before_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_prev TEXT;
+BEGIN
+  -- La fecha la fija la base. La IP la informa el backend (p_ip de write_audit)
+  -- o se toma de las cabeceras del request que originó el evento.
+  NEW.ip := COALESCE(NEW.ip, public.request_ip(), 'no disponible');
+  NEW.user_agent := COALESCE(NEW.user_agent, public.request_user_agent());
+  NEW.timestamp := now();
+  -- Encadenamiento: un registro a la vez, en orden.
+  PERFORM pg_advisory_xact_lock(hashtext('spotly_audit_chain'));
+  NEW.seq := nextval('public.audit_logs_seq');
+  SELECT row_hash INTO v_prev FROM public.audit_logs WHERE seq IS NOT NULL ORDER BY seq DESC LIMIT 1;
+  NEW.prev_hash := v_prev;
+  NEW.row_hash := public.audit_row_hash(v_prev, NEW.id, NEW.seq, NEW.timestamp, NEW.action, NEW.user_id,
+                                        NEW.user_email, NEW.user_role, NEW.severity, NEW.ip, NEW.details);
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.admin_verify_audit_chain()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  r RECORD;
+  v_prev TEXT := NULL;
+  v_count BIGINT := 0;
+  v_result JSONB;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  FOR r IN SELECT * FROM public.audit_logs WHERE seq IS NOT NULL ORDER BY seq LOOP
+    v_count := v_count + 1;
+    IF r.prev_hash IS DISTINCT FROM v_prev
+       OR r.row_hash IS DISTINCT FROM public.audit_row_hash(v_prev, r.id, r.seq, r.timestamp, r.action,
+            r.user_id, r.user_email, r.user_role, r.severity, r.ip, r.details) THEN
+      v_result := jsonb_build_object('ok', false, 'checked', v_count, 'brokenSeq', r.seq,
+                                     'brokenId', r.id, 'brokenAt', r.timestamp, 'action', r.action);
+      PERFORM public.write_audit('AUDIT_CHAIN_BROKEN', 'critical', auth.uid()::text, v_result);
+      RETURN v_result;
+    END IF;
+    v_prev := r.row_hash;
+  END LOOP;
+  v_result := jsonb_build_object('ok', true, 'checked', v_count, 'lastHash', v_prev, 'verifiedAt', now());
+  PERFORM public.write_audit('AUDIT_CHAIN_VERIFIED', 'security', auth.uid()::text, v_result);
+  RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.audit_category(p_action TEXT)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT CASE
+    WHEN p_action LIKE 'PAYMENT\_%' OR p_action LIKE 'PAYOUT\_%' OR p_action LIKE 'REFUND\_%'
+      OR p_action LIKE 'WALLET\_%' OR p_action LIKE 'DISCOUNT\_%' THEN 'pagos'
+    WHEN p_action LIKE 'RESERVATION\_%' OR p_action LIKE 'CONTRACT\_%' OR p_action LIKE 'VISIT\_%' THEN 'reservas'
+    WHEN p_action LIKE 'LOGIN\_%' OR p_action LIKE 'USER\_LOGGED\_%' OR p_action LIKE 'PASSWORD\_%'
+      OR p_action LIKE 'SIGNUP\_%' OR p_action LIKE 'USER\_REGISTERED%' OR p_action = 'EMAIL_VERIFIED'
+      OR p_action = 'ACCOUNT_TEMPORARILY_LOCKED' THEN 'accesos'
+    WHEN p_action LIKE 'KYC\_%' THEN 'identidad'
+    WHEN p_action LIKE 'SPACE\_%' THEN 'espacios'
+    WHEN p_action LIKE 'DISPUTE\_%' OR p_action LIKE 'REPORT\_%' THEN 'reclamos'
+    WHEN p_action LIKE 'ADMIN\_%' OR p_action = 'ROLE_CHANGED' OR p_action LIKE 'PLATFORM\_%'
+      OR p_action LIKE 'AUDIT\_%' THEN 'administracion'
+    ELSE 'otros'
+  END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.admin_audit_search(
+  p_from TIMESTAMPTZ DEFAULT NULL,
+  p_to TIMESTAMPTZ DEFAULT NULL,
+  p_severity TEXT DEFAULT NULL,
+  p_category TEXT DEFAULT NULL,
+  p_query TEXT DEFAULT NULL,
+  p_limit INTEGER DEFAULT 50,
+  p_offset INTEGER DEFAULT 0
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_from TIMESTAMPTZ := COALESCE(p_from, now() - interval '30 days');
+  v_to TIMESTAMPTZ := COALESCE(p_to, now());
+  v_q TEXT := NULLIF(trim(COALESCE(p_query, '')), '');
+  v_limit INTEGER := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 500);
+  v_offset INTEGER := GREATEST(COALESCE(p_offset, 0), 0);
+  v_total BIGINT;
+  v_rows JSONB;
+  v_by_sev JSONB;
+  v_by_cat JSONB;
+  v_last24 JSONB;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+
+  CREATE TEMP TABLE IF NOT EXISTS _audit_hits ON COMMIT DROP AS
+    SELECT a.* FROM public.audit_logs a WHERE false;
+  TRUNCATE _audit_hits;
+  INSERT INTO _audit_hits
+  SELECT a.* FROM public.audit_logs a
+  WHERE a.timestamp >= v_from AND a.timestamp <= v_to
+    AND (p_severity IS NULL OR p_severity = '' OR a.severity = p_severity)
+    AND (p_category IS NULL OR p_category = '' OR public.audit_category(a.action) = p_category)
+    AND (v_q IS NULL
+         OR a.action ILIKE '%' || v_q || '%'
+         OR a.user_email ILIKE '%' || v_q || '%'
+         OR a.user_id = v_q
+         OR a.ip ILIKE '%' || v_q || '%'
+         OR a.details::text ILIKE '%' || v_q || '%');
+
+  SELECT count(*) INTO v_total FROM _audit_hits;
+
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+      'id', h.id, 'seq', h.seq, 'timestamp', h.timestamp, 'action', h.action,
+      'category', public.audit_category(h.action), 'severity', h.severity,
+      'userId', h.user_id, 'userEmail', h.user_email, 'userRole', h.user_role,
+      'ip', h.ip, 'userAgent', h.user_agent, 'details', h.details,
+      'rowHash', h.row_hash, 'prevHash', h.prev_hash)
+    ORDER BY h.timestamp DESC, h.seq DESC), '[]'::jsonb) INTO v_rows
+  FROM (SELECT * FROM _audit_hits ORDER BY timestamp DESC, seq DESC NULLS LAST LIMIT v_limit OFFSET v_offset) h;
+
+  SELECT COALESCE(jsonb_object_agg(severity, n), '{}'::jsonb) INTO v_by_sev
+  FROM (SELECT severity, count(*) AS n FROM _audit_hits GROUP BY severity) s;
+  SELECT COALESCE(jsonb_object_agg(cat, n), '{}'::jsonb) INTO v_by_cat
+  FROM (SELECT public.audit_category(action) AS cat, count(*) AS n FROM _audit_hits GROUP BY 1) s;
+
+  SELECT jsonb_build_object(
+    'events', count(*),
+    'critical', count(*) FILTER (WHERE severity = 'critical'),
+    'failedLogins', count(*) FILTER (WHERE action = 'LOGIN_FAILED'),
+    'lockouts', count(*) FILTER (WHERE action = 'ACCOUNT_TEMPORARILY_LOCKED'),
+    'adminActions', count(*) FILTER (WHERE public.audit_category(action) = 'administracion'),
+    'payments', count(*) FILTER (WHERE action = 'PAYMENT_AUTHORIZED')
+  ) INTO v_last24
+  FROM public.audit_logs WHERE timestamp >= now() - interval '24 hours';
+
+  RETURN jsonb_build_object('total', v_total, 'rows', v_rows, 'bySeverity', v_by_sev,
+                            'byCategory', v_by_cat, 'last24h', v_last24,
+                            'from', v_from, 'to', v_to, 'limit', v_limit, 'offset', v_offset);
+END;
+$$;
+
+-- ---------- Permisos de las funciones nuevas ----------
+REVOKE ALL ON FUNCTION public.owner_commission_terms(UUID, TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.complete_finished_reservations(UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.complete_my_finished_reservations() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.complete_my_finished_reservations() TO authenticated;
+REVOKE ALL ON FUNCTION public.admin_mark_payout_paid(TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_mark_payout_paid(TEXT, TEXT) TO authenticated;          -- valida is_admin()
+REVOKE ALL ON FUNCTION public.admin_update_platform_settings(NUMERIC, NUMERIC, DATE, INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_update_platform_settings(NUMERIC, NUMERIC, DATE, INTEGER) TO authenticated;
+REVOKE ALL ON FUNCTION public.admin_finance_report(DATE, DATE) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_finance_report(DATE, DATE) TO authenticated;            -- valida is_admin()
+REVOKE ALL ON FUNCTION public.admin_verify_audit_chain() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_verify_audit_chain() TO authenticated;                  -- valida is_admin()
+REVOKE ALL ON FUNCTION public.admin_audit_search(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_audit_search(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+
+
+-- ==============================================================================
 -- 8. SEGURIDAD POR FILAS (RLS): cada usuario solo ve y modifica lo suyo
 -- ==============================================================================
 ALTER TABLE public.profiles          ENABLE ROW LEVEL SECURITY;
@@ -3330,6 +3946,7 @@ CREATE POLICY "Subida de contratos por usuarios autenticados"
 -- Punto de partida: los clientes (anon, authenticated) no tienen ningún permiso.
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.platform_settings TO anon, authenticated;   -- comisiones vigentes (públicas)
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 -- Visitantes sin sesión: catálogo (sin RUT ni dirección exacta), valoraciones y
