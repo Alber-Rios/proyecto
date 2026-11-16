@@ -1,0 +1,255 @@
+import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Printer, X } from 'lucide-react';
+import { useApp } from '../context/AppContext.tsx';
+import { LEGAL_ENTITY } from '../data/legalEntity.ts';
+import type { PaymentRecord, Reservation } from '../types.ts';
+import { formatRut } from '../utils/formatters.ts';
+
+// Comprobante con formato de boleta térmica (como las del comercio en Chile).
+// No es un DTE: la boleta electrónica real necesita folio y timbre del SII,
+// que se agregan al conectar un emisor (SII, OpenFactura, Bsale, etc.).
+
+type Variant = 'tenant' | 'owner';
+
+const peso = (n: number) => `$ ${Math.round(n).toLocaleString('es-CL')}`;
+const netOf = (gross: number) => Math.round(gross / 1.19);
+const placeholder = (v: string) => (v.startsWith('[') ? '' : v);
+
+function receiptNumber(r: Reservation) {
+  const digits = r.id.replace(/\D/g, '');
+  return (digits.slice(-8) || r.id.slice(-8)).padStart(8, '0');
+}
+
+function fmtDateTime(iso?: string) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  const date = d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const time = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  return `${date} ${time}`;
+}
+
+function nextTuesday(fromIso?: string) {
+  const d = fromIso ? new Date(fromIso.slice(0, 10) + 'T12:00:00') : new Date();
+  const add = ((9 - (d.getDay() || 7)) % 7) || 7;
+  d.setDate(d.getDate() + add);
+  return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function unitsLabel(r: Reservation) {
+  if (r.rentalModality === 'por_hora' && r.hourStart !== undefined && r.hourEnd !== undefined) return { qty: r.hourEnd - r.hourStart, unit: 'h' };
+  if (r.rentalModality === 'mensual') {
+    const qty = r.durationUnits || 1;
+    return { qty, unit: qty === 1 ? 'mes' : 'meses' };
+  }
+  const qty = r.durationUnits || r.totalDays || 1;
+  return { qty, unit: qty === 1 ? 'día' : 'días' };
+}
+
+const Line: React.FC<{ k: React.ReactNode; v: React.ReactNode; strong?: boolean; className?: string }> = ({ k, v, strong, className = '' }) => (
+  <div className={`flex items-baseline justify-between gap-3 ${strong ? 'font-bold' : ''} ${className}`}>
+    <span className="min-w-0">{k}</span>
+    <span className="shrink-0 tabular-nums">{v}</span>
+  </div>
+);
+
+const Rule: React.FC<{ double?: boolean }> = ({ double }) => (
+  <div aria-hidden="true" className={`my-2 border-t border-dashed border-stone-400 ${double ? 'border-b pb-[2px]' : ''}`} />
+);
+
+export const ReceiptPaper: React.FC<{ reservation: Reservation; payment?: PaymentRecord; furnished: boolean; variant: Variant }> = ({
+  reservation: r,
+  payment,
+  furnished,
+  variant,
+}) => {
+  const issuerName = placeholder(LEGAL_ENTITY.name) || 'SPOTLY';
+  const issuerRut = placeholder(LEGAL_ENTITY.rut);
+  const issuerAddress = placeholder(LEGAL_ENTITY.address);
+  const { qty, unit } = unitsLabel(r);
+  const unitPrice = qty > 0 ? Math.round(r.subtotalClp / qty) : r.subtotalClp;
+  const fee = r.platformFeeClp || 0;
+  const discount = r.discountClp || 0;
+  const commission = r.ownerCommissionClp || 0;
+  const commissionPct = Math.round((r.ownerCommissionRate || 0) * 1000) / 10;
+  const paidAt = payment?.transactionDate || r.paidAt || r.confirmedAt || r.createdAt;
+  const refunded = r.refundAmountClp || payment?.refundedAmountClp || 0;
+  const ownerGets = r.subtotalClp - commission;
+
+  return (
+    <article
+      className="receipt-paper mx-auto w-full max-w-[22rem] bg-[#fffdf8] px-5 pb-8 pt-5 font-mono text-[12.5px] leading-[1.45] text-stone-900 shadow-[0_10px_30px_rgba(15,10,25,0.18)]"
+      aria-label={variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación para el propietario'}
+    >
+      <div className="bg-stone-900 py-1.5 text-center text-[17px] font-bold tracking-[0.12em] text-[#fffdf8]">
+        {variant === 'tenant' ? 'RESERVA' : 'LIQUIDACIÓN'}: {receiptNumber(r)}
+      </div>
+
+      <header className="mt-3 text-center uppercase">
+        <p className="text-[13.5px] font-bold">{issuerName}</p>
+        {issuerRut && <p>R.U.T. {issuerRut}</p>}
+        <p>Giro: intermediación de arriendos</p>
+        {issuerAddress && <p className="text-[11px]">{issuerAddress}</p>}
+        <p className="mt-1 text-[13px] font-bold">{variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación de arriendo'}</p>
+      </header>
+
+      <div className="mt-2 space-y-0.5 text-[11.5px]">
+        <Line k="FECHA EMISIÓN:" v={fmtDateTime(paidAt)} />
+        <Line k="RESERVA:" v={<span className="break-all text-[10.5px]">#{r.id}</span>} />
+        {variant === 'tenant' ? (
+          <>
+            <Line k="CLIENTE:" v={<span className="uppercase">{r.tenantName}</span>} />
+            {r.tenantRut && <Line k="RUT:" v={formatRut(r.tenantRut)} />}
+          </>
+        ) : (
+          <>
+            <Line k="PROPIETARIO:" v={<span className="uppercase">{r.ownerName}</span>} />
+            {r.ownerRut && <Line k="RUT:" v={formatRut(r.ownerRut)} />}
+          </>
+        )}
+        <Line k="ESPACIO:" v={<span className="block max-w-[12rem] truncate text-right uppercase">{r.spaceTitle}</span>} />
+        <Line k="FECHAS:" v={r.startDate === r.endDate ? r.startDate : `${r.startDate} → ${r.endDate}`} />
+      </div>
+
+      <Rule double />
+      <div className="flex justify-between text-[11px] font-bold">
+        <span>DESCRIPCIÓN</span>
+        <span>CANT X PRECIO&nbsp;&nbsp;VALOR</span>
+      </div>
+      <Rule double />
+
+      {variant === 'tenant' ? (
+        <div className="space-y-1.5">
+          <div>
+            <p className="uppercase">Arriendo {furnished ? 'amoblado' : 'espacio'}</p>
+            <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
+          </div>
+          <Line k="CARGO SERVICIO SPOTLY 5%" v={peso(fee)} />
+          {r.securityDepositClp > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(r.securityDepositClp)} />}
+          {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
+
+          <div className="pt-2 text-right">
+            <Line k="" v={<span>SUBTOTAL&nbsp;&nbsp;{peso(r.subtotalClp + fee + r.securityDepositClp - discount)}</span>} />
+          </div>
+
+          <Rule />
+          <p className="text-[11px] font-bold">SERVICIO SPOTLY</p>
+          <Line k="TOTAL NETO" v={peso(netOf(fee))} />
+          <Line k="IVA 19%" v={peso(fee - netOf(fee))} />
+          <p className="pt-1 text-[11px] font-bold">ARRIENDO (DEL PROPIETARIO)</p>
+          {furnished ? (
+            <>
+              <Line k="TOTAL NETO" v={peso(netOf(r.subtotalClp))} />
+              <Line k="IVA 19%" v={peso(r.subtotalClp - netOf(r.subtotalClp))} />
+            </>
+          ) : (
+            <Line k="EXENTO DE IVA" v={peso(r.subtotalClp)} />
+          )}
+
+          <Rule />
+          <Line k={<span className="text-[15px]">TOTAL</span>} v={<span className="text-[15px]">{peso(r.totalClp)}</span>} strong />
+          <Line k={payment?.cardLast4 ? `WEBPAY ****${payment.cardLast4}` : 'WEBPAY'} v={peso(payment?.amountClp ?? r.totalClp)} />
+          {payment?.installmentsNumber ? <Line k="CUOTAS" v={payment.installmentsNumber} /> : null}
+          {payment?.authorizationCode && <Line k="COD. AUTORIZACIÓN" v={payment.authorizationCode} />}
+          {payment?.buyOrder && <Line k="ORDEN DE COMPRA" v={<span className="text-[10.5px]">{payment.buyOrder}</span>} />}
+          {refunded > 0 && <Line k="DEVUELTO" v={`-${peso(refunded)}`} strong />}
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <div>
+            <p className="uppercase">Arriendo cobrado</p>
+            <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
+          </div>
+          <Line
+            k={`COMISIÓN SPOTLY ${commissionPct}%`.replace('.', ',')}
+            v={commission ? `-${peso(commission)}` : peso(0)}
+          />
+          {commission > 0 && (
+            <div className="pl-2 text-[11px] text-stone-600">
+              <Line k="NETO" v={peso(netOf(commission))} />
+              <Line k="IVA 19% INCLUIDO" v={peso(commission - netOf(commission))} />
+            </div>
+          )}
+          {!commission && <p className="pl-2 text-[11px] text-stone-600">SIN COMISIÓN ({(r.ownerCommissionReason || 'lanzamiento').toUpperCase()})</p>}
+          {furnished && (
+            <p className="pt-1 text-[11px]">
+              IVA DEL ARRIENDO AMOBLADO {peso(r.subtotalClp - netOf(r.subtotalClp))}: LO DECLARAS TÚ AL SII.
+            </p>
+          )}
+          <Rule />
+          <Line k={<span className="text-[15px]">A DEPOSITAR</span>} v={<span className="text-[15px]">{peso(ownerGets)}</span>} strong />
+          <Line k="DEPÓSITO" v={r.status === 'completed' ? `MARTES ${nextTuesday(r.endDate)}` : 'AL TERMINAR EL ARRIENDO'} />
+          {r.securityDepositClp > 0 && <Line k="GARANTÍA EN CUSTODIA" v={peso(r.securityDepositClp)} />}
+        </div>
+      )}
+
+      <div className="mt-5 flex min-h-[4.5rem] items-center justify-center border-2 border-dashed border-stone-400 px-3 text-center text-[10.5px] uppercase text-stone-600">
+        Aquí irá el timbre electrónico S.I.I. cuando Spotly emita boletas electrónicas
+      </div>
+      <p className="mt-3 text-center text-[10.5px] uppercase">
+        Este comprobante no reemplaza la boleta electrónica del SII
+      </p>
+      <p className="mt-2 text-center text-[11px]">Gracias por usar Spotly</p>
+    </article>
+  );
+};
+
+export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: Variant; onClose: () => void }> = ({ reservation, variant, onClose }) => {
+  const { payments, spaces } = useApp();
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const payment = payments.find(
+    (p) => p.reservationId === reservation.id && ['authorized', 'refunded', 'partially_refunded'].includes(p.status),
+  );
+  const furnished = Boolean(spaces.find((s) => s.id === reservation.spaceId)?.isFurnished);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    document.body.classList.add('receipt-open');
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.classList.remove('receipt-open');
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="receipt-modal fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-slate-950/70 px-4 py-6 backdrop-blur-xs sm:py-10"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onClick={onClose}
+    >
+      <div className="mx-auto flex max-w-[24rem] flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+        <div className="receipt-actions flex items-center justify-between gap-2">
+          <h2 id={titleId} className="text-sm font-bold text-white">
+            {variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación del arriendo'}
+          </h2>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-white px-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.97] cursor-pointer"
+            >
+              <Printer className="h-4 w-4" aria-hidden="true" /> Imprimir o PDF
+            </button>
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-white transition hover:bg-white/25 cursor-pointer"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <ReceiptPaper reservation={reservation} payment={payment} furnished={furnished} variant={variant} />
+      </div>
+    </div>,
+    document.body,
+  );
+};

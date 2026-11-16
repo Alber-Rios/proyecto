@@ -8,6 +8,8 @@ import { getReviewsByTenant } from '../lib/dataAccess.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatHourRange, formatRut, formatUnits } from '../utils/formatters.ts';
 import { ContractModal } from '../components/ContractModal.tsx';
+import { PaymentReceiptModal } from '../components/PaymentReceipt.tsx';
+import { wasPaid } from '../lib/receipts.ts';
 import { DigitalContract, Reservation, Review } from '../types.ts';
 import {
   downloadContractDocument,
@@ -29,6 +31,7 @@ import {
   X,
   CreditCard,
   Clock,
+  Receipt,
 } from 'lucide-react';
 
 interface TenantReservationsPageProps {
@@ -74,6 +77,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
   const [showClosed, setShowClosed] = useState(false);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState<Reservation | null>(null);
+  const [receiptFor, setReceiptFor] = useState<Reservation | null>(null);
   const [disputeReservationId, setDisputeReservationId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
 
@@ -351,6 +355,17 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         <Eye className="w-3.5 h-3.5 text-slate-500 shrink-0" />
         Ver reserva
       </button>
+
+      {wasPaid(booking) && (
+        <button
+          type="button"
+          onClick={() => setReceiptFor(booking)}
+          className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+        >
+          <Receipt className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+          Comprobante
+        </button>
+      )}
 
       <button
         onClick={() => handleOpenContract(booking)}
@@ -654,6 +669,8 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
         </div>
       )}
       </TabPanel>
+
+      {receiptFor && <PaymentReceiptModal reservation={receiptFor} variant="tenant" onClose={() => setReceiptFor(null)} />}
 
       {/* Modal de Detalle Completo de Reserva */}
       {selectedBookingDetail && (

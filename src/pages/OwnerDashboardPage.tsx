@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { OwnerEarningsPanel } from '../components/dashboard/OwnerEarningsPanel.tsx';
 import { Space, Reservation, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
+import { PaymentReceiptModal } from '../components/PaymentReceipt.tsx';
+import { wasPaid } from '../lib/receipts.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatHourRange, formatRut, formatUnits, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
 import { useChileNow } from '../hooks/useChileNow.ts';
@@ -72,6 +74,7 @@ import {
   Lock,
   Building2,
   Loader2,
+  Receipt,
 } from 'lucide-react';
 
 interface OwnerDashboardPageProps {
@@ -107,6 +110,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
+  const [receiptFor, setReceiptFor] = useState<Reservation | null>(null);
 
   // Estados para selector de espacio y calendario interactivo
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>('');
@@ -1119,6 +1123,16 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        {wasPaid(res) && (
+                          <button
+                            type="button"
+                            onClick={() => setReceiptFor(res)}
+                            className="px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Receipt className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
+                            <span>Liquidación</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => downloadReservationDocument(res)}
                           className="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
@@ -2146,6 +2160,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
           </div>
         </div>
       )}
+
+      {receiptFor && <PaymentReceiptModal reservation={receiptFor} variant="owner" onClose={() => setReceiptFor(null)} />}
 
       {/* Modal para visualizar contratos */}
       <ContractModal

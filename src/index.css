@@ -120,3 +120,20 @@ div.fixed.inset-0:is([class*="bg-slate-900/"], [class*="bg-black/"], [class*="bg
 
 /* Botones: respuesta inmediata al presionar */
 button:not(:disabled):active { scale: 0.97; }
+
+/* Comprobante tipo boleta térmica: borde dentado abajo */
+.receipt-paper {
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat,
+    radial-gradient(6px at 50% 100%, transparent 98%, #000) bottom / 12px 8px repeat-x;
+  mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat,
+    radial-gradient(6px at 50% 100%, transparent 98%, #000) bottom / 12px 8px repeat-x;
+}
+
+/* Al imprimir con el comprobante abierto, solo sale el comprobante */
+@media print {
+  body.receipt-open > *:not(.receipt-modal) { display: none !important; }
+  body.receipt-open .receipt-modal { position: static !important; background: none !important; backdrop-filter: none !important; padding: 0 !important; overflow: visible !important; }
+  body.receipt-open .receipt-actions { display: none !important; }
+  body.receipt-open .receipt-paper { box-shadow: none !important; -webkit-mask: none; mask: none; max-width: 80mm; }
+  @page { margin: 8mm; }
+}
