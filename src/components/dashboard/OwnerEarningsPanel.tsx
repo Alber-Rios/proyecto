@@ -362,8 +362,9 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
             {furnishedCount > 0
               ? `Marcaste ${furnishedCount === 1 ? '1 espacio' : `${furnishedCount} espacios`} como amoblado o equipado. `
               : ''}
-            El arriendo de un espacio amoblado o equipado puede estar afecto a IVA (19 %). Si corresponde, tu precio debe incluirlo y tú lo
-            declaras y emites la boleta o factura al arrendatario.
+            El arriendo de un espacio amoblado o equipado lleva IVA (19 %): tu precio debe incluirlo, y tú lo declaras y emites la boleta o
+            factura al arrendatario. El 19 % no va sobre todo el arriendo: antes le restas la proporción del 11 % anual del avalúo fiscal del
+            inmueble.
           </p>
           <p className="text-sm text-slate-700">Spotly emite boleta solo por su comisión.</p>
           <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">

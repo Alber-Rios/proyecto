@@ -704,9 +704,10 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 <span className="text-xs font-bold text-slate-800">¿Tu espacio es amoblado o equipado?</span>
               </label>
               <p id="ps-furnished-help" className="mt-1.5 pl-8 text-xs text-slate-600">
-                Por ejemplo, una oficina con escritorios o una cocina con equipos. En Chile ese arriendo puede llevar IVA (19 %): si te
-                corresponde, el precio que publiques debe incluirlo, porque el arrendatario ve el precio final. Tú declaras ese IVA; Spotly
-                solo emite boleta por su comisión. Ante dudas, consulta con tu contador o el SII.
+                Por ejemplo, una oficina con escritorios o una cocina con equipos. Ese arriendo lleva IVA (19 %) y el precio que publiques
+                debe incluirlo, porque el arrendatario ve el precio final. El IVA no se calcula sobre todo el arriendo: a la renta le restas la
+                proporción del 11 % anual del avalúo fiscal del inmueble, y sobre el resto aplicas el 19 %. Tú lo declaras al SII y emites el
+                documento; Spotly solo emite boleta por su comisión. Ante dudas, consulta con tu contador.
               </p>
             </div>
 

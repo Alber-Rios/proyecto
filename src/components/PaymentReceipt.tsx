@@ -140,8 +140,8 @@ export const ReceiptPaper: React.FC<{ reservation: Reservation; payment?: Paymen
           <p className="pt-1 text-[11px] font-bold">ARRIENDO (DEL PROPIETARIO)</p>
           {furnished ? (
             <>
-              <Line k="TOTAL NETO" v={peso(netOf(r.subtotalClp))} />
-              <Line k="IVA 19%" v={peso(r.subtotalClp - netOf(r.subtotalClp))} />
+              <Line k="AFECTO A IVA (INCLUIDO)" v={peso(r.subtotalClp)} />
+              <p className="text-[10.5px] text-stone-600">EL PROPIETARIO CALCULA Y DECLARA ESTE IVA Y EMITE SU DOCUMENTO.</p>
             </>
           ) : (
             <Line k="EXENTO DE IVA" v={peso(r.subtotalClp)} />
@@ -174,7 +174,7 @@ export const ReceiptPaper: React.FC<{ reservation: Reservation; payment?: Paymen
           {!commission && <p className="pl-2 text-[11px] text-stone-600">SIN COMISIÓN ({(r.ownerCommissionReason || 'lanzamiento').toUpperCase()})</p>}
           {furnished && (
             <p className="pt-1 text-[11px]">
-              IVA DEL ARRIENDO AMOBLADO {peso(r.subtotalClp - netOf(r.subtotalClp))}: LO DECLARAS TÚ AL SII.
+              ARRIENDO AMOBLADO: INCLUYE IVA. TÚ LO DECLARAS AL SII. LA BASE ES EL ARRIENDO MENOS LA PROPORCIÓN DEL 11 % ANUAL DEL AVALÚO FISCAL.
             </p>
           )}
           <Rule />
