@@ -3038,6 +3038,11 @@ ALTER TABLE public.spaces
   ADD COLUMN IF NOT EXISTS is_furnished BOOLEAN NOT NULL DEFAULT false;
 COMMENT ON COLUMN public.spaces.is_furnished IS
   'Amoblado o equipado: su arriendo puede estar afecto a IVA (lo declara el anfitrión)';
+ALTER TABLE public.spaces
+  ADD COLUMN IF NOT EXISTS avaluo_fiscal_clp NUMERIC(14,0)
+    CHECK (avaluo_fiscal_clp IS NULL OR avaluo_fiscal_clp >= 0);
+COMMENT ON COLUMN public.spaces.avaluo_fiscal_clp IS
+  'Avalúo fiscal vigente (opcional). Con él el comprobante estima el IVA del arriendo amoblado: base = renta neta − proporción del 11 % anual del avalúo (art. 17 DL 825)';
 
 -- ---------- Tasa de comisión del anfitrión ----------
 CREATE OR REPLACE FUNCTION public.owner_commission_terms(p_owner UUID, p_price_unit TEXT)
@@ -4435,7 +4440,7 @@ GRANT SELECT (
   price_per_day, price_per_hour, price_per_month, capacity, surface_m2, amenities,
   rules, opening_hours, security_deposit, images, is_verified, status, rating,
   reviews_count, min_booking_days, min_booking_hours, instant_booking, created_at, updated_at,
-  is_furnished
+  is_furnished, avaluo_fiscal_clp
 ) ON public.spaces TO anon, authenticated;
 GRANT SELECT ON public.reviews TO anon;
 GRANT INSERT (space_id, viewer_id) ON public.space_views TO anon, authenticated;

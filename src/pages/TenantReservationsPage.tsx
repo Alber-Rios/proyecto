@@ -744,7 +744,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between py-1 text-slate-600">
-                  <span>Comisión Spotly (5 %)</span>
+                  <span>Cargo de servicio Spotly (5 %)</span>
                   <span className="font-semibold text-slate-900">
                     {formatClp(selectedBookingDetail.platformFeeClp)}
                   </span>

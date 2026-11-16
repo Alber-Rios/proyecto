@@ -127,6 +127,8 @@ export interface Space {
   securityDeposit?: number;
   /** Amoblado o equipado: su arriendo puede estar afecto a IVA (lo declara el anfitrión). */
   isFurnished?: boolean;
+  /** Avalúo fiscal vigente (opcional) para estimar el IVA del arriendo amoblado. */
+  avaluoFiscalClp?: number;
   images: string[];
   isVerified: boolean;
   status: 'active' | 'pending_approval' | 'paused' | 'deleted';

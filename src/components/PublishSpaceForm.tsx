@@ -175,6 +175,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
   const [surface, setSurface] = useState<number | ''>(initial?.surfaceM2 && initial.surfaceM2 > 1 ? initial.surfaceM2 : '');
   const [description, setDescription] = useState(initial?.description || '');
   const [isFurnished, setIsFurnished] = useState(Boolean(initial?.isFurnished));
+  const [avaluo, setAvaluo] = useState(initial?.avaluoFiscalClp ? String(initial.avaluoFiscalClp) : '');
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities || []);
   const [rules, setRules] = useState<string[]>(initial?.rules || []);
   const [showExtras, setShowExtras] = useState(Boolean(initial && ((initial.amenities?.length || 0) + (initial.rules?.length || 0) > 0)));
@@ -285,6 +286,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
       amenities,
       rules,
       isFurnished,
+      avaluoFiscalClp: isFurnished && Number(avaluo) > 0 ? Number(avaluo) : 0,
       openingHours: scheduleText,
       securityDeposit: byMonth && requireDeposit ? Number(deposit) : 0,
       images,
@@ -709,6 +711,29 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 proporción del 11 % anual del avalúo fiscal del inmueble, y sobre el resto aplicas el 19 %. Tú lo declaras al SII y emites el
                 documento; Spotly solo emite boleta por su comisión. Ante dudas, consulta con tu contador.
               </p>
+              {isFurnished && (
+                <div className="mt-3 pl-8">
+                  <label htmlFor="ps-avaluo" className="block text-xs font-bold text-slate-800">
+                    Avalúo fiscal del inmueble <span className="font-normal text-slate-500">(opcional)</span>
+                  </label>
+                  <div className="relative mt-1 max-w-xs">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
+                    <input
+                      id="ps-avaluo"
+                      inputMode="numeric"
+                      value={avaluo ? Number(avaluo).toLocaleString('es-CL') : ''}
+                      onChange={(e) => setAvaluo(e.target.value.replace(/\D/g, '').slice(0, 13))}
+                      placeholder="120.000.000"
+                      aria-describedby="ps-avaluo-help"
+                      className={`${inputClass} pl-7 tabular-nums`}
+                    />
+                  </div>
+                  <p id="ps-avaluo-help" className="mt-1 text-xs text-slate-600">
+                    Está en tu certificado de avalúo fiscal del SII. Con él, cada comprobante muestra el detalle del IVA de tu arriendo (renta neta,
+                    rebaja, base imponible e IVA).
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-slate-200">

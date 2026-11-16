@@ -60,8 +60,13 @@ export const SPACE_PUBLIC_COLUMNS = [
   'space_environment', 'rental_modality', 'enabled_modalities', 'price_unit', 'commune', 'region',
   'price_per_day', 'price_per_hour', 'price_per_month', 'capacity', 'surface_m2', 'amenities',
   'rules', 'opening_hours', 'security_deposit', 'images', 'is_verified', 'status', 'rating',
-  'reviews_count', 'min_booking_days', 'min_booking_hours', 'instant_booking', 'created_at', 'is_furnished',
+  'reviews_count', 'min_booking_days', 'min_booking_hours', 'instant_booking', 'created_at', 'is_furnished', 'avaluo_fiscal_clp',
 ].join(',');
+
+// Bases creadas antes de agregar el avalúo fiscal: se reintenta sin esa columna
+// para que el catálogo y las publicaciones sigan funcionando.
+const LEGACY_SPACE_COLUMNS = SPACE_PUBLIC_COLUMNS.replace(',avaluo_fiscal_clp', '');
+const missingAvaluo = (e: { message?: string } | null) => Boolean(e && /avaluo_fiscal_clp/.test(e.message || ''));
 
 export async function getSpacePrivateDetails(): Promise<Record<string, { ownerRut: string; address: string }>> {
   if (!isSupabaseConfigured()) return {};
@@ -79,12 +84,15 @@ export async function getSpacePrivateDetails(): Promise<Record<string, { ownerRu
 
 export async function getSpacesFromDb(): Promise<Space[]> {
   if (!isSupabaseConfigured()) return [];
-  const { data, error } = await supabase
-    .from('spaces')
-    .select(SPACE_PUBLIC_COLUMNS)
-    // Las publicaciones eliminadas (archivadas por tener historial) no se muestran.
-    .neq('status', 'deleted')
-    .order('created_at', { ascending: false });
+  const query = (cols: string) =>
+    supabase
+      .from('spaces')
+      .select(cols)
+      // Las publicaciones eliminadas (archivadas por tener historial) no se muestran.
+      .neq('status', 'deleted')
+      .order('created_at', { ascending: false });
+  let { data, error } = await query(SPACE_PUBLIC_COLUMNS);
+  if (missingAvaluo(error)) ({ data, error } = await query(LEGACY_SPACE_COLUMNS));
 
   if (error) {
     console.error('Error al consultar espacios en Supabase:', error.message);
@@ -117,6 +125,7 @@ export async function getSpacesFromDb(): Promise<Space[]> {
     openingHours: row.opening_hours || '',
     securityDeposit: Number(row.security_deposit || 0),
     isFurnished: Boolean(row.is_furnished),
+    avaluoFiscalClp: row.avaluo_fiscal_clp == null ? undefined : Number(row.avaluo_fiscal_clp),
     images: row.images || [],
     isVerified: row.is_verified,
     status: row.status,
@@ -157,6 +166,7 @@ export async function insertSpaceToDb(space: Space): Promise<{ success: boolean;
     opening_hours: space.openingHours,
     security_deposit: space.securityDeposit || 0,
     is_furnished: Boolean(space.isFurnished),
+    avaluo_fiscal_clp: space.isFurnished && space.avaluoFiscalClp ? space.avaluoFiscalClp : null,
     images: space.images,
     is_verified: space.isVerified,
     status: space.status,
@@ -174,7 +184,11 @@ export async function insertSpaceToDb(space: Space): Promise<{ success: boolean;
     dbRow.id = space.id;
   }
 
-  const { data, error } = await supabase.from('spaces').insert([dbRow]).select(SPACE_PUBLIC_COLUMNS).single();
+  let { data, error } = await supabase.from('spaces').insert([dbRow]).select(SPACE_PUBLIC_COLUMNS).single();
+  if (missingAvaluo(error)) {
+    delete dbRow.avaluo_fiscal_clp;
+    ({ data, error } = await supabase.from('spaces').insert([dbRow]).select(LEGACY_SPACE_COLUMNS).single());
+  }
   if (error) {
     console.error('Error al insertar espacio en Supabase:', error.message);
     return { success: false, error: error.message };
@@ -204,6 +218,7 @@ export async function updateSpaceInDb(id: string, updates: Partial<Space>): Prom
   if (updates.amenities !== undefined) dbRow.amenities = updates.amenities;
   if (updates.rules !== undefined) dbRow.rules = updates.rules;
   if (updates.isFurnished !== undefined) dbRow.is_furnished = updates.isFurnished;
+  if (updates.avaluoFiscalClp !== undefined) dbRow.avaluo_fiscal_clp = updates.avaluoFiscalClp || null;
   if (updates.openingHours !== undefined) dbRow.opening_hours = updates.openingHours;
   if (updates.securityDeposit !== undefined) dbRow.security_deposit = updates.securityDeposit;
   if (updates.images !== undefined) dbRow.images = updates.images;
@@ -213,7 +228,11 @@ export async function updateSpaceInDb(id: string, updates: Partial<Space>): Prom
   if (updates.minBookingHours !== undefined) dbRow.min_booking_hours = updates.minBookingHours;
   if (updates.minBookingDays !== undefined) dbRow.min_booking_days = updates.minBookingDays;
 
-  const { error } = await supabase.from('spaces').update(dbRow).eq('id', id);
+  let { error } = await supabase.from('spaces').update(dbRow).eq('id', id);
+  if (missingAvaluo(error)) {
+    delete dbRow.avaluo_fiscal_clp;
+    ({ error } = Object.keys(dbRow).length ? await supabase.from('spaces').update(dbRow).eq('id', id) : { error: null });
+  }
   if (error) {
     console.error('Error al actualizar espacio en Supabase:', error.message);
     return { success: false, error: error.message };
