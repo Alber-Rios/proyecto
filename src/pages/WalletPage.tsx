@@ -4,6 +4,8 @@ import { AlertCircle, CheckCircle2, CreditCard, Info, Loader2, Plus, ShieldCheck
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp } from '../utils/formatters.ts';
 import type { PaymentRecord } from '../types.ts';
+import { BankAccountCard } from '../components/BankAccountCard.tsx';
+import { getMyRefundTransfers, type RefundTransfer } from '../lib/financeApi.ts';
 
 interface WalletPageProps {
   onOpenAuth: (mode: 'login' | 'register', notice?: string) => void;
@@ -34,6 +36,10 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [refunds, setRefunds] = useState<RefundTransfer[]>([]);
+  const loadRefunds = () => void getMyRefundTransfers().then(setRefunds);
+  useEffect(loadRefunds, [currentUser?.id]);
+  const waitingData = refunds.filter((r) => r.status === 'awaiting_data');
 
   useEffect(() => {
     const result = searchParams.get('tarjeta');
@@ -119,6 +125,60 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
         <div role="alert" className="p-3.5 rounded-2xl border bg-rose-50 border-rose-200 text-rose-800 text-sm font-semibold">
           {error}
         </div>
+      )}
+
+      {waitingData.length > 0 && (
+        <div role="status" className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-bold">
+            Tienes {waitingData.length === 1 ? 'una devolución' : `${waitingData.length} devoluciones`} de{' '}
+            {formatClp(waitingData.reduce((n, r) => n + r.amountClp, 0))} esperando tus datos bancarios
+          </p>
+          <p>No pudimos devolverla a tu tarjeta. Completa tu cuenta aquí abajo y te la transferimos.</p>
+        </div>
+      )}
+
+      <BankAccountCard
+        userId={currentUser.id}
+        defaultName={currentUser.fullName}
+        defaultRut={currentUser.rut}
+        defaultEmail={currentUser.email}
+        highlight={waitingData.length > 0}
+        purpose={
+          currentUser.role === 'owner' || currentUser.ownerTermsAccepted
+            ? 'Aquí depositamos cada martes lo que ganaste con tus arriendos terminados. También la usamos si alguna devolución no puede volver a tu tarjeta.'
+            : 'La usamos solo si una devolución no puede volver a tu tarjeta.'
+        }
+        onSaved={loadRefunds}
+      />
+
+      {refunds.length > 0 && (
+        <section className="space-y-2" aria-labelledby="mis-devoluciones">
+          <h2 id="mis-devoluciones" className="text-sm font-bold text-slate-900">Devoluciones por transferencia</h2>
+          <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+            {refunds.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                <span>
+                  <span className="block font-semibold text-slate-900">{formatClp(r.amountClp)}</span>
+                  <span className="text-xs text-slate-500">
+                    Reserva {r.reservationId} · {new Date(r.createdAt).toLocaleDateString('es-CL')}
+                    {r.transferReference ? ` · comprobante ${r.transferReference}` : ''}
+                  </span>
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    r.status === 'paid'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : r.status === 'awaiting_data'
+                        ? 'bg-amber-100 text-amber-900'
+                        : 'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  {r.status === 'paid' ? 'Transferida' : r.status === 'awaiting_data' ? 'Faltan tus datos' : r.status === 'pending' ? 'Por transferir' : 'Anulada'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="space-y-3" aria-labelledby="mis-tarjetas">

@@ -177,13 +177,15 @@ export interface OwnerPayout {
   transferReference: string | null;
   paidAt: string | null;
   createdAt: string;
+  /** Martes en que se deposita. */
+  scheduledFor: string | null;
 }
 
 export async function getMyPayouts(): Promise<OwnerPayout[]> {
   if (!isSupabaseConfigured()) return [];
   const { data, error } = await supabase
     .from('owner_payouts')
-    .select('id, reservation_id, gross_clp, owner_commission_clp, amount_clp, status, transfer_reference, paid_at, created_at')
+    .select('id, reservation_id, gross_clp, owner_commission_clp, amount_clp, status, transfer_reference, paid_at, created_at, scheduled_for')
     .order('created_at', { ascending: false })
     .limit(500);
   if (error) return [];
@@ -197,7 +199,213 @@ export async function getMyPayouts(): Promise<OwnerPayout[]> {
     transferReference: p.transfer_reference,
     paidAt: p.paid_at,
     createdAt: p.created_at,
+    scheduledFor: p.scheduled_for ?? null,
   }));
+}
+
+// ---------- Cuenta bancaria (propietario: depósitos · arrendatario: devoluciones) ----------
+
+export type BankAccountType = 'corriente' | 'vista' | 'ahorro' | 'cuenta_rut';
+export const BANK_ACCOUNT_TYPES: { id: BankAccountType; label: string }[] = [
+  { id: 'cuenta_rut', label: 'CuentaRUT' },
+  { id: 'vista', label: 'Cuenta vista' },
+  { id: 'corriente', label: 'Cuenta corriente' },
+  { id: 'ahorro', label: 'Cuenta de ahorro' },
+];
+export const CHILE_BANKS = [
+  'BancoEstado', 'Banco de Chile / Edwards', 'Santander', 'BCI / MACH', 'Scotiabank', 'Itaú', 'Banco Security',
+  'Banco BICE', 'Banco Falabella', 'Banco Ripley', 'Banco Consorcio', 'Banco Internacional', 'HSBC',
+  'Coopeuch', 'Tenpo', 'Mercado Pago', 'Prepago Los Héroes', 'Otro',
+];
+
+export interface BankAccount {
+  holderName: string;
+  holderRut: string;
+  bank: string;
+  accountType: BankAccountType;
+  accountNumber: string;
+  email: string | null;
+  updatedAt?: string;
+}
+
+const bankFromRow = (b: any): BankAccount => ({
+  holderName: b.holder_name ?? b.holderName,
+  holderRut: b.holder_rut ?? b.holderRut,
+  bank: b.bank,
+  accountType: b.account_type ?? b.accountType,
+  accountNumber: b.account_number ?? b.accountNumber,
+  email: b.email ?? null,
+  updatedAt: b.updated_at,
+});
+
+export async function getMyBankAccount(userId: string): Promise<BankAccount | null> {
+  if (!isSupabaseConfigured()) return null;
+  const { data, error } = await supabase.from('bank_accounts').select('*').eq('user_id', userId).maybeSingle();
+  if (error || !data) return null;
+  return bankFromRow(data);
+}
+
+export async function saveMyBankAccount(userId: string, b: BankAccount): Promise<BankAccount> {
+  const row = {
+    user_id: userId,
+    holder_name: b.holderName,
+    holder_rut: b.holderRut,
+    bank: b.bank,
+    account_type: b.accountType,
+    account_number: b.accountNumber,
+    email: b.email || null,
+  };
+  const { data, error } = await supabase.from('bank_accounts').upsert(row, { onConflict: 'user_id' }).select('*').single();
+  if (error) {
+    if (/does not exist|schema cache/i.test(error.message)) throw new Error('Falta actualizar la base: ejecuta supabase/reset-and-setup.sql en Supabase.');
+    throw new Error(error.message);
+  }
+  return bankFromRow(data);
+}
+
+export async function deleteMyBankAccount(userId: string): Promise<void> {
+  const { error } = await supabase.from('bank_accounts').delete().eq('user_id', userId);
+  if (error) throw new Error(error.message);
+}
+
+/** Muestra solo los 4 últimos dígitos. */
+export const maskAccount = (n: string) => (n.length <= 4 ? n : `•••• ${n.slice(-4)}`);
+export const accountTypeLabel = (t: string) => BANK_ACCOUNT_TYPES.find((x) => x.id === t)?.label || t;
+
+// ---------- Devoluciones por transferencia ----------
+
+export type RefundTransferStatus = 'awaiting_data' | 'pending' | 'paid' | 'cancelled';
+
+export interface RefundTransfer {
+  id: string;
+  reservationId: string;
+  amountClp: number;
+  reason: string | null;
+  status: RefundTransferStatus;
+  transferReference: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export async function getMyRefundTransfers(): Promise<RefundTransfer[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabase
+    .from('refund_transfers')
+    .select('id, reservation_id, amount_clp, reason, status, transfer_reference, paid_at, created_at')
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return (data || []).map((t: any) => ({
+    id: t.id,
+    reservationId: t.reservation_id,
+    amountClp: num(t.amount_clp),
+    reason: t.reason,
+    status: t.status,
+    transferReference: t.transfer_reference,
+    paidAt: t.paid_at,
+    createdAt: t.created_at,
+  }));
+}
+
+export interface AdminRefundTransfer extends RefundTransfer {
+  tenantName: string;
+  tenantEmail: string;
+  spaceTitle: string | null;
+  bank: BankAccount | null;
+}
+export interface RefundCandidate {
+  reservationId: string;
+  tenantName: string;
+  spaceTitle: string | null;
+  amountClp: number;
+  cancelledAt: string | null;
+}
+
+export async function getRefundTransfers(): Promise<{ items: AdminRefundTransfer[]; candidates: RefundCandidate[] }> {
+  const { data, error } = await supabase.rpc('admin_refund_transfers');
+  if (error) throw new Error(error.message);
+  const d = (data || {}) as any;
+  return {
+    items: (d.items || []).map((t: any) => ({
+      id: t.id,
+      reservationId: t.reservationId,
+      amountClp: num(t.amountClp),
+      reason: t.reason,
+      status: t.status,
+      transferReference: t.transferReference,
+      paidAt: t.paidAt,
+      createdAt: t.createdAt,
+      tenantName: t.tenantName,
+      tenantEmail: t.tenantEmail,
+      spaceTitle: t.spaceTitle,
+      bank: t.bank ? bankFromRow(t.bank) : null,
+    })),
+    candidates: (d.candidates || []).map((c: any) => ({ ...c, amountClp: num(c.amountClp) })),
+  };
+}
+
+export async function requestRefundTransfer(reservationId: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc('request_refund_transfer', { p_reservation_id: reservationId, p_reason: reason });
+  if (error) throw new Error(error.message);
+}
+
+export async function markRefundTransferPaid(id: string, reference: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_mark_refund_transfer_paid', { p_id: id, p_reference: reference });
+  if (error) throw new Error(error.message);
+}
+
+// ---------- Depósitos de los martes (admin) ----------
+
+export interface WeekOwner {
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+  totalClp: number;
+  count: number;
+  overdue: boolean;
+  bank: BankAccount | null;
+  items: { id: string; reservationId: string; spaceTitle: string | null; grossClp: number; ownerCommissionClp: number; amountClp: number; scheduledFor: string }[];
+}
+export interface PayoutWeek {
+  week: string;
+  cutoff: string;
+  owners: WeekOwner[];
+  onHold: { id: string; reservationId: string; ownerName: string; amountClp: number }[];
+  upcomingClp: number;
+  history: { week: string | null; ownerName: string; totalClp: number; count: number; reference: string | null; paidAt: string }[];
+}
+
+export async function getPayoutWeek(week?: string): Promise<PayoutWeek> {
+  const { data, error } = await supabase.rpc('admin_payout_week', { p_week: week || null });
+  if (error) throw new Error(error.message);
+  const d = (data || {}) as any;
+  return {
+    week: d.week,
+    cutoff: d.cutoff,
+    owners: (d.owners || []).map((o: any) => ({
+      ...o,
+      totalClp: num(o.totalClp),
+      bank: o.bank ? bankFromRow(o.bank) : null,
+      items: (o.items || []).map((i: any) => ({ ...i, grossClp: num(i.grossClp), ownerCommissionClp: num(i.ownerCommissionClp), amountClp: num(i.amountClp) })),
+    })),
+    onHold: (d.onHold || []).map((h: any) => ({ ...h, amountClp: num(h.amountClp) })),
+    upcomingClp: num(d.upcomingClp),
+    history: (d.history || []).map((h: any) => ({ ...h, totalClp: num(h.totalClp) })),
+  };
+}
+
+export async function payOwnerWeek(ownerId: string, week: string, reference: string): Promise<{ count: number; amountClp: number }> {
+  const { data, error } = await supabase.rpc('admin_pay_owner_week', { p_owner: ownerId, p_week: week, p_reference: reference });
+  if (error) throw new Error(error.message);
+  return { count: Number((data as any)?.count || 0), amountClp: num((data as any)?.amountClp) };
+}
+
+/** Próximo martes de depósito (hoy si es martes) en formato AAAA-MM-DD, hora de Chile. */
+export function nextTuesdayIso(todayIso: string): string {
+  const d = new Date(`${todayIso}T12:00:00`);
+  const dow = d.getDay(); // 0 domingo … 2 martes
+  const add = dow === 2 ? 0 : (9 - dow) % 7;
+  d.setDate(d.getDate() + add);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // ---------- Auditoría (admin) ----------

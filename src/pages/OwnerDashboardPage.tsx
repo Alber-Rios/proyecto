@@ -1238,7 +1238,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
 
       {/* Pestaña: Ganancias */}
       {activeTab === 'finances' && (
-        <OwnerEarningsPanel reservations={myReceivedBookings} spaces={mySpaces} currentUser={currentUser} />
+        <OwnerEarningsPanel reservations={myReceivedBookings} spaces={mySpaces} currentUser={currentUser} onGoWallet={() => setActiveTab('wallet')} />
       )}
 
       {/* Pestaña: Calendario y Disponibilidad (Layout bien organizado y sin desbordes) */}

@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, Info, Percent, Wallet, ArrowDownToLine, Clock } from 'lucide-react';
+import { Download, Info, Percent, Wallet, ArrowDownToLine, Clock, CalendarClock } from 'lucide-react';
 import type { Reservation, Space, UserProfile } from '../../types.ts';
 import { formatClp, formatRut, getTodayIso } from '../../utils/formatters.ts';
 import { commissionLabel, reservationLedger } from '../../utils/ledger.ts';
 import {
   DEFAULT_PLATFORM_SETTINGS,
   getMyPayouts,
+  getMyBankAccount,
+  nextTuesdayIso,
   getPlatformSettings,
   type OwnerPayout,
   type PlatformSettings,
@@ -17,6 +19,8 @@ interface Props {
   reservations: Reservation[];
   spaces: Space[];
   currentUser: UserProfile;
+  /** Abre Billetera para registrar la cuenta de depósito. */
+  onGoWallet?: () => void;
 }
 
 const pct = (rate: number) => `${Math.round(rate * 1000) / 10} %`.replace('.', ',');
@@ -39,10 +43,18 @@ function payoutState(r: Reservation, payout?: OwnerPayout): PayState {
     };
   }
   if (payout?.status === 'on_hold') return { label: 'Retenido por reclamo', tone: 'rose' };
-  if (payout?.status === 'pending') return { label: 'Por transferir', tone: 'amber' };
+  if (payout?.status === 'pending')
+    return {
+      label: 'Retenido',
+      tone: 'amber',
+      detail: payout.scheduledFor ? `Se deposita el ${tuesdayLabel(payout.scheduledFor)}` : undefined,
+    };
   if (r.status === 'confirmed') return { label: 'En curso', tone: 'slate', detail: 'Se liquida al terminar' };
   return { label: 'Por liquidar', tone: 'amber' };
 }
+
+const tuesdayLabel = (iso: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 
 const toneClass: Record<PayState['tone'], string> = {
   slate: 'bg-slate-100 text-slate-800',
@@ -53,14 +65,16 @@ const toneClass: Record<PayState['tone'], string> = {
 
 // Ganancias del anfitrión: lo que recibe, lo transferido, lo pendiente y la
 // comisión de Spotly, con el detalle de cada reserva.
-export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, currentUser }) => {
+export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, currentUser, onGoWallet }) => {
   const [payouts, setPayouts] = useState<OwnerPayout[]>([]);
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_PLATFORM_SETTINGS);
+  const [hasBank, setHasBank] = useState<boolean | null>(null);
   const todayIso = getTodayIso();
 
   useEffect(() => {
     let alive = true;
     getMyPayouts().then((p) => alive && setPayouts(p));
+    getMyBankAccount(currentUser.id).then((b) => alive && setHasBank(Boolean(b)));
     getPlatformSettings().then((s) => alive && setSettings(s));
     return () => {
       alive = false;
@@ -179,6 +193,53 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
           )}
         </div>
       </div>
+
+      {/* Próximo depósito (cada martes) */}
+      {(() => {
+        const next = nextTuesdayIso(todayIso);
+        const due = payouts.filter((p) => p.status === 'pending' && (p.scheduledFor || next) <= next);
+        const later = payouts.filter((p) => p.status === 'pending' && p.scheduledFor && p.scheduledFor > next);
+        const dueTotal = due.reduce((n, p) => n + p.amountClp, 0);
+        return (
+          <section
+            aria-labelledby="owner-next-deposit"
+            className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
+                <CalendarClock className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h3 id="owner-next-deposit" className="text-sm font-semibold text-slate-600">
+                  Próximo depósito · {tuesdayLabel(next)}
+                </h3>
+                <p className="text-2xl font-bold tabular-nums text-slate-950">{formatClp(dueTotal)}</p>
+                <p className="text-xs text-slate-600">
+                  {due.length === 0
+                    ? 'Aún no tienes arriendos terminados para este martes.'
+                    : `${due.length} ${due.length === 1 ? 'arriendo terminado' : 'arriendos terminados'}.`}
+                  {later.length > 0 && ` Luego, ${formatClp(later.reduce((n, p) => n + p.amountClp, 0))} el martes siguiente.`} Cada martes
+                  depositamos lo de los arriendos terminados hasta el lunes.
+                </p>
+              </div>
+            </div>
+            {hasBank === false && (
+              <div className="flex flex-col items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-950 sm:max-w-xs">
+                <span className="font-semibold">Registra tu cuenta bancaria para recibir el depósito.</span>
+                {onGoWallet && (
+                  <button
+                    type="button"
+                    onClick={onGoWallet}
+                    className="min-h-10 rounded-lg bg-amber-900 px-3 text-sm font-semibold text-white transition hover:bg-amber-800 active:scale-[0.97] cursor-pointer"
+                  >
+                    Agregar cuenta
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Resumen */}
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">

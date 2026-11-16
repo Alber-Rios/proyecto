@@ -373,6 +373,12 @@ async function handleRefund(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ success: true, skipped: true, paymentStatus: reservation.payment_status });
   }
 
+  // Si la devolución ya se pasó a transferencia bancaria, no se intenta en la tarjeta.
+  const { data: transfer } = await admin.from('refund_transfers').select('id, status').eq('reservation_id', reservation.id).maybeSingle();
+  if (transfer) {
+    return res.status(200).json({ success: true, skipped: true, transfer: true, transferStatus: transfer.status });
+  }
+
   const amount = Math.round(Number(reservation.refund_amount_clp || 0));
   const { data: payment } = await admin
     .from('payments')
@@ -385,10 +391,23 @@ async function handleRefund(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ success: true, refundedClp: 0 });
   }
 
-  const refund =
-    payment.provider === 'oneclick_mall'
-      ? await oneclickRefund(payment, amount)
-      : await transbank<any>(config, 'POST', `/${encodeURIComponent(payment.token)}/refunds`, { amount });
+  let refund: any;
+  try {
+    refund =
+      payment.provider === 'oneclick_mall'
+        ? await oneclickRefund(payment, amount)
+        : await transbank<any>(config, 'POST', `/${encodeURIComponent(payment.token)}/refunds`, { amount });
+  } catch (err) {
+    // Transbank no pudo devolver a la tarjeta (plazo vencido, tarjeta cerrada, etc.):
+    // la devolución pasa a transferencia bancaria y se le piden los datos al arrendatario.
+    console.error('Reembolso Transbank falló; se pasa a transferencia:', err);
+    const { error: rpcError } = await admin.rpc('request_refund_transfer', {
+      p_reservation_id: reservation.id,
+      p_reason: 'Transbank no pudo devolver el pago a la tarjeta',
+    });
+    if (rpcError) throw err;
+    return res.status(200).json({ success: true, transfer: true, refundedClp: 0 });
+  }
   const full = amount >= Math.round(Number(payment.amount_clp));
   await admin
     .from('payments')

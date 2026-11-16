@@ -55,6 +55,7 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
 
 DROP TABLE IF EXISTS
+  public.refund_transfers, public.bank_accounts,
   public.support_tickets, public.user_consents, public.payment_refunds,
   public.owner_payouts, public.space_blocks,
   public.space_views, public.user_reports, public.reviews, public.favorites,
@@ -173,8 +174,9 @@ LANGUAGE sql
 STABLE
 SET search_path = public, pg_temp
 AS $$
+  -- COALESCE: sin rol en la petición el resultado es false, nunca NULL.
   SELECT COALESCE(current_setting('spotly.trusted', true), '') = 'on'
-      OR auth.role() = 'service_role'
+      OR COALESCE(auth.role() = 'service_role', false)
       OR COALESCE(current_setting('role', true), '') = 'service_role'
       OR (
         auth.role() IS NULL
@@ -2307,7 +2309,7 @@ AS $$
 DECLARE
   v_prev TEXT;
 BEGIN
-  IF NOT (public.is_admin() OR public.is_trusted_context()) THEN
+  IF NOT (COALESCE(public.is_admin(), false) OR COALESCE(public.is_trusted_context(), false)) THEN
     RAISE EXCEPTION 'Solo un administrador puede anonimizar cuentas';
   END IF;
   IF p_user_id = auth.uid() THEN
@@ -3162,9 +3164,13 @@ BEGIN
                          'grossClp', NEW.gross_clp, 'ownerCommissionClp', NEW.owner_commission_clp,
                          'amountClp', NEW.amount_clp, 'status', NEW.status));
     PERFORM public.notify_user(NEW.owner_id, 'Liquidación generada',
-      format('Tu arriendo terminó. Te corresponden $%s CLP (arriendo $%s menos comisión $%s).',
-        to_char(NEW.amount_clp, 'FM999G999G999'), to_char(NEW.gross_clp, 'FM999G999G999'),
-        to_char(NEW.owner_commission_clp, 'FM999G999G999')),
+      CASE WHEN NEW.status = 'on_hold'
+        THEN format('Tu arriendo terminó. Te corresponden $%s CLP; quedan retenidos hasta que se resuelva el reclamo.',
+               to_char(NEW.amount_clp, 'FM999G999G999'))
+        ELSE format('Tu arriendo terminó. Te corresponden $%s CLP (arriendo $%s menos comisión $%s). Se depositan el martes %s.',
+               to_char(NEW.amount_clp, 'FM999G999G999'), to_char(NEW.gross_clp, 'FM999G999G999'),
+               to_char(NEW.owner_commission_clp, 'FM999G999G999'), to_char(NEW.scheduled_for, 'DD-MM-YYYY'))
+      END,
       'success', '/owner');
   ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
     PERFORM public.write_audit('PAYOUT_' || upper(NEW.status), 'security',
@@ -3172,7 +3178,7 @@ BEGIN
       jsonb_build_object('payoutId', NEW.id, 'reservationId', NEW.reservation_id, 'ownerId', NEW.owner_id,
                          'from', OLD.status, 'to', NEW.status, 'amountClp', NEW.amount_clp,
                          'transferReference', NEW.transfer_reference));
-    IF NEW.status = 'paid' THEN
+    IF NEW.status = 'paid' AND COALESCE(current_setting('spotly.payout_batch', true), '') <> 'on' THEN
       PERFORM public.notify_user(NEW.owner_id, 'Transferencia enviada',
         format('Te transferimos $%s CLP. Referencia: %s.', to_char(NEW.amount_clp, 'FM999G999G999'),
                COALESCE(NEW.transfer_reference, 'sin referencia')),
@@ -3488,7 +3494,7 @@ SET search_path = public, pg_temp
 AS $$
   SELECT CASE
     WHEN p_action LIKE 'PAYMENT\_%' OR p_action LIKE 'PAYOUT\_%' OR p_action LIKE 'REFUND\_%'
-      OR p_action LIKE 'WALLET\_%' OR p_action LIKE 'DISCOUNT\_%' THEN 'pagos'
+      OR p_action LIKE 'WALLET\_%' OR p_action LIKE 'DISCOUNT\_%' OR p_action LIKE 'BANK\_%' THEN 'pagos'
     WHEN p_action LIKE 'RESERVATION\_%' OR p_action LIKE 'CONTRACT\_%' OR p_action LIKE 'VISIT\_%' THEN 'reservas'
     WHEN p_action LIKE 'LOGIN\_%' OR p_action LIKE 'USER\_LOGGED\_%' OR p_action LIKE 'PASSWORD\_%'
       OR p_action LIKE 'SIGNUP\_%' OR p_action LIKE 'USER\_REGISTERED%' OR p_action = 'EMAIL_VERIFIED'
@@ -3595,6 +3601,471 @@ GRANT EXECUTE ON FUNCTION public.admin_verify_audit_chain() TO authenticated;   
 REVOKE ALL ON FUNCTION public.admin_audit_search(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_audit_search(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 
+
+-- ==============================================================================
+-- 7c. CUENTAS BANCARIAS, DEPÓSITOS SEMANALES (MARTES) Y REEMBOLSOS POR TRANSFERENCIA
+-- ==============================================================================
+-- · Cada usuario guarda una cuenta para recibir dinero: el propietario sus
+--   depósitos y el arrendatario las devoluciones que no vuelven a la tarjeta.
+-- · Retención: lo que gana el propietario queda retenido hasta el martes
+--   siguiente a que termina el arriendo; ese día se le deposita todo lo acumulado.
+--   Una liquidación retenida por un reclamo espera a que el reclamo se resuelva.
+-- · Si una devolución no puede volver a la tarjeta (o el pago no fue con tarjeta),
+--   se crea un "reembolso por transferir": se piden los datos bancarios al
+--   arrendatario y administración transfiere y registra el comprobante.
+
+-- ---------- Cuentas bancarias ----------
+CREATE TABLE IF NOT EXISTS public.bank_accounts (
+  user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  holder_name TEXT NOT NULL CHECK (length(trim(holder_name)) BETWEEN 3 AND 120),
+  holder_rut TEXT NOT NULL CHECK (holder_rut ~ '^[0-9]{7,8}[0-9K]$'),
+  bank TEXT NOT NULL CHECK (length(trim(bank)) BETWEEN 2 AND 60),
+  account_type TEXT NOT NULL CHECK (account_type IN ('corriente', 'vista', 'ahorro', 'cuenta_rut')),
+  account_number TEXT NOT NULL CHECK (account_number ~ '^[0-9]{4,20}$'),
+  email TEXT CHECK (email IS NULL OR (length(email) <= 254 AND email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE public.bank_accounts IS 'Cuenta para recibir depósitos (propietario) o devoluciones (arrendatario)';
+ALTER TABLE public.bank_accounts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Cuenta bancaria propia o admin" ON public.bank_accounts;
+CREATE POLICY "Cuenta bancaria propia o admin"
+  ON public.bank_accounts FOR SELECT TO authenticated
+  USING (user_id = auth.uid() OR public.is_admin());
+DROP POLICY IF EXISTS "Crear cuenta bancaria propia" ON public.bank_accounts;
+CREATE POLICY "Crear cuenta bancaria propia"
+  ON public.bank_accounts FOR INSERT TO authenticated
+  WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS "Editar cuenta bancaria propia" ON public.bank_accounts;
+CREATE POLICY "Editar cuenta bancaria propia"
+  ON public.bank_accounts FOR UPDATE TO authenticated
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS "Borrar cuenta bancaria propia" ON public.bank_accounts;
+CREATE POLICY "Borrar cuenta bancaria propia"
+  ON public.bank_accounts FOR DELETE TO authenticated
+  USING (user_id = auth.uid());
+
+-- Normaliza y valida (RUT con dígito verificador), y deja registro sin exponer el número completo.
+CREATE OR REPLACE FUNCTION public.bank_accounts_before_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_body TEXT;
+  v_dv TEXT;
+  v_sum INTEGER := 0;
+  v_mul INTEGER := 2;
+  v_calc TEXT;
+  i INTEGER;
+BEGIN
+  NEW.holder_name := trim(NEW.holder_name);
+  NEW.bank := trim(NEW.bank);
+  NEW.holder_rut := public.normalize_rut(NEW.holder_rut);
+  NEW.account_number := regexp_replace(COALESCE(NEW.account_number, ''), '[^0-9]', '', 'g');
+  NEW.email := NULLIF(lower(trim(COALESCE(NEW.email, ''))), '');
+  IF NEW.holder_rut IS NULL OR length(NEW.holder_rut) < 8 THEN
+    RAISE EXCEPTION 'El RUT del titular no es válido';
+  END IF;
+  v_body := left(NEW.holder_rut, length(NEW.holder_rut) - 1);
+  v_dv := right(NEW.holder_rut, 1);
+  FOR i IN REVERSE length(v_body)..1 LOOP
+    v_sum := v_sum + substr(v_body, i, 1)::int * v_mul;
+    v_mul := CASE WHEN v_mul = 7 THEN 2 ELSE v_mul + 1 END;
+  END LOOP;
+  v_calc := CASE 11 - (v_sum % 11) WHEN 11 THEN '0' WHEN 10 THEN 'K' ELSE (11 - (v_sum % 11))::text END;
+  IF v_calc <> v_dv THEN
+    RAISE EXCEPTION 'El RUT del titular no es válido';
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    NEW.user_id := OLD.user_id;
+    NEW.created_at := OLD.created_at;
+  END IF;
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS bank_accounts_before_write ON public.bank_accounts;
+CREATE TRIGGER bank_accounts_before_write
+  BEFORE INSERT OR UPDATE ON public.bank_accounts
+  FOR EACH ROW EXECUTE FUNCTION public.bank_accounts_before_write();
+
+CREATE OR REPLACE FUNCTION public.bank_accounts_after_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM public.write_audit('BANK_ACCOUNT_DELETED', 'security', OLD.user_id::text, jsonb_build_object('bank', OLD.bank));
+    RETURN OLD;
+  END IF;
+  PERFORM public.write_audit('BANK_ACCOUNT_SAVED', 'security', NEW.user_id::text,
+    jsonb_build_object('bank', NEW.bank, 'accountType', NEW.account_type,
+                       'accountLast4', right(NEW.account_number, 4), 'new', TG_OP = 'INSERT'));
+  -- Las devoluciones que esperaban estos datos quedan listas para transferir.
+  UPDATE public.refund_transfers SET status = 'pending', updated_at = now()
+  WHERE tenant_id = NEW.user_id AND status = 'awaiting_data';
+  RETURN NEW;
+END;
+$$;
+
+-- ---------- Reembolsos por transferencia ----------
+CREATE TABLE IF NOT EXISTS public.refund_transfers (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('rtr'),
+  reservation_id TEXT NOT NULL UNIQUE REFERENCES public.reservations(id) ON DELETE RESTRICT,
+  tenant_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  amount_clp NUMERIC(12,0) NOT NULL CHECK (amount_clp > 0),
+  reason TEXT CHECK (reason IS NULL OR length(reason) <= 300),
+  status TEXT NOT NULL DEFAULT 'awaiting_data' CHECK (status IN ('awaiting_data', 'pending', 'paid', 'cancelled')),
+  bank_snapshot JSONB,
+  transfer_reference TEXT CHECK (transfer_reference IS NULL OR length(transfer_reference) <= 200),
+  paid_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE public.refund_transfers IS 'Devoluciones al arrendatario por transferencia bancaria';
+CREATE INDEX IF NOT EXISTS idx_refund_transfers_tenant ON public.refund_transfers (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_refund_transfers_status ON public.refund_transfers (status) WHERE status IN ('awaiting_data', 'pending');
+ALTER TABLE public.refund_transfers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Reembolso por transferencia propio o admin" ON public.refund_transfers;
+CREATE POLICY "Reembolso por transferencia propio o admin"
+  ON public.refund_transfers FOR SELECT TO authenticated
+  USING (tenant_id = auth.uid() OR public.is_admin());
+
+DROP TRIGGER IF EXISTS bank_accounts_after_write ON public.bank_accounts;
+CREATE TRIGGER bank_accounts_after_write
+  AFTER INSERT OR UPDATE OR DELETE ON public.bank_accounts
+  FOR EACH ROW EXECUTE FUNCTION public.bank_accounts_after_write();
+
+CREATE OR REPLACE FUNCTION public.refund_transfer_events()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM public.write_audit('REFUND_TRANSFER_REQUESTED', 'warning', COALESCE(auth.uid()::text, 'system'),
+      jsonb_build_object('refundTransferId', NEW.id, 'reservationId', NEW.reservation_id,
+                         'tenantId', NEW.tenant_id, 'amountClp', NEW.amount_clp, 'reason', NEW.reason, 'status', NEW.status));
+    PERFORM public.notify_user(NEW.tenant_id, 'Tu devolución será por transferencia',
+      CASE WHEN NEW.status = 'awaiting_data'
+        THEN format('Te devolveremos $%s CLP por transferencia. Ingresa tus datos bancarios en Billetera para recibirla.',
+                    to_char(NEW.amount_clp, 'FM999G999G999'))
+        ELSE format('Te devolveremos $%s CLP por transferencia a la cuenta que registraste.', to_char(NEW.amount_clp, 'FM999G999G999'))
+      END,
+      'warning', '/billetera');
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    PERFORM public.write_audit('REFUND_TRANSFER_' || upper(NEW.status), 'security', COALESCE(auth.uid()::text, 'system'),
+      jsonb_build_object('refundTransferId', NEW.id, 'reservationId', NEW.reservation_id, 'tenantId', NEW.tenant_id,
+                         'from', OLD.status, 'to', NEW.status, 'amountClp', NEW.amount_clp,
+                         'transferReference', NEW.transfer_reference));
+    IF NEW.status = 'paid' THEN
+      PERFORM public.notify_user(NEW.tenant_id, 'Devolución transferida',
+        format('Te transferimos $%s CLP. Comprobante: %s.', to_char(NEW.amount_clp, 'FM999G999G999'),
+               COALESCE(NEW.transfer_reference, 'sin referencia')),
+        'success', '/my-bookings');
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS refund_transfer_events ON public.refund_transfers;
+CREATE TRIGGER refund_transfer_events
+  AFTER INSERT OR UPDATE ON public.refund_transfers
+  FOR EACH ROW EXECUTE FUNCTION public.refund_transfer_events();
+
+-- Pide la devolución por transferencia de una reserva con reembolso pendiente.
+-- La usan administración y el servidor (cuando Transbank no puede devolver a la tarjeta).
+CREATE OR REPLACE FUNCTION public.request_refund_transfer(p_reservation_id TEXT, p_reason TEXT DEFAULT NULL)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  r public.reservations;
+  v_id TEXT;
+  v_has_bank BOOLEAN;
+BEGIN
+  IF NOT (COALESCE(public.is_admin(), false) OR COALESCE(public.is_trusted_context(), false)) THEN
+    RAISE EXCEPTION 'Solo administración puede pedir una devolución por transferencia';
+  END IF;
+  SELECT * INTO r FROM public.reservations WHERE id = p_reservation_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La reserva no existe';
+  END IF;
+  SELECT id INTO v_id FROM public.refund_transfers WHERE reservation_id = r.id;
+  IF v_id IS NOT NULL THEN
+    RETURN v_id;
+  END IF;
+  IF r.payment_status <> 'refund_pending' OR COALESCE(r.refund_amount_clp, 0) <= 0 THEN
+    RAISE EXCEPTION 'Esta reserva no tiene una devolución pendiente';
+  END IF;
+  v_has_bank := EXISTS (SELECT 1 FROM public.bank_accounts b WHERE b.user_id = r.tenant_id);
+  INSERT INTO public.refund_transfers (reservation_id, tenant_id, amount_clp, reason, status)
+  VALUES (r.id, r.tenant_id, r.refund_amount_clp,
+          left(NULLIF(trim(COALESCE(p_reason, '')), ''), 300),
+          CASE WHEN v_has_bank THEN 'pending' ELSE 'awaiting_data' END)
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.admin_mark_refund_transfer_paid(p_id TEXT, p_reference TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  t public.refund_transfers;
+  b public.bank_accounts;
+  v_prev TEXT;
+  v_total NUMERIC;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  IF COALESCE(length(trim(p_reference)), 0) < 3 THEN
+    RAISE EXCEPTION 'Indica el número o referencia de la transferencia';
+  END IF;
+  SELECT * INTO t FROM public.refund_transfers WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND OR t.status <> 'pending' THEN
+    RAISE EXCEPTION 'La devolución no existe, ya fue pagada o le faltan los datos bancarios';
+  END IF;
+  SELECT * INTO b FROM public.bank_accounts WHERE user_id = t.tenant_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'El arrendatario no tiene una cuenta bancaria registrada';
+  END IF;
+  UPDATE public.refund_transfers
+  SET status = 'paid', transfer_reference = left(trim(p_reference), 200), paid_at = now(), updated_at = now(),
+      bank_snapshot = jsonb_build_object('holderName', b.holder_name, 'holderRut', b.holder_rut, 'bank', b.bank,
+                                         'accountType', b.account_type, 'accountNumber', b.account_number)
+  WHERE id = t.id;
+
+  SELECT total_clp INTO v_total FROM public.reservations WHERE id = t.reservation_id;
+  v_prev := public.begin_trusted();
+  UPDATE public.reservations
+  SET payment_status = CASE WHEN t.amount_clp >= v_total THEN 'refunded' ELSE 'partially_refunded' END
+  WHERE id = t.reservation_id AND payment_status = 'refund_pending';
+  PERFORM public.end_trusted(v_prev);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.admin_refund_transfers()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  RETURN jsonb_build_object(
+    'items', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+        'id', t.id, 'reservationId', t.reservation_id, 'tenantId', t.tenant_id,
+        'tenantName', p.full_name, 'tenantEmail', p.email, 'spaceTitle', s.title,
+        'amountClp', t.amount_clp, 'reason', t.reason, 'status', t.status,
+        'transferReference', t.transfer_reference, 'paidAt', t.paid_at, 'createdAt', t.created_at,
+        'bank', CASE WHEN t.status = 'paid' THEN t.bank_snapshot ELSE (
+          SELECT jsonb_build_object('holderName', b.holder_name, 'holderRut', b.holder_rut, 'bank', b.bank,
+                                    'accountType', b.account_type, 'accountNumber', b.account_number, 'email', b.email)
+          FROM public.bank_accounts b WHERE b.user_id = t.tenant_id) END
+      ) ORDER BY (t.status = 'paid'), t.created_at DESC)
+      FROM public.refund_transfers t
+      JOIN public.profiles p ON p.id = t.tenant_id
+      JOIN public.reservations r ON r.id = t.reservation_id
+      LEFT JOIN public.spaces s ON s.id = r.space_id
+      WHERE t.status <> 'cancelled' AND (t.status <> 'paid' OR t.paid_at > now() - interval '90 days')
+    ), '[]'::jsonb),
+    -- Devoluciones pendientes que todavía no pasan a transferencia (p. ej. Transbank aún no las procesa).
+    'candidates', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+        'reservationId', r.id, 'tenantName', p.full_name, 'spaceTitle', s.title,
+        'amountClp', r.refund_amount_clp, 'cancelledAt', r.cancelled_at, 'status', r.status
+      ) ORDER BY r.cancelled_at NULLS LAST)
+      FROM public.reservations r
+      JOIN public.profiles p ON p.id = r.tenant_id
+      LEFT JOIN public.spaces s ON s.id = r.space_id
+      WHERE r.payment_status = 'refund_pending' AND COALESCE(r.refund_amount_clp, 0) > 0
+        AND NOT EXISTS (SELECT 1 FROM public.refund_transfers t WHERE t.reservation_id = r.id)
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+-- ---------- Depósitos semanales a propietarios (cada martes) ----------
+ALTER TABLE public.owner_payouts
+  ADD COLUMN IF NOT EXISTS scheduled_for DATE,
+  ADD COLUMN IF NOT EXISTS paid_batch DATE,
+  ADD COLUMN IF NOT EXISTS bank_snapshot JSONB;
+CREATE INDEX IF NOT EXISTS idx_owner_payouts_schedule ON public.owner_payouts (status, scheduled_for);
+
+-- Primer martes posterior a una fecha (si es martes, el de la semana siguiente).
+CREATE OR REPLACE FUNCTION public.next_payout_tuesday(p_from DATE)
+RETURNS DATE
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT p_from + CASE WHEN (9 - extract(isodow FROM p_from)::int) % 7 = 0 THEN 7
+                       ELSE (9 - extract(isodow FROM p_from)::int) % 7 END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.owner_payouts_schedule()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.scheduled_for IS NULL THEN
+    NEW.scheduled_for := public.next_payout_tuesday(public.chile_today());
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS owner_payouts_schedule ON public.owner_payouts;
+CREATE TRIGGER owner_payouts_schedule
+  BEFORE INSERT ON public.owner_payouts
+  FOR EACH ROW EXECUTE FUNCTION public.owner_payouts_schedule();
+
+UPDATE public.owner_payouts
+SET scheduled_for = public.next_payout_tuesday((created_at AT TIME ZONE 'America/Santiago')::date)
+WHERE scheduled_for IS NULL;
+
+-- Resumen del martes: lo que se debe depositar a cada propietario. Incluye lo
+-- atrasado de semanas anteriores que sigue sin pagar.
+CREATE OR REPLACE FUNCTION public.admin_payout_week(p_week DATE DEFAULT NULL)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_week DATE;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  v_week := COALESCE(p_week,
+    CASE WHEN extract(isodow FROM public.chile_today()) = 2 THEN public.chile_today()
+         ELSE public.next_payout_tuesday(public.chile_today()) END);
+  IF extract(isodow FROM v_week) <> 2 THEN
+    RAISE EXCEPTION 'La fecha de depósito debe ser un martes';
+  END IF;
+
+  RETURN jsonb_build_object(
+    'week', v_week,
+    'cutoff', v_week - 1,
+    'owners', COALESCE((
+      SELECT jsonb_agg(o ORDER BY o->>'ownerName')
+      FROM (
+        SELECT jsonb_build_object(
+          'ownerId', po.owner_id,
+          'ownerName', p.full_name,
+          'ownerEmail', p.email,
+          'totalClp', sum(po.amount_clp),
+          'count', count(*),
+          'overdue', bool_or(po.scheduled_for < v_week),
+          'bank', (SELECT jsonb_build_object('holderName', b.holder_name, 'holderRut', b.holder_rut, 'bank', b.bank,
+                                             'accountType', b.account_type, 'accountNumber', b.account_number, 'email', b.email)
+                   FROM public.bank_accounts b WHERE b.user_id = po.owner_id),
+          'items', jsonb_agg(jsonb_build_object(
+            'id', po.id, 'reservationId', po.reservation_id, 'spaceTitle', s.title,
+            'grossClp', po.gross_clp, 'ownerCommissionClp', po.owner_commission_clp,
+            'amountClp', po.amount_clp, 'scheduledFor', po.scheduled_for) ORDER BY po.scheduled_for, po.created_at)
+        ) AS o
+        FROM public.owner_payouts po
+        JOIN public.profiles p ON p.id = po.owner_id
+        JOIN public.reservations r ON r.id = po.reservation_id
+        LEFT JOIN public.spaces s ON s.id = r.space_id
+        WHERE po.status = 'pending' AND po.scheduled_for <= v_week
+        GROUP BY po.owner_id, p.full_name, p.email
+      ) q
+    ), '[]'::jsonb),
+    'onHold', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('id', po.id, 'reservationId', po.reservation_id, 'ownerName', p.full_name,
+                                          'amountClp', po.amount_clp, 'scheduledFor', po.scheduled_for) ORDER BY po.created_at)
+      FROM public.owner_payouts po JOIN public.profiles p ON p.id = po.owner_id
+      WHERE po.status = 'on_hold'
+    ), '[]'::jsonb),
+    'upcomingClp', COALESCE((SELECT sum(amount_clp) FROM public.owner_payouts WHERE status = 'pending' AND scheduled_for > v_week), 0),
+    'history', COALESCE((
+      SELECT jsonb_agg(h ORDER BY h->>'paidAt' DESC)
+      FROM (
+        SELECT jsonb_build_object('week', po.paid_batch, 'ownerName', p.full_name, 'totalClp', sum(po.amount_clp),
+                                  'count', count(*), 'reference', min(po.transfer_reference), 'paidAt', max(po.paid_at)) AS h
+        FROM public.owner_payouts po JOIN public.profiles p ON p.id = po.owner_id
+        WHERE po.status = 'paid' AND po.paid_at > now() - interval '120 days'
+        GROUP BY po.owner_id, p.full_name, po.paid_batch, po.transfer_reference
+        ORDER BY max(po.paid_at) DESC
+        LIMIT 30
+      ) x
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+-- Marca como depositado todo lo del martes de un propietario (una sola transferencia).
+CREATE OR REPLACE FUNCTION public.admin_pay_owner_week(p_owner UUID, p_week DATE, p_reference TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  b public.bank_accounts;
+  v_count INTEGER;
+  v_total NUMERIC;
+  v_snapshot JSONB;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Solo administradores';
+  END IF;
+  IF COALESCE(length(trim(p_reference)), 0) < 3 THEN
+    RAISE EXCEPTION 'Indica el número o referencia de la transferencia';
+  END IF;
+  SELECT * INTO b FROM public.bank_accounts WHERE user_id = p_owner;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'El propietario no tiene una cuenta bancaria registrada';
+  END IF;
+  v_snapshot := jsonb_build_object('holderName', b.holder_name, 'holderRut', b.holder_rut, 'bank', b.bank,
+                                   'accountType', b.account_type, 'accountNumber', b.account_number);
+  -- Una sola notificación al propietario (las liquidaciones del lote no avisan una a una).
+  PERFORM set_config('spotly.payout_batch', 'on', true);
+  UPDATE public.owner_payouts
+  SET status = 'paid', transfer_reference = left(trim(p_reference), 200), paid_at = now(),
+      paid_batch = p_week, bank_snapshot = v_snapshot, updated_at = now()
+  WHERE owner_id = p_owner AND status = 'pending' AND scheduled_for <= p_week;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  PERFORM set_config('spotly.payout_batch', 'off', true);
+  IF v_count = 0 THEN
+    RAISE EXCEPTION 'No hay depósitos pendientes de este propietario para ese martes';
+  END IF;
+  SELECT sum(amount_clp) INTO v_total FROM public.owner_payouts
+  WHERE owner_id = p_owner AND paid_batch = p_week AND transfer_reference = left(trim(p_reference), 200);
+
+  PERFORM public.write_audit('PAYOUT_BATCH_PAID', 'security', auth.uid()::text,
+    jsonb_build_object('ownerId', p_owner, 'week', p_week, 'count', v_count, 'amountClp', v_total,
+                       'transferReference', left(trim(p_reference), 200), 'bank', b.bank,
+                       'accountLast4', right(b.account_number, 4)));
+  PERFORM public.notify_user(p_owner, 'Depósito del martes enviado',
+    format('Te depositamos $%s CLP por %s arriendo%s terminado%s. Comprobante: %s.',
+      to_char(v_total, 'FM999G999G999'), v_count, CASE WHEN v_count = 1 THEN '' ELSE 's' END,
+      CASE WHEN v_count = 1 THEN '' ELSE 's' END, left(trim(p_reference), 200)),
+    'success', '/owner');
+  RETURN jsonb_build_object('count', v_count, 'amountClp', v_total);
+END;
+$$;
 
 -- ==============================================================================
 -- 8. SEGURIDAD POR FILAS (RLS): cada usuario solo ve y modifica lo suyo
@@ -3988,6 +4459,8 @@ GRANT SELECT, INSERT, UPDATE ON public.visit_requests TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.notifications TO authenticated;
 GRANT SELECT ON public.kyc_verifications TO authenticated;
 GRANT SELECT ON public.payments TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.bank_accounts TO authenticated;   -- RLS: solo la propia (admin lee)
+GRANT SELECT ON public.refund_transfers TO authenticated;                        -- RLS: propias o admin
 GRANT SELECT (id, user_id, status, card_type, card_last4, is_default, created_at)
   ON public.wallet_cards TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.favorites TO authenticated;
@@ -4058,6 +4531,13 @@ GRANT EXECUTE ON FUNCTION public.admin_update_platform_settings(NUMERIC, NUMERIC
 GRANT EXECUTE ON FUNCTION public.admin_finance_report(DATE, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_verify_audit_chain() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_audit_search(TIMESTAMPTZ, TIMESTAMPTZ, TEXT, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+-- Depósitos de los martes y devoluciones por transferencia (validan is_admin() o el servidor).
+GRANT EXECUTE ON FUNCTION public.next_payout_tuesday(DATE) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_payout_week(DATE) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_pay_owner_week(UUID, DATE, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_refund_transfers() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_mark_refund_transfer_paid(TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.request_refund_transfer(TEXT, TEXT) TO authenticated, service_role;
 
 -- ==============================================================================
 -- 11. TIEMPO REAL

@@ -118,6 +118,18 @@ export function describeAudit(action: string, d: Details = {}): string {
       return 'Liquidación anulada';
     case 'PAYOUT_PENDING':
       return 'Liquidación vuelve a pendiente';
+    case 'PAYOUT_BATCH_PAID':
+      return `Depósito del martes: ${clp(d.amountClp)} por ${d.count ?? '—'} arriendo${Number(d.count) === 1 ? '' : 's'}${d.transferReference ? ` · ref. ${d.transferReference}` : ''}`;
+    case 'BANK_ACCOUNT_SAVED':
+      return `${d.new ? 'Registró' : 'Cambió'} su cuenta bancaria (${d.bank || 'banco'}${d.accountLast4 ? ` ···${d.accountLast4}` : ''})`;
+    case 'BANK_ACCOUNT_DELETED':
+      return 'Eliminó su cuenta bancaria';
+    case 'REFUND_TRANSFER_REQUESTED':
+      return `Devolución por transferencia de ${clp(d.amountClp)}${d.reason ? ` · ${d.reason}` : ''}`;
+    case 'REFUND_TRANSFER_PENDING':
+      return 'Devolución lista para transferir (ya tiene datos bancarios)';
+    case 'REFUND_TRANSFER_PAID':
+      return `Devolución transferida: ${clp(d.amountClp)}${d.transferReference ? ` · ref. ${d.transferReference}` : ''}`;
     case 'DISPUTE_OPENED':
       return 'Se abrió un reclamo';
     case 'DISPUTE_STATUS_CHANGED':
@@ -172,6 +184,12 @@ const DETAIL_LABEL: Record<string, string> = {
   grossClp: 'Arriendo bruto',
   paymentStatus: 'Estado del pago',
   transferReference: 'Referencia de transferencia',
+  refundTransferId: 'Devolución',
+  week: 'Martes de depósito',
+  count: 'Arriendos',
+  bank: 'Banco',
+  accountLast4: 'Cuenta (últimos 4)',
+  accountType: 'Tipo de cuenta',
   from: 'Antes',
   to: 'Después',
   reason: 'Motivo',

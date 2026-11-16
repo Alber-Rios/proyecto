@@ -3,9 +3,9 @@ import { Download, RefreshCw, Settings2, CheckCircle2, AlertTriangle, Search } f
 import { formatClp, getTodayIso } from '../../utils/formatters.ts';
 import { downloadCsv } from '../../utils/csv.ts';
 import { VerticalBarChart } from '../dashboard/DashboardCharts.tsx';
+import { RefundTransfersPanel, WeeklyPayoutsPanel } from './MoneyOutPanels.tsx';
 import {
   getFinanceReport,
-  markPayoutPaid,
   updatePlatformSettings,
   type FinanceReport,
   type LedgerRow,
@@ -68,7 +68,6 @@ export const PlatformFinancePanel: React.FC = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [ledgerQuery, setLedgerQuery] = useState('');
   const [ledgerStatus, setLedgerStatus] = useState('');
-  const [payRef, setPayRef] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<PlatformSettings | null>(null);
 
   const load = useCallback(() => {
@@ -137,21 +136,6 @@ export const PlatformFinancePanel: React.FC = () => {
       ]),
     ]);
 
-  const handlePay = async (id: string) => {
-    const ref = (payRef[id] || '').trim();
-    if (ref.length < 3) {
-      setNotice('Escribe el número o referencia de la transferencia antes de marcarla como pagada.');
-      return;
-    }
-    try {
-      await markPayoutPaid(id, ref);
-      setNotice('Liquidación marcada como pagada. Quedó registrada en la auditoría y se avisó al anfitrión.');
-      setPayRef((p) => ({ ...p, [id]: '' }));
-      load();
-    } catch (e: any) {
-      setNotice(e.message);
-    }
-  };
 
   const handleSaveSettings = async () => {
     if (!editing) return;
@@ -297,71 +281,9 @@ export const PlatformFinancePanel: React.FC = () => {
             <VerticalBarChart title="Ganancia por mes" data={chart} formatValue={formatClp} height={180} />
           </section>
 
-          {/* Liquidaciones pendientes */}
-          <section aria-labelledby="fin-payouts" className={`${card} overflow-hidden`}>
-            <div className="p-5">
-              <h3 id="fin-payouts" className="text-base font-bold text-slate-900">Liquidaciones por transferir</h3>
-              <p className="text-sm text-slate-600">
-                Se generan solas cuando termina un arriendo. Transfiere al anfitrión y registra la referencia.
-              </p>
-            </div>
-            {report!.payouts.items.length === 0 ? (
-              <p className="flex items-center gap-2 px-5 pb-5 text-sm text-emerald-800">
-                <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> No hay liquidaciones pendientes.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
-                  <thead className="bg-slate-50 text-left text-slate-600">
-                    <tr>
-                      <th scope="col" className="px-4 py-2 font-semibold">Generada</th>
-                      <th scope="col" className="px-4 py-2 font-semibold">Anfitrión</th>
-                      <th scope="col" className="px-4 py-2 text-right font-semibold">Arriendo</th>
-                      <th scope="col" className="px-4 py-2 text-right font-semibold">Comisión</th>
-                      <th scope="col" className="px-4 py-2 text-right font-semibold">A transferir</th>
-                      <th scope="col" className="px-4 py-2 font-semibold">Registrar pago</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {report!.payouts.items.map((p) => (
-                      <tr key={p.id} className="align-top">
-                        <td className="whitespace-nowrap px-4 py-3 text-slate-700">{new Date(p.createdAt).toLocaleDateString('es-CL')}</td>
-                        <td className="px-4 py-3">
-                          <span className="block font-semibold text-slate-900">{p.ownerName || 'Anfitrión'}</span>
-                          <span className="font-mono text-xs text-slate-500">{p.reservationId}</span>
-                          {p.status === 'on_hold' && (
-                            <span className="mt-1 block text-xs font-semibold text-rose-800">Retenida: hay un reclamo abierto</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums">{formatClp(p.grossClp)}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-slate-700">− {formatClp(p.ownerCommissionClp)}</td>
-                        <td className="px-4 py-3 text-right font-bold tabular-nums">{formatClp(p.amountClp)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <label className="sr-only" htmlFor={`ref-${p.id}`}>Referencia de la transferencia</label>
-                            <input
-                              id={`ref-${p.id}`}
-                              value={payRef[p.id] || ''}
-                              onChange={(e) => setPayRef((r) => ({ ...r, [p.id]: e.target.value }))}
-                              placeholder="N° de transferencia"
-                              className={`${input} w-40`}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handlePay(p.id)}
-                              className="min-h-10 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-slate-800 cursor-pointer"
-                            >
-                              Marcar pagada
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+          {/* Salida de dinero: depósitos de los martes y devoluciones por transferencia */}
+          <WeeklyPayoutsPanel onChanged={load} />
+          <RefundTransfersPanel onChanged={load} />
 
           {/* Por espacio */}
           {report!.topSpaces.length > 0 && (
