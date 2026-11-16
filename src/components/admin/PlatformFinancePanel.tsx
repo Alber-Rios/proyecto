@@ -227,7 +227,7 @@ export const PlatformFinancePanel: React.FC = () => {
                     <td className="pt-2 text-right font-bold tabular-nums text-slate-950">{formatClp(t.platformRevenueClp)}</td>
                   </tr>
                   <tr>
-                    <th scope="row" className="py-1 pr-3 text-left font-normal text-slate-600">IVA que Spotly paga al SII (19 % de lo anterior)</th>
+                    <th scope="row" className="py-1 pr-3 text-left font-normal text-slate-600">IVA que va al SII (ya viene dentro de lo anterior)</th>
                     <td className="py-1 text-right tabular-nums text-slate-600">− {formatClp(ivaOf(t.platformRevenueClp))}</td>
                   </tr>
                   <tr>
