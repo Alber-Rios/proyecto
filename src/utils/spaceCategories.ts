@@ -30,6 +30,8 @@ export interface SpaceCategoryInfo {
   group: CategoryGroupId;
   icon: LucideIcon;
   environment: SpaceEnvironment; // valor sugerido al publicar
+  /** Ya no se ofrece al publicar ni en filtros; se mantiene para espacios antiguos. */
+  retired?: boolean;
 }
 
 export const CATEGORY_GROUPS: { id: CategoryGroupId; label: string }[] = [
@@ -47,7 +49,7 @@ export const SPACE_CATEGORIES: SpaceCategoryInfo[] = [
   { id: 'oficina', label: 'Oficina privada', plural: 'Oficinas', hint: 'Oficina para una persona o un equipo', group: 'trabajo', icon: Briefcase, environment: 'cerrado' },
   { id: 'cowork', label: 'Puesto de trabajo compartido', plural: 'Trabajo compartido', hint: 'Escritorio en un espacio compartido', group: 'trabajo', icon: Users, environment: 'cerrado' },
   { id: 'sala_reuniones', label: 'Sala de reuniones', plural: 'Salas de reuniones', hint: 'Sala para reuniones o capacitaciones', group: 'trabajo', icon: Presentation, environment: 'cerrado' },
-  { id: 'consulta', label: 'Consulta o box de atención', plural: 'Consultas y boxes', hint: 'Consulta médica, psicológica o de estética', group: 'trabajo', icon: Stethoscope, environment: 'cerrado' },
+  { id: 'consulta', label: 'Consulta o box de atención', plural: 'Consultas y boxes', hint: 'Consulta médica, psicológica o de estética', group: 'trabajo', icon: Stethoscope, environment: 'cerrado', retired: true },
   { id: 'estudio', label: 'Estudio de foto, video o música', plural: 'Estudios', hint: 'Estudio de grabación o fotografía', group: 'trabajo', icon: Camera, environment: 'cerrado' },
   { id: 'salon_eventos', label: 'Salón de eventos', plural: 'Salones de eventos', hint: 'Salón para cumpleaños, matrimonios o seminarios', group: 'eventos', icon: PartyPopper, environment: 'cerrado' },
   { id: 'quincho', label: 'Quincho', plural: 'Quinchos', hint: 'Quincho con parrilla para asados', group: 'eventos', icon: Flame, environment: 'abierto' },
@@ -57,6 +59,9 @@ export const SPACE_CATEGORIES: SpaceCategoryInfo[] = [
   { id: 'estacionamiento', label: 'Estacionamiento', plural: 'Estacionamientos', hint: 'Estacionamiento techado o al aire libre', group: 'comercio', icon: Car, environment: 'abierto' },
   { id: 'otro', label: 'Otro tipo de espacio', plural: 'Otros', hint: 'Cualquier otro espacio arrendable', group: 'otros', icon: LayoutGrid, environment: 'cerrado' },
 ];
+
+/** Tipos que se pueden elegir hoy al publicar o filtrar. */
+export const ACTIVE_CATEGORIES = SPACE_CATEGORIES.filter((c) => !c.retired);
 
 const BY_ID = new Map(SPACE_CATEGORIES.map((c) => [c.id, c]));
 

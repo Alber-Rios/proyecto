@@ -331,7 +331,8 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               <p className={labelClass}>¿Qué tipo de espacio vas a arrendar?</p>
               <div className="space-y-3">
                 {CATEGORY_GROUPS.map((group) => {
-                  const items = SPACE_CATEGORIES.filter((c) => c.group === group.id);
+                  // Un espacio antiguo de un tipo retirado lo sigue viendo al editar.
+                  const items = SPACE_CATEGORIES.filter((c) => c.group === group.id && (!c.retired || c.id === category));
                   return (
                     <div key={group.id}>
                       <p className="text-xs font-semibold text-slate-500 mb-1.5">{group.label}</p>

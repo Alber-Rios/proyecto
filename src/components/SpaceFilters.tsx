@@ -16,7 +16,7 @@ import {
   X,
   Maximize2
 } from 'lucide-react';
-import { SPACE_CATEGORIES } from '../utils/spaceCategories.ts';
+import { ACTIVE_CATEGORIES } from '../utils/spaceCategories.ts';
 
 export type RateFilter = 'all' | 'hour' | 'day' | 'month';
 
@@ -40,7 +40,7 @@ interface SpaceFiltersProps {
 
 const CATEGORIES: { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'all', label: 'Todos los espacios', icon: Building },
-  ...SPACE_CATEGORIES.map((c) => ({ id: c.id, label: c.plural, icon: c.icon })),
+  ...ACTIVE_CATEGORIES.map((c) => ({ id: c.id, label: c.plural, icon: c.icon })),
 ];
 
 const COMMUNES = [

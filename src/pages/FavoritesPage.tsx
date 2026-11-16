@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { Space, SpaceCategory } from '../types.ts';
 import { SpaceCard } from '../components/SpaceCard.tsx';
-import { SPACE_CATEGORIES } from '../utils/spaceCategories.ts';
+import { ACTIVE_CATEGORIES } from '../utils/spaceCategories.ts';
 import {
   Heart,
   Search,
@@ -21,7 +21,7 @@ interface FavoritesPageProps {
 
 const CATEGORY_FILTERS: { id: 'all' | SpaceCategory; label: string }[] = [
   { id: 'all', label: 'Todos' },
-  ...SPACE_CATEGORIES.map((c) => ({ id: c.id, label: c.plural })),
+  ...ACTIVE_CATEGORIES.map((c) => ({ id: c.id, label: c.plural })),
 ];
 
 export const FavoritesPage: React.FC<FavoritesPageProps> = ({
