@@ -14,7 +14,7 @@ export interface PlatformSettings {
 /** Valores por defecto si la base aún no tiene el parche (mismos del SQL). */
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   ownerCommissionRate: 0.1,
-  ownerCommissionRateMonthly: 0.05,
+  ownerCommissionRateMonthly: 0.1,
   launchEndsOn: '2027-05-31',
   ownerFreeBookings: 3,
 };
@@ -37,7 +37,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 export async function updatePlatformSettings(s: PlatformSettings): Promise<void> {
   const { error } = await supabase.rpc('admin_update_platform_settings', {
     p_owner_commission_rate: s.ownerCommissionRate,
-    p_owner_commission_rate_monthly: s.ownerCommissionRateMonthly,
+    p_owner_commission_rate_monthly: s.ownerCommissionRate,
     p_launch_ends_on: s.launchEndsOn,
     p_owner_free_bookings: s.ownerFreeBookings,
   });

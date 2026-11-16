@@ -540,8 +540,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 </div>
               </ModalityRow>
               <p className="text-xs text-slate-500">
-                Spotly cobra al arrendatario un cargo de servicio de 5 % y a ti una comisión de 10 % sobre el arriendo (5 % en arriendos
-                mensuales). Hasta el 31 de mayo de 2027 y en tus primeras 3 reservas tu comisión es 0 %. Los arriendos por hora y por día no
+                Spotly cobra al arrendatario un cargo de servicio de 5 % y a ti una comisión de 10 % sobre el arriendo. Hasta el 31 de mayo de 2027 y en tus primeras 3 reservas tu comisión es 0 %. Los arriendos por hora y por día no
                 llevan garantía.
               </p>
             </div>

@@ -3007,7 +3007,7 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
   id BOOLEAN PRIMARY KEY DEFAULT true CHECK (id),
   owner_commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.10
     CHECK (owner_commission_rate BETWEEN 0 AND 0.30),
-  owner_commission_rate_monthly NUMERIC(5,4) NOT NULL DEFAULT 0.05
+  owner_commission_rate_monthly NUMERIC(5,4) NOT NULL DEFAULT 0.10
     CHECK (owner_commission_rate_monthly BETWEEN 0 AND 0.30),
   launch_ends_on DATE NOT NULL DEFAULT DATE '2027-05-31',
   owner_free_bookings INTEGER NOT NULL DEFAULT 3 CHECK (owner_free_bookings BETWEEN 0 AND 50),
@@ -3066,11 +3066,8 @@ BEGIN
   IF v_done < s.owner_free_bookings THEN
     rate := 0; reason := 'bienvenida'; RETURN NEXT; RETURN;
   END IF;
-  IF p_price_unit = 'month' THEN
-    rate := s.owner_commission_rate_monthly; reason := 'mensual';
-  ELSE
-    rate := s.owner_commission_rate; reason := 'estandar';
-  END IF;
+  -- Una sola tasa para el propietario (10 %), también en arriendos mensuales.
+  rate := s.owner_commission_rate; reason := 'estandar';
   RETURN NEXT;
 END;
 $$;
@@ -3238,7 +3235,7 @@ BEGIN
   SELECT * INTO v_before FROM public.platform_settings WHERE id;
   UPDATE public.platform_settings
   SET owner_commission_rate = p_owner_commission_rate,
-      owner_commission_rate_monthly = p_owner_commission_rate_monthly,
+      owner_commission_rate_monthly = p_owner_commission_rate,
       launch_ends_on = p_launch_ends_on,
       owner_free_bookings = p_owner_free_bookings,
       updated_at = now(),

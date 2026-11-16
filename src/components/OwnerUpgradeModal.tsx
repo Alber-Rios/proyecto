@@ -167,7 +167,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
                   className="mt-1 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
                 />
                 <span className="text-xs text-slate-700 leading-snug">
-                  Acepto la comisión de Spotly del <strong className="text-slate-900">{pct(fees.ownerCommissionRate)} del arriendo</strong> ({pct(fees.ownerCommissionRateMonthly)} en arriendos mensuales).
+                  Acepto la comisión de Spotly del <strong className="text-slate-900">{pct(fees.ownerCommissionRate)} del arriendo</strong>.
                   Se descuenta al liquidar cada reserva y el resto se deposita en mi cuenta los martes.
                 </span>
               </label>

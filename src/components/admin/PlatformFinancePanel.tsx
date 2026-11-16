@@ -405,7 +405,7 @@ export const PlatformFinancePanel: React.FC = () => {
                     <Settings2 className="h-4 w-4 text-slate-600" aria-hidden="true" /> Comisiones vigentes
                   </h3>
                   <p className="text-sm text-slate-600">
-                    Arrendatario 5 % · anfitrión {pct(settings.ownerCommissionRate)} ({pct(settings.ownerCommissionRateMonthly)} mensual) ·
+                    Arrendatario 5 % · anfitrión {pct(settings.ownerCommissionRate)} ·
                     lanzamiento sin comisión hasta el {settings.launchEndsOn} · primeras {settings.ownerFreeBookings} reservas de cada anfitrión sin comisión.
                   </p>
                 </div>
@@ -418,14 +418,9 @@ export const PlatformFinancePanel: React.FC = () => {
               {editing && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <label className="text-sm">
-                    <span className="mb-1 block text-slate-700">Comisión anfitrión (%)</span>
+                    <span className="mb-1 block text-slate-700">Comisión propietario (%)</span>
                     <input type="number" min={0} max={30} step={0.5} value={Math.round(editing.ownerCommissionRate * 1000) / 10}
                       onChange={(e) => setEditing({ ...editing, ownerCommissionRate: Number(e.target.value) / 100 })} className={`${input} w-full`} />
-                  </label>
-                  <label className="text-sm">
-                    <span className="mb-1 block text-slate-700">Comisión mensual (%)</span>
-                    <input type="number" min={0} max={30} step={0.5} value={Math.round(editing.ownerCommissionRateMonthly * 1000) / 10}
-                      onChange={(e) => setEditing({ ...editing, ownerCommissionRateMonthly: Number(e.target.value) / 100 })} className={`${input} w-full`} />
                   </label>
                   <label className="text-sm">
                     <span className="mb-1 block text-slate-700">Fin del lanzamiento</span>

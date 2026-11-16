@@ -166,7 +166,7 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
               <p className="font-semibold text-emerald-950">Hoy no pagas comisión: recibes el 100 % de cada arriendo</p>
               <p className="text-emerald-900">
                 Es así hasta el {formatLongDate(settings.launchEndsOn, false)}. Desde el día siguiente, Spotly se queda con el{' '}
-                {pct(settings.ownerCommissionRate)} de cada arriendo ({pct(settings.ownerCommissionRateMonthly)} si es mensual). Por
+                {pct(settings.ownerCommissionRate)} de cada arriendo. Por
                 ejemplo, en un arriendo de {formatClp(40000)} recibirías {formatClp(Math.round(40000 * (1 - settings.ownerCommissionRate)))}.
               </p>
             </>
@@ -177,13 +177,13 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
               </p>
               <p className="text-emerald-900">
                 Es la bienvenida para anfitriones nuevos: recibes el arriendo completo. Después, Spotly se queda con el{' '}
-                {pct(settings.ownerCommissionRate)} de cada arriendo ({pct(settings.ownerCommissionRateMonthly)} si es mensual).
+                {pct(settings.ownerCommissionRate)} de cada arriendo.
               </p>
             </>
           ) : (
             <>
               <p className="font-semibold text-slate-950">
-                Comisión de Spotly: {pct(settings.ownerCommissionRate)} ({pct(settings.ownerCommissionRateMonthly)} en arriendos mensuales)
+                Comisión de Spotly: {pct(settings.ownerCommissionRate)}
               </p>
               <p className="text-slate-700">
                 Por ejemplo, en un arriendo de {formatClp(40000)} recibes {formatClp(Math.round(40000 * (1 - settings.ownerCommissionRate)))}. La

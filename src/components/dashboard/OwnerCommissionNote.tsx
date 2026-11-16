@@ -27,7 +27,7 @@ export const OwnerCommissionNote: React.FC<{ acceptedBookings: number; onOpen?: 
       ? freeLeft === 1
         ? 'Tu próxima reserva va sin comisión.'
         : `Tus próximas ${freeLeft} reservas van sin comisión.`
-      : `${pct(settings.ownerCommissionRateMonthly)} en arriendos mensuales.`;
+      : 'Se descuenta de cada arriendo.';
 
   return (
     <button
