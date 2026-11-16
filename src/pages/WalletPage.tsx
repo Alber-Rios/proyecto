@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, CreditCard, Info, Loader2, Plus, ShieldCheck, Star, Trash2, Wallet } from 'lucide-react';
+import { AlertCircle, CheckCircle2, CreditCard, ExternalLink, Info, Landmark, Loader2, Plus, ShieldCheck, Star, Trash2, Wallet } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp } from '../utils/formatters.ts';
 import type { PaymentRecord } from '../types.ts';
@@ -36,6 +36,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [confirmAdd, setConfirmAdd] = useState(false);
   const [refunds, setRefunds] = useState<RefundTransfer[]>([]);
   const loadRefunds = () => void getMyRefundTransfers().then(setRefunds);
   useEffect(loadRefunds, [currentUser?.id]);
@@ -88,27 +89,50 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
     }
   };
 
+  const isOwner = currentUser.role === 'owner' || !!currentUser.ownerTermsAccepted;
+  const maxCards = walletCards.length >= 5;
+
+  const addCardButton = (
+    <button
+      type="button"
+      onClick={() => setConfirmAdd(true)}
+      disabled={busy !== null || maxCards || confirmAdd}
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-bold text-white transition hover:bg-rose-700 active:scale-[0.97] disabled:opacity-50 cursor-pointer"
+    >
+      <Plus className="h-4 w-4" aria-hidden="true" /> Agregar tarjeta
+    </button>
+  );
+
   return (
-    <div className={embedded ? 'max-w-3xl space-y-6' : 'max-w-3xl mx-auto py-8 sm:py-12 px-4 space-y-6'}>
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          {!embedded && (
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Wallet className="w-6 h-6 text-rose-600" /> Billetera
-            </h1>
-          )}
-          <p className={`text-sm text-slate-600 ${embedded ? '' : 'mt-1'}`}>Guarda tus tarjetas para pagar las reservas sin volver a ingresar los datos.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => run('add', () => addWalletCard('/billetera'))}
-          disabled={busy !== null || walletCards.length >= 5}
-          className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-sm font-bold flex items-center gap-2 cursor-pointer"
-        >
-          {busy === 'add' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Agregar tarjeta
-        </button>
-      </div>
+    <div className={embedded ? 'max-w-3xl space-y-8' : 'max-w-3xl mx-auto py-8 sm:py-12 px-4 space-y-8'}>
+      <header>
+        {!embedded && (
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Wallet className="w-6 h-6 text-rose-600" aria-hidden="true" /> Billetera
+          </h1>
+        )}
+        <p className={`text-sm text-slate-600 ${embedded ? '' : 'mt-1'}`}>
+          {isOwner
+            ? 'Aquí manejas tu plata en Spotly: con qué pagas cuando arriendas y dónde te depositamos lo que ganas.'
+            : 'Aquí manejas con qué pagas tus reservas y dónde te devolvemos dinero si hace falta.'}
+        </p>
+        <nav aria-label="Secciones de la billetera" className="mt-4 grid grid-cols-2 gap-2 sm:max-w-md">
+          <a href="#para-pagar" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50">
+            <CreditCard className="h-4 w-4 text-rose-600" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block">Para pagar</span>
+              <span className="block text-xs font-normal text-slate-500">{walletCards.length ? `${walletCards.length} tarjeta${walletCards.length > 1 ? 's' : ''}` : 'Sin tarjetas'}</span>
+            </span>
+          </a>
+          <a href="#para-recibir" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50">
+            <Landmark className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block">Para recibir</span>
+              <span className="block text-xs font-normal text-slate-500">Cuenta bancaria</span>
+            </span>
+          </a>
+        </nav>
+      </header>
 
       {notice && (
         <div
@@ -128,67 +152,83 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
       )}
 
       {waitingData.length > 0 && (
-        <div role="status" className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        <a href="#para-recibir" role="status" className="block rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
           <p className="font-bold">
             Tienes {waitingData.length === 1 ? 'una devolución' : `${waitingData.length} devoluciones`} de{' '}
             {formatClp(waitingData.reduce((n, r) => n + r.amountClp, 0))} esperando tus datos bancarios
           </p>
-          <p>No pudimos devolverla a tu tarjeta. Completa tu cuenta aquí abajo y te la transferimos.</p>
-        </div>
+          <p>No pudimos devolverla a tu tarjeta. Completa tu cuenta bancaria más abajo y te la transferimos.</p>
+        </a>
       )}
 
-      <BankAccountCard
-        userId={currentUser.id}
-        defaultName={currentUser.fullName}
-        defaultRut={currentUser.rut}
-        defaultEmail={currentUser.email}
-        highlight={waitingData.length > 0}
-        purpose={
-          currentUser.role === 'owner' || currentUser.ownerTermsAccepted
-            ? 'Aquí depositamos cada martes lo que ganaste con tus arriendos terminados. También la usamos si alguna devolución no puede volver a tu tarjeta.'
-            : 'La usamos solo si una devolución no puede volver a tu tarjeta.'
-        }
-        onSaved={loadRefunds}
-      />
-
-      {refunds.length > 0 && (
-        <section className="space-y-2" aria-labelledby="mis-devoluciones">
-          <h2 id="mis-devoluciones" className="text-sm font-bold text-slate-900">Devoluciones por transferencia</h2>
-          <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
-            {refunds.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-                <span>
-                  <span className="block font-semibold text-slate-900">{formatClp(r.amountClp)}</span>
-                  <span className="text-xs text-slate-500">
-                    Reserva {r.reservationId} · {new Date(r.createdAt).toLocaleDateString('es-CL')}
-                    {r.transferReference ? ` · comprobante ${r.transferReference}` : ''}
-                  </span>
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                    r.status === 'paid'
-                      ? 'bg-emerald-50 text-emerald-800'
-                      : r.status === 'awaiting_data'
-                        ? 'bg-amber-100 text-amber-900'
-                        : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  {r.status === 'paid' ? 'Transferida' : r.status === 'awaiting_data' ? 'Faltan tus datos' : r.status === 'pending' ? 'Por transferir' : 'Anulada'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="space-y-3" aria-labelledby="mis-tarjetas">
-        <h2 id="mis-tarjetas" className="text-sm font-bold text-slate-900">
-          Mis tarjetas
-        </h2>
-        {walletCards.length === 0 ? (
-          <div className="p-6 rounded-2xl border border-dashed border-slate-300 bg-white text-center text-sm text-slate-600">
-            Aún no tienes tarjetas guardadas. Agrega una para pagar tus reservas en un clic.
+      {/* ---------- 1. Para pagar ---------- */}
+      <section id="para-pagar" className="scroll-mt-24 space-y-3" aria-labelledby="mis-tarjetas">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-rose-600">1 · Para pagar</p>
+            <h2 id="mis-tarjetas" className="text-lg font-bold text-slate-950">Mis tarjetas</h2>
+            <p className="text-sm text-slate-600">Paga tus reservas en un clic, sin volver a escribir los datos.</p>
           </div>
+          {walletCards.length > 0 && !confirmAdd && addCardButton}
+        </div>
+
+        {confirmAdd && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" role="region" aria-labelledby="add-card-title">
+            <h3 id="add-card-title" className="text-base font-bold text-slate-950">Vas a agregar tu tarjeta en Transbank</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Por seguridad, la tarjeta no se escribe en Spotly: se inscribe en la página oficial de Transbank (Webpay Oneclick).
+            </p>
+            <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+              {[
+                ['Te llevamos a Webpay', 'Se abre la página segura de Transbank.'],
+                ['Ingresas tu tarjeta', 'Número, fecha y clave, solo en Transbank.'],
+                ['Vuelves a Spotly', 'La tarjeta aparece aquí, lista para pagar.'],
+              ].map(([t, d], i) => (
+                <li key={t} className="flex gap-3 rounded-xl bg-slate-50 p-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{i + 1}</span>
+                  <span>
+                    <span className="block font-semibold text-slate-900">{t}</span>
+                    <span className="text-slate-600">{d}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 flex items-start gap-1.5 text-xs text-slate-600">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+              Spotly solo guarda el tipo de tarjeta y los 4 últimos dígitos. No se hace ningún cobro al inscribirla.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => run('add', () => addWalletCard('/billetera'))}
+                disabled={busy !== null}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-rose-600 px-5 text-sm font-bold text-white transition hover:bg-rose-700 active:scale-[0.97] disabled:opacity-60 cursor-pointer"
+              >
+                {busy === 'add' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ExternalLink className="h-4 w-4" aria-hidden="true" />}
+                {busy === 'add' ? 'Abriendo Transbank…' : 'Continuar a Transbank'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmAdd(false)}
+                disabled={busy === 'add'}
+                className="min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                Ahora no
+              </button>
+            </div>
+          </div>
+        )}
+
+        {walletCards.length === 0 ? (
+          !confirmAdd && (
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+                <CreditCard className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <p className="text-sm text-slate-600">Aún no tienes tarjetas guardadas.</p>
+              {addCardButton}
+            </div>
+          )
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {walletCards.map((card) => (
@@ -249,21 +289,72 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
             ))}
           </ul>
         )}
-        <p className="text-xs text-slate-500 flex items-start gap-1.5">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          Las tarjetas se inscriben en Transbank (Oneclick). Spotly nunca ve ni guarda el número completo de tu tarjeta.
-        </p>
-        <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex gap-2">
-          <Info className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            Ambiente de pruebas de Transbank: usa la tarjeta VISA <strong>4051 8856 0044 6623</strong>, CVV <strong>123</strong> y cualquier fecha
-            futura; si te pide autenticación, RUT <strong>11.111.111-1</strong> y clave <strong>123</strong>.
-          </span>
+        {maxCards && <p className="text-xs text-slate-500">Puedes guardar hasta 5 tarjetas. Elimina una para agregar otra.</p>}
+        <details className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+          <summary className="flex cursor-pointer items-center gap-2 font-semibold">
+            <Info className="h-4 w-4 shrink-0" aria-hidden="true" /> Datos de prueba de Transbank (ambiente de integración)
+          </summary>
+          <p className="mt-2">
+            Tarjeta VISA <strong>4051 8856 0044 6623</strong>, CVV <strong>123</strong> y cualquier fecha futura. Si te pide autenticación: RUT{' '}
+            <strong>11.111.111-1</strong> y clave <strong>123</strong>.
+          </p>
+        </details>
+      </section>
+
+      {/* ---------- 2. Para recibir ---------- */}
+      <section id="para-recibir" className="scroll-mt-24 space-y-3" aria-labelledby="para-recibir-t">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">2 · Para recibir</p>
+          <h2 id="para-recibir-t" className="text-lg font-bold text-slate-950">Tu cuenta bancaria</h2>
+          <p className="text-sm text-slate-600">
+            {isOwner
+              ? 'Cada martes te transferimos aquí lo que ganaste con los arriendos terminados.'
+              : 'Solo la usamos si una devolución no puede volver a tu tarjeta.'}
+          </p>
         </div>
+        <BankAccountCard
+          userId={currentUser.id}
+          defaultName={currentUser.fullName}
+          defaultRut={currentUser.rut}
+          defaultEmail={currentUser.email}
+          highlight={waitingData.length > 0}
+          purpose={isOwner ? 'Depósitos de los martes y devoluciones.' : 'Devoluciones por transferencia.'}
+          onSaved={loadRefunds}
+        />
+        {refunds.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-bold text-slate-900">Devoluciones por transferencia</h3>
+          <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+            {refunds.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                <span>
+                  <span className="block font-semibold text-slate-900">{formatClp(r.amountClp)}</span>
+                  <span className="text-xs text-slate-500">
+                    Reserva {r.reservationId} · {new Date(r.createdAt).toLocaleDateString('es-CL')}
+                    {r.transferReference ? ` · comprobante ${r.transferReference}` : ''}
+                  </span>
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    r.status === 'paid'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : r.status === 'awaiting_data'
+                        ? 'bg-amber-100 text-amber-900'
+                        : 'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  {r.status === 'paid' ? 'Transferida' : r.status === 'awaiting_data' ? 'Faltan tus datos' : r.status === 'pending' ? 'Por transferir' : 'Anulada'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       </section>
 
       <section className="space-y-3" aria-labelledby="movimientos">
-        <h2 id="movimientos" className="text-sm font-bold text-slate-900">
+        <h2 id="movimientos" className="text-lg font-bold text-slate-950">
           Movimientos
         </h2>
         {myPayments.length === 0 ? (

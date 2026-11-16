@@ -593,7 +593,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                     return (
                       <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                        <div className="overflow-x-auto">
+                        <div className="relative overflow-x-auto">
                           <table className="w-full text-left border-collapse text-xs">
                             <thead>
                               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
@@ -1088,7 +1088,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 Centro de arbitraje y garantías
               </h2>
               <p className="text-xs text-slate-500">
-                Resuelve reclamos entre arrendatarios y propietarios sobre el pago retenido en custodia (Arriendo + Garantía + 5% Comisión).
+                Resuelve reclamos entre arrendatarios y propietarios sobre el pago retenido en custodia (arriendo + garantía + cargo de servicio del 5 %).
               </p>
             </div>
 
@@ -1121,7 +1121,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span>1. ¿Qué incluye el Monto en Custodia?</span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Cuando el arrendatario paga, Spotly retiene en custodia: <strong>Valor hora/Día</strong> + <strong>Garantía de daños</strong> + <strong>5% Comisión Spotly</strong>.
+                Cuando el arrendatario paga, Spotly retiene en custodia: <strong>Valor hora/Día</strong> + <strong>Garantía de daños</strong> + <strong>cargo de servicio del 5 %</strong> que paga el arrendatario.
               </p>
             </div>
 
@@ -1131,7 +1131,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span>2. Si reembolsas al Arrendatario</span>
               </div>
               <p className="text-xs text-emerald-800 leading-relaxed">
-                Por falla del lugar (ej. corte de luz, recinto cerrado), se devuelve el <strong>100% de todo lo pagado</strong> (Arriendo + Garantía + 5% Comisión). Spotly anula su 5%.
+                Por falla del lugar (ej. corte de luz, recinto cerrado), se devuelve el <strong>100% de todo lo pagado</strong> (arriendo + garantía + cargo de servicio). Spotly devuelve también su 5 %.
               </p>
             </div>
 
@@ -1141,7 +1141,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span>3. Si liberas al Propietario</span>
               </div>
               <p className="text-xs text-indigo-800 leading-relaxed">
-                Si hubo daños o el reclamo no procede, el propietario recibe el <strong>Arriendo (menos 5% comisión) + la Garantía</strong>, y Spotly retiene su <strong>5% de comisión</strong>.
+                Si hubo daños o el reclamo no procede, el propietario recibe el <strong>arriendo (menos su comisión, si le corresponde) + la garantía</strong>, y Spotly se queda con el <strong>cargo de servicio del 5 %</strong>.
               </p>
             </div>
           </div>
@@ -1165,7 +1165,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 const platformFee5Pct =
                   d.platformFeeClp ?? linkedRes?.platformFeeClp ?? Math.round(rentalSubtotal * 0.05);
                 const totalCustody = rentalSubtotal + securityDeposit + platformFee5Pct;
-                const ownerNetIfReleased = Math.round(rentalSubtotal * 0.95) + securityDeposit;
+                // El propietario recibe el arriendo menos SU comisión (congelada en la reserva: 0 % en lanzamiento).
+                const ownerNetIfReleased = rentalSubtotal - (linkedRes?.ownerCommissionClp ?? 0) + securityDeposit;
 
                 return (
                   <div key={d.id} className="p-4 sm:p-5 space-y-4">
@@ -1311,7 +1312,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 d.id,
                                 'resolved_refund',
                                 resolutionNotes[d.id] ||
-                                  'Fallo a favor del arrendatario por incumplimiento del recinto. Se reembolsa 100% (Arriendo + Garantía + 5% Comisión).'
+                                  'Fallo a favor del arrendatario por incumplimiento del recinto. Se reembolsa 100% (arriendo + garantía + cargo de servicio).'
                               )
                             }
                             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"

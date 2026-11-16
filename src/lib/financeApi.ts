@@ -257,7 +257,9 @@ export async function saveMyBankAccount(userId: string, b: BankAccount): Promise
   };
   const { data, error } = await supabase.from('bank_accounts').upsert(row, { onConflict: 'user_id' }).select('*').single();
   if (error) {
-    if (/does not exist|schema cache/i.test(error.message)) throw new Error('Falta actualizar la base: ejecuta supabase/reset-and-setup.sql en Supabase.');
+    if (/bank_accounts/i.test(error.message) && /does not exist|schema cache/i.test(error.message))
+      throw new Error('Tu base de Supabase todavía no tiene la tabla de cuentas bancarias. Copia el supabase/reset-and-setup.sql más reciente del repositorio y ejecútalo en el SQL Editor.');
+    if (/row-level security|permission denied/i.test(error.message)) throw new Error('No tienes permiso para guardar esta cuenta. Cierra sesión, vuelve a entrar e inténtalo de nuevo.');
     throw new Error(error.message);
   }
   return bankFromRow(data);

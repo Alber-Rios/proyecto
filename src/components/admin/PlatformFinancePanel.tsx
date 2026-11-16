@@ -210,10 +210,10 @@ export const PlatformFinancePanel: React.FC = () => {
                 <caption className="sr-only">Cómo se forma la ganancia</caption>
                 <tbody className="divide-y divide-slate-100">
                   {[
-                    ['Cargo de servicio a arrendatarios (5 %)', t.tenantFeesClp, ''],
-                    ['Comisión a anfitriones', t.ownerCommissionsClp, ''],
-                    ['Retenido en cancelaciones con menos de 24 h', t.cancellationFeesClp, ''],
-                    ['Descuentos pagados por Spotly', -t.discountsClp, ''],
+                    ['Cargo de servicio que paga el arrendatario (5 % sobre el arriendo)', t.tenantFeesClp, ''],
+                    ['Comisión descontada a los propietarios', t.ownerCommissionsClp, ''],
+                    ['Multas por cancelar con menos de 24 h', t.cancellationFeesClp, ''],
+                    ['Códigos de descuento (los paga Spotly)', -t.discountsClp, ''],
                   ].map(([label, value]) => (
                     <tr key={String(label)}>
                       <th scope="row" className="py-2 pr-3 text-left font-normal text-slate-700">{label}</th>
@@ -223,15 +223,15 @@ export const PlatformFinancePanel: React.FC = () => {
                     </tr>
                   ))}
                   <tr>
-                    <th scope="row" className="pt-2 pr-3 text-left font-bold text-slate-950">Ganancia total (IVA incluido)</th>
+                    <th scope="row" className="pt-2 pr-3 text-left font-bold text-slate-950">Lo que gana Spotly (con IVA)</th>
                     <td className="pt-2 text-right font-bold tabular-nums text-slate-950">{formatClp(t.platformRevenueClp)}</td>
                   </tr>
                   <tr>
-                    <th scope="row" className="py-1 pr-3 text-left font-normal text-slate-600">IVA de la comisión (19 %, estimado)</th>
+                    <th scope="row" className="py-1 pr-3 text-left font-normal text-slate-600">IVA que Spotly paga al SII (19 % de lo anterior)</th>
                     <td className="py-1 text-right tabular-nums text-slate-600">− {formatClp(ivaOf(t.platformRevenueClp))}</td>
                   </tr>
                   <tr>
-                    <th scope="row" className="py-1 pr-3 text-left font-semibold text-slate-800">Ganancia neta de IVA</th>
+                    <th scope="row" className="py-1 pr-3 text-left font-semibold text-slate-800">Lo que le queda a Spotly</th>
                     <td className="py-1 text-right font-semibold tabular-nums text-slate-800">
                       {formatClp(t.platformRevenueClp - ivaOf(t.platformRevenueClp))}
                     </td>
@@ -243,7 +243,14 @@ export const PlatformFinancePanel: React.FC = () => {
                   {formatClp(t.pendingRevenueClp)} más quedan pendientes en solicitudes pagadas que el anfitrión aún no acepta.
                 </p>
               )}
-              <p className="mt-2 text-xs text-slate-500">No incluye la comisión que cobra Transbank por cada pago.</p>
+              <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+                <p>
+                  <strong className="text-slate-800">¿El 19 % es sobre los arriendos? No.</strong> Spotly solo paga IVA por lo que cobra él mismo (cargo de
+                  servicio y comisión). El arriendo es plata del propietario: si su espacio es amoblado o equipado, el IVA de ese arriendo lo declara el
+                  propietario, no Spotly.
+                </p>
+                <p className="mt-1">No incluye lo que cobra Transbank por cada pago. Es una estimación para orientarte; tu contador confirma la cifra final.</p>
+              </div>
             </section>
 
             <section aria-labelledby="fin-money" className={`${card} space-y-3 p-5`}>

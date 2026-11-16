@@ -159,7 +159,7 @@ export const AuditPanel: React.FC = () => {
                     ? `Se detectó una alteración en el registro n.º ${chain.brokenSeq}`
                     : 'No se pudo verificar la integridad'}
             </p>
-            <p className="break-all text-slate-700">
+            <p className="text-slate-700 [overflow-wrap:anywhere]">
               {!chain
                 ? 'Recalcula el hash de cada registro y comprueba que nadie haya modificado o borrado eventos directamente en la base.'
                 : chain.ok
@@ -183,7 +183,7 @@ export const AuditPanel: React.FC = () => {
 
       {/* Filtros */}
       <section aria-label="Filtros" className="space-y-3">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Categoría">
+        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0" role="group" aria-label="Categoría">
           {[['', 'Todo'], ...Object.entries(CATEGORY_LABEL)].map(([key, label]) => {
             const count = key ? data?.byCategory?.[key as keyof typeof data.byCategory] : data?.total;
             return (
@@ -192,7 +192,7 @@ export const AuditPanel: React.FC = () => {
                 type="button"
                 aria-pressed={category === key}
                 onClick={() => setCategory(key)}
-                className={`min-h-10 rounded-xl border px-3 text-sm font-semibold transition cursor-pointer ${
+                className={`min-h-10 shrink-0 whitespace-nowrap rounded-xl border px-3 text-sm font-semibold transition cursor-pointer ${
                   category === key ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
                 }`}
               >
@@ -203,13 +203,13 @@ export const AuditPanel: React.FC = () => {
           })}
         </div>
         <form
-          className="flex flex-wrap items-end gap-2"
+          className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             setAppliedQuery(query.trim());
           }}
         >
-          <label className="relative min-w-[16rem] flex-1">
+          <label className="relative col-span-2 min-w-0 sm:min-w-[16rem] sm:flex-1">
             <span className="sr-only">Buscar en la auditoría</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <input
@@ -219,30 +219,32 @@ export const AuditPanel: React.FC = () => {
               className={`${input} w-full pl-9`}
             />
           </label>
-          <label>
+          <label className="min-w-0">
             <span className="sr-only">Período</span>
-            <select value={rangeKey} onChange={(e) => setRangeKey(e.target.value as RangeKey)} className={input}>
+            <select value={rangeKey} onChange={(e) => setRangeKey(e.target.value as RangeKey)} className={`${input} w-full`}>
               {(Object.keys(RANGE) as RangeKey[]).map((k) => (
                 <option key={k} value={k}>{RANGE[k].label}</option>
               ))}
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className="sr-only">Severidad</span>
-            <select value={severity} onChange={(e) => setSeverity(e.target.value)} className={input}>
+            <select value={severity} onChange={(e) => setSeverity(e.target.value)} className={`${input} w-full`}>
               <option value="">Toda severidad</option>
               {Object.entries(SEVERITY_LABEL).map(([k, v]) => (
                 <option key={k} value={k}>{v}{data?.bySeverity?.[k as keyof typeof data.bySeverity] ? ` (${data.bySeverity[k as keyof typeof data.bySeverity]})` : ''}</option>
               ))}
             </select>
           </label>
-          <button type="submit" className={`${input} font-semibold cursor-pointer`}>Buscar</button>
-          <button type="button" onClick={load} className={`${input} inline-flex items-center gap-1.5 cursor-pointer`} aria-label="Actualizar">
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-          </button>
-          <button type="button" onClick={handleExport} disabled={!total} className={`${input} inline-flex items-center gap-1.5 font-semibold disabled:opacity-40 cursor-pointer`}>
-            <Download className="h-4 w-4" aria-hidden="true" /> CSV
-          </button>
+          <div className="col-span-2 flex gap-2 sm:contents">
+            <button type="submit" className="min-h-10 flex-1 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] sm:flex-none cursor-pointer">Buscar</button>
+            <button type="button" onClick={load} className={`${input} inline-flex items-center justify-center gap-1.5 cursor-pointer`} aria-label="Actualizar">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            </button>
+            <button type="button" onClick={handleExport} disabled={!total} className={`${input} inline-flex items-center justify-center gap-1.5 font-semibold disabled:opacity-40 cursor-pointer`}>
+              <Download className="h-4 w-4" aria-hidden="true" /> CSV
+            </button>
+          </div>
         </form>
       </section>
 
@@ -250,8 +252,38 @@ export const AuditPanel: React.FC = () => {
 
       {/* Registros */}
       <section aria-label="Registros de auditoría" className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+        {/* Móvil y tablet: tarjetas apiladas */}
+        <ul className="divide-y divide-slate-100 lg:hidden">
+          {(data?.rows || []).map((r) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => setSelected(r)}
+                className="flex w-full min-w-0 flex-col gap-1.5 px-4 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 cursor-pointer"
+              >
+                <span className="flex w-full items-center justify-between gap-2 text-xs text-slate-500">
+                  <span className="tabular-nums">{fmtDate(r.timestamp)}</span>
+                  {r.seq !== null && <span className="shrink-0 tabular-nums">n.º {r.seq}</span>}
+                </span>
+                <span className="text-sm font-medium text-slate-950">{describeAudit(r.action, r.details)}</span>
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${severityClass[r.severity]}`}>{SEVERITY_LABEL[r.severity]}</span>
+                  <span className="text-xs text-slate-500">{CATEGORY_LABEL[r.category]}</span>
+                </span>
+                <span className="w-full min-w-0 truncate text-xs text-slate-600">
+                  {r.userEmail}
+                  {r.userRole ? ` · ${r.userRole}` : ''}
+                  {r.ip ? ` · ${r.ip}` : ''}
+                </span>
+              </button>
+            </li>
+          ))}
+          {!loading && data && data.rows.length === 0 && <li className="px-4 py-8 text-center text-sm text-slate-600">No hay eventos con estos filtros.</li>}
+        </ul>
+
+        {/* Escritorio: tabla. "relative" mantiene dentro del scroll el th sr-only (absoluto). */}
+        <div className="relative hidden overflow-x-auto lg:block">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th scope="col" className="px-4 py-2 font-semibold">Fecha y hora</th>
@@ -283,7 +315,7 @@ export const AuditPanel: React.FC = () => {
                     <span className="text-xs text-slate-500">{r.userRole}</span>
                   </td>
                   <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{r.ip || '—'}</td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{auditEntity(r.details) || '—'}</td>
+                  <td className="max-w-[12rem] break-all px-4 py-2.5 font-mono text-xs text-slate-700">{auditEntity(r.details) || '—'}</td>
                   <td className="px-4 py-2.5 text-right">
                     <button
                       type="button"
@@ -303,7 +335,7 @@ export const AuditPanel: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-700 max-sm:justify-center">
           <span className="tabular-nums">
             {total ? `${page * PAGE + 1}–${Math.min((page + 1) * PAGE, total)} de ${total.toLocaleString('es-CL')} eventos` : 'Sin eventos'}
           </span>
@@ -342,11 +374,11 @@ const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: 
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="h-full w-full max-w-xl overflow-y-auto bg-white shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="h-full w-full max-w-xl overflow-y-auto overscroll-contain bg-white shadow-2xl">
         <div className="sticky top-0 flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-5">
           <div className="min-w-0">
             <p className="text-xs text-slate-500">{CATEGORY_LABEL[entry.category]} · {entry.action}</p>
-            <h3 id={titleId} className="text-lg font-bold text-slate-950">{describeAudit(entry.action, entry.details)}</h3>
+            <h3 id={titleId} className="text-base font-bold text-slate-950 sm:text-lg">{describeAudit(entry.action, entry.details)}</h3>
             <p className="text-sm text-slate-600">{fmtDate(entry.timestamp)}</p>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label="Cerrar detalle" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-slate-100 cursor-pointer">
@@ -354,7 +386,7 @@ const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: 
           </button>
         </div>
         <div className="space-y-5 p-5 text-sm">
-          <dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-2">
+          <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 sm:grid-cols-[8rem_minmax(0,1fr)]">
             <dt className="text-slate-600">Severidad</dt>
             <dd><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${severityClass[entry.severity]}`}>{SEVERITY_LABEL[entry.severity]}</span></dd>
             <dt className="text-slate-600">Usuario</dt>
@@ -370,7 +402,7 @@ const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: 
           {rows.length > 0 && (
             <div>
               <h4 className="mb-2 font-semibold text-slate-900">Datos del evento</h4>
-              <dl className="grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1.5 rounded-xl bg-slate-50 p-3">
+              <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-xl bg-slate-50 p-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
                 {rows.map((r) => (
                   <React.Fragment key={r.key}>
                     <dt className="text-slate-600">{r.label}</dt>
@@ -385,15 +417,15 @@ const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: 
             <button
               type="button"
               onClick={() => onFilter(entity)}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-300 px-3 font-semibold text-slate-800 hover:bg-slate-50 cursor-pointer"
+              className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-left font-semibold text-slate-800 hover:bg-slate-50 cursor-pointer"
             >
-              <Link2 className="h-4 w-4" aria-hidden="true" /> Ver todo lo relacionado con {entity}
+              <Link2 className="h-4 w-4 shrink-0" aria-hidden="true" /> <span className="min-w-0 break-all">Ver todo lo relacionado con {entity}</span>
             </button>
           )}
 
           <div>
             <h4 className="mb-2 font-semibold text-slate-900">Sello de integridad</h4>
-            <dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1.5 text-xs">
+            <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs sm:grid-cols-[8rem_minmax(0,1fr)]">
               <dt className="text-slate-600">Registro n.º</dt>
               <dd className="font-mono text-slate-800">{entry.seq ?? '—'}</dd>
               <dt className="text-slate-600">Hash</dt>

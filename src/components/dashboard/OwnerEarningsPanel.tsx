@@ -287,7 +287,7 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
         {earning.length === 0 ? (
           <p className="px-5 pb-5 text-sm text-slate-600">Cuando tengas reservas confirmadas, aquí verás cuánto te deja cada una.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>

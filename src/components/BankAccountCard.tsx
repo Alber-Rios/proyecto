@@ -108,7 +108,7 @@ export const BankAccountCard: React.FC<Props> = ({ userId, defaultName, defaultR
             <Landmark className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            <h2 id={`${id}-t`} className="text-base font-bold text-slate-950">Cuenta para recibir dinero</h2>
+            <h3 id={`${id}-t`} className="text-base font-bold text-slate-950">Datos de tu cuenta</h3>
             <p className="text-sm text-slate-600">{purpose}</p>
           </div>
         </div>

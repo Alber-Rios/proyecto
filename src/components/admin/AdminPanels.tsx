@@ -489,7 +489,7 @@ export const PaymentsPanel: React.FC = () => {
         <h2 className="text-base font-bold text-slate-900">Transacciones Webpay Plus</h2>
         <p className="text-xs text-slate-500">Registro de órdenes de compra, autorizaciones y reversas informadas por Transbank.</p>
       </div>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-slate-50 text-slate-500 text-left">
             <tr>
