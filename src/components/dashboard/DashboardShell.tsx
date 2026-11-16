@@ -202,7 +202,11 @@ export function DashboardShell<T extends string>({
 
   // ---------- piezas ----------
   /** Clases según modo: en el lateral, contraído o tablet → solo íconos. */
-  const label = (mode: Mode) => (mode === 'drawer' ? '' : collapsed ? 'sr-only' : 'sr-only xl:not-sr-only');
+  // Textos del menú: en el riel (tablet o contraído) se ocultan; el nombre sigue
+  // disponible para lectores de pantalla en el aria-label de cada botón.
+  const XL_DISPLAY = { block: 'hidden xl:block', inline: 'hidden xl:inline', 'inline-flex': 'hidden xl:inline-flex' } as const;
+  const label = (mode: Mode, display: keyof typeof XL_DISPLAY = 'block') =>
+    mode === 'drawer' ? display : collapsed ? 'hidden' : XL_DISPLAY[display];
   const rowPad = (mode: Mode) =>
     mode === 'drawer' ? 'px-3' : collapsed ? 'justify-center px-0' : 'justify-center px-0 xl:justify-start xl:px-3';
   const showsDot = (mode: Mode) => (mode === 'side' ? (collapsed ? '' : 'xl:hidden') : 'hidden');
@@ -293,18 +297,18 @@ export function DashboardShell<T extends string>({
                       initial={reduce ? false : { scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: 'spring', duration: 0.4, bounce: 0.45 }}
-                      className={`${label(mode)} inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-xs font-bold tabular-nums text-white`}
+                      className={`${label(mode, 'inline-flex')} h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-xs font-bold tabular-nums text-white`}
                     >
                       {it.badge}
                     </motion.span>
                     <span aria-hidden="true" className={`absolute right-2.5 top-2 h-2 w-2 rounded-full bg-rose-600 ring-2 ring-white ${showsDot(mode)}`} />
                   </>
                 ) : it.chip ? (
-                  <span aria-hidden="true" className={`${label(mode)} rounded-full px-2 py-0.5 text-[11px] font-bold ${CHIP_TONE[it.chip.tone]}`}>
+                  <span aria-hidden="true" className={`${label(mode, 'inline')} rounded-full px-2 py-0.5 text-[11px] font-bold ${CHIP_TONE[it.chip.tone]}`}>
                     {it.chip.label}
                   </span>
                 ) : it.count !== undefined ? (
-                  <span aria-hidden="true" className={`${label(mode)} text-xs tabular-nums ${on ? 'text-slate-300' : 'text-slate-500'}`}>
+                  <span aria-hidden="true" className={`${label(mode, 'inline')} text-xs tabular-nums ${on ? 'text-slate-300' : 'text-slate-500'}`}>
                     {it.count}
                   </span>
                 ) : null}
@@ -328,12 +332,13 @@ export function DashboardShell<T extends string>({
           primaryAction.onClick();
         }}
         title={mode === 'side' ? primaryAction.label : undefined}
+        aria-label={primaryAction.label}
         className={`group flex min-h-11 w-full items-center gap-2.5 rounded-xl bg-rose-600 text-sm font-semibold text-white shadow-sm shadow-rose-600/20 transition-[background-color,transform,box-shadow] duration-150 ease-out hover:bg-rose-700 hover:shadow-md hover:shadow-rose-600/25 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 cursor-pointer ${
           mode === 'drawer' ? 'px-4' : collapsed ? 'justify-center px-0' : 'justify-center px-0 xl:justify-start xl:px-4'
         }`}
       >
         <Icon className="h-5 w-5 shrink-0 transition-transform duration-200 ease-out group-hover:rotate-90" aria-hidden="true" />
-        <span className={label(mode)}>{primaryAction.label}</span>
+        <span className={label(mode, 'inline')}>{primaryAction.label}</span>
       </button>
     );
   };
