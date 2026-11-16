@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { formatRut } from '../utils/formatters.ts';
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettings, type PlatformSettings } from '../lib/financeApi.ts';
-import { formatLongDate } from '../utils/contractTerm.ts';
 
 const pct = (rate: number) => `${Math.round(rate * 1000) / 10} %`.replace('.', ',');
 
@@ -168,9 +167,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
                   className="mt-1 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
                 />
                 <span className="text-xs text-slate-700 leading-snug">
-                  Acepto la comisión de Spotly: <strong className="text-slate-900">sin comisión hasta el {formatLongDate(fees.launchEndsOn, false)}</strong>
-                  {fees.ownerFreeBookings > 0 && <> y en mis primeras {fees.ownerFreeBookings} reservas</>}; después,{' '}
-                  <strong className="text-slate-900">{pct(fees.ownerCommissionRate)} del arriendo</strong> ({pct(fees.ownerCommissionRateMonthly)} en arriendos mensuales).
+                  Acepto la comisión de Spotly del <strong className="text-slate-900">{pct(fees.ownerCommissionRate)} del arriendo</strong> ({pct(fees.ownerCommissionRateMonthly)} en arriendos mensuales).
                   Se descuenta al liquidar cada reserva y el resto se deposita en mi cuenta los martes.
                 </span>
               </label>
