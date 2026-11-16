@@ -70,7 +70,7 @@ export const AuditPanel: React.FC = () => {
       .catch((e: Error) =>
         setError(
           /function .* does not exist|Could not find the function/i.test(e.message)
-            ? 'Falta ejecutar el parche SQL supabase/actualizar-base.sql en Supabase.'
+            ? 'Falta actualizar la base: ejecuta supabase/reset-and-setup.sql en Supabase.'
             : e.message
         )
       )

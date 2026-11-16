@@ -265,7 +265,7 @@ Spotly nunca recibe el número de la tarjeta: Transbank entrega un identificador
 - **Bloqueo por intentos:** login (5 por correo + IP), códigos (5 por correo + IP), reenvíos y enlaces de recuperación.
 
 ### 1. Base de datos
-Si tu base ya tiene datos, ejecuta en **SQL Editor** el script único no destructivo `supabase/actualizar-base.sql`. Si la base es nueva o quieres empezar de cero, ejecuta solo `reset-and-setup.sql` (borra todo y ya lo trae incluido).
+Toda la base está en un solo archivo: `supabase/reset-and-setup.sql`. Pégalo completo en **SQL Editor** y ejecútalo. Borra las tablas de Spotly (conserva las cuentas y los archivos de Storage); después vuelve a asignar tu cuenta de administrador.
 
 ### 2. Supabase → Authentication
 1. **Sign In / Providers → Email:** activa **Confirm email**. Deja **Email OTP Length = 6** y **Email OTP Expiration = 900** segundos (15 min).

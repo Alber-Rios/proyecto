@@ -23,6 +23,16 @@
 --     y la política spotly_realtime_read que controla quién escucha cada canal.
 --   · Permisos de request_ip(), request_user_agent() e is_trusted_context() para
 --     los triggers de contratos, consentimientos y auditoría (firma de contratos).
+--
+-- Y (noviembre 2026), ya incluido aquí; no hay otros scripts que correr:
+--   · Solicitudes que vencen solas si el propietario no responde a tiempo.
+--   · Cancelación según 24 horas: 24 h o más antes del inicio se devuelve todo;
+--     con menos de 24 h solo se cobra la comisión.
+--   · Comisión del propietario (10 %, 5 % mensual; 0 % en lanzamiento y en sus
+--     primeras reservas) fijada en cada reserva, liquidaciones automáticas al
+--     terminar el arriendo, campo amoblado/equipado (IVA) y ajustes de comisión.
+--   · Reportes de ganancias de Spotly (admin_finance_report) y auditoría
+--     encadenada con SHA-256 con búsqueda y verificación de integridad.
 -- Se puede ejecutar varias veces; las cuentas con RUT repetido o vacío no lo rompen.
 --
 -- ATENCIÓN: es destructivo. Borra las tablas y funciones de Spotly en el esquema
