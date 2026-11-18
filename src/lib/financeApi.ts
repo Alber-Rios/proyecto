@@ -486,3 +486,48 @@ export async function verifyAuditChain(): Promise<ChainVerification> {
   if (error) throw new Error(error.message);
   return data as ChainVerification;
 }
+
+
+// ---------- Documentos tributarios simulados (boleta 39 / nota de crédito 61) ----------
+export interface TaxDocument {
+  id: string;
+  reservationId: string;
+  docType: 39 | 61;
+  concept: 'cargo_servicio' | 'comision_propietario';
+  folio: number;
+  recipientName: string | null;
+  recipientRut: string | null;
+  netClp: number;
+  ivaClp: number;
+  totalClp: number;
+  referencesFolio: number | null;
+  ted: string;
+  simulated: boolean;
+  issuedAt: string;
+}
+
+/** Documentos de una reserva visibles para el usuario (RLS: destinatario o admin). */
+export async function getTaxDocuments(reservationId: string): Promise<TaxDocument[]> {
+  const { data, error } = await supabase
+    .from('tax_documents')
+    .select('id, reservation_id, doc_type, concept, folio, recipient_name, recipient_rut, net_clp, iva_clp, total_clp, references_folio, ted, simulated, issued_at')
+    .eq('reservation_id', reservationId)
+    .order('issued_at');
+  if (error) return []; // base sin la tabla todavía: el comprobante se muestra sin boleta
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    reservationId: r.reservation_id,
+    docType: Number(r.doc_type) as 39 | 61,
+    concept: r.concept,
+    folio: Number(r.folio),
+    recipientName: r.recipient_name,
+    recipientRut: r.recipient_rut,
+    netClp: Number(r.net_clp),
+    ivaClp: Number(r.iva_clp),
+    totalClp: Number(r.total_clp),
+    referencesFolio: r.references_folio == null ? null : Number(r.references_folio),
+    ted: r.ted,
+    simulated: Boolean(r.simulated),
+    issuedAt: r.issued_at,
+  }));
+}

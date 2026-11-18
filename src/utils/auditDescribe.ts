@@ -118,6 +118,8 @@ export function describeAudit(action: string, d: Details = {}): string {
       return 'Liquidación anulada';
     case 'PAYOUT_PENDING':
       return 'Liquidación vuelve a pendiente';
+    case 'TAX_DOCUMENT_ISSUED':
+      return `${Number(d.docType) === 61 ? 'Nota de crédito' : 'Boleta'} simulada N° ${d.folio} por ${d.concept === 'comision_propietario' ? 'la comisión' : 'el cargo de servicio'}: ${clp(d.totalClp)}`;
     case 'PAYOUT_BATCH_PAID':
       return `Depósito del martes: ${clp(d.amountClp)} por ${d.count ?? '—'} arriendo${Number(d.count) === 1 ? '' : 's'}${d.transferReference ? ` · ref. ${d.transferReference}` : ''}`;
     case 'BANK_ACCOUNT_SAVED':

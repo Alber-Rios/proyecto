@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, X } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
@@ -6,6 +6,7 @@ import { LEGAL_ENTITY } from '../data/legalEntity.ts';
 import type { PaymentRecord, Reservation } from '../types.ts';
 import { formatRut } from '../utils/formatters.ts';
 import { computeRentTax, rentalDays } from '../utils/rentTax.ts';
+import { getTaxDocuments, type TaxDocument } from '../lib/financeApi.ts';
 
 // Comprobante con formato de boleta térmica (como las del comercio en Chile).
 // No es un DTE: la boleta electrónica real necesita folio y timbre del SII,
@@ -59,6 +60,33 @@ const Rule: React.FC<{ double?: boolean }> = ({ double }) => (
   <div aria-hidden="true" className={`my-2 border-t border-dashed border-stone-400 ${double ? 'border-b pb-[2px]' : ''}`} />
 );
 
+/** Timbre electrónico: código PDF417 con el TED, como en las boletas del SII. */
+const Pdf417Stamp: React.FC<{ ted: string }> = ({ ted }) => {
+  const [svg, setSvg] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import('@bwip-js/browser')
+      .then(({ pdf417, drawingSVG }) => {
+        const out = pdf417({ bcid: 'pdf417', text: ted, columns: 8, eclevel: 5, rowmult: 2, padding: 0 } as never, drawingSVG());
+        if (alive) setSvg(out);
+      })
+      .catch(() => alive && setSvg(''));
+    return () => {
+      alive = false;
+    };
+  }, [ted]);
+  if (svg === null) return <div className="h-24 animate-pulse bg-stone-200" aria-hidden="true" />;
+  if (!svg) return null;
+  return (
+    <div
+      role="img"
+      aria-label="Timbre electrónico simulado (código PDF417)"
+      className="[&>svg]:h-auto [&>svg]:w-full"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+};
+
 const Section: React.FC<{ title: string; note?: string; children: React.ReactNode }> = ({ title, note, children }) => (
   <section className="space-y-0.5">
     <p className="text-[11px] font-bold">{title}</p>
@@ -78,7 +106,12 @@ export const ReceiptPaper: React.FC<{
   furnished: boolean;
   avaluoFiscalClp?: number;
   variant: Variant;
-}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant }) => {
+  /** Documentos tributarios simulados de la reserva. */
+  documents?: TaxDocument[];
+}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, documents = [] }) => {
+  const concept = variant === 'tenant' ? 'cargo_servicio' : 'comision_propietario';
+  const boleta = documents.find((d) => d.docType === 39 && d.concept === concept);
+  const creditNote = documents.find((d) => d.docType === 61 && d.concept === concept);
   const issuerName = placeholder(LEGAL_ENTITY.name) || 'SPOTLY';
   const issuerRut = placeholder(LEGAL_ENTITY.rut);
   const issuerAddress = placeholder(LEGAL_ENTITY.address);
@@ -136,19 +169,31 @@ export const ReceiptPaper: React.FC<{
       aria-label={variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación para el propietario'}
     >
       <div className="bg-stone-900 py-1.5 text-center text-[17px] font-bold tracking-[0.12em] text-[#fffdf8]">
-        {variant === 'tenant' ? 'RESERVA' : 'LIQUIDACIÓN'}: {receiptNumber(r)}
+        {boleta ? `BOLETA N° ${boleta.folio}` : `${variant === 'tenant' ? 'RESERVA' : 'LIQUIDACIÓN'}: ${receiptNumber(r)}`}
       </div>
+      {boleta?.simulated && (
+        <p className="mt-1 border border-stone-900 py-0.5 text-center text-[10.5px] font-bold uppercase tracking-wide">
+          Simulación · sin valor tributario
+        </p>
+      )}
 
       <header className="mt-3 text-center uppercase">
         <p className="text-[13.5px] font-bold">{issuerName}</p>
         {issuerRut && <p>R.U.T. {issuerRut}</p>}
         <p>Giro: intermediación de arriendos</p>
         {issuerAddress && <p className="text-[11px]">{issuerAddress}</p>}
-        <p className="mt-1 text-[13px] font-bold">{variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación de arriendo'}</p>
+        <p className="mt-1 text-[13px] font-bold">
+          {boleta ? 'Boleta electrónica' : variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación de arriendo'}
+        </p>
+        {boleta && (
+          <p className="text-[11px]">
+            {variant === 'tenant' ? 'Por el cargo de servicio' : 'Por la comisión de intermediación'} · folio {boleta.folio}
+          </p>
+        )}
       </header>
 
       <div className="mt-2 space-y-0.5 text-[11px]">
-        <Line k="FECHA EMISIÓN:" v={fmtDateTime(paidAt)} />
+        <Line k="FECHA EMISIÓN:" v={fmtDateTime(boleta?.issuedAt || paidAt)} />
         <Line k="RESERVA:" v={<span className="break-all text-[10.5px]">#{r.id}</span>} />
         <Line k="CLIENTE:" v={<span className="uppercase">{r.tenantName}</span>} />
         {r.tenantRut && <Line k="RUT CLIENTE:" v={formatRut(r.tenantRut)} />}
@@ -241,12 +286,34 @@ export const ReceiptPaper: React.FC<{
         </div>
       )}
 
-      <div className="mt-5 flex min-h-[4.5rem] items-center justify-center border-2 border-dashed border-stone-400 px-3 text-center text-[10.5px] uppercase text-stone-600">
-        Aquí irá el timbre electrónico S.I.I. cuando Spotly emita boletas electrónicas
-      </div>
-      <p className="mt-3 text-center text-[10.5px] uppercase">
-        Este comprobante no reemplaza la boleta electrónica del SII
-      </p>
+      {creditNote && (
+        <>
+          <Rule double />
+          <p className="text-center text-[11px] font-bold">NOTA DE CRÉDITO N° {creditNote.folio}</p>
+          <Line k={`ANULA BOLETA N° ${creditNote.referencesFolio ?? ''}`} v={`-${peso(creditNote.totalClp)}`} strong />
+          <p className="text-[10px] uppercase text-stone-600">Se devolvió el cargo de servicio completo.</p>
+        </>
+      )}
+
+      {boleta ? (
+        <div className="mt-5 space-y-1 text-center">
+          <Pdf417Stamp ted={boleta.ted} />
+          <p className="text-[10.5px] font-bold uppercase">Timbre electrónico S.I.I. (simulado)</p>
+          <p className="text-[10px] uppercase text-stone-600">
+            Documento de demostración para proyecto de título. No es una boleta válida ante el SII.
+          </p>
+          <p className="text-[10px] text-stone-600">Emitida {fmtDateTime(boleta.issuedAt)}</p>
+        </div>
+      ) : (
+        <>
+          <div className="mt-5 flex min-h-[4.5rem] items-center justify-center border-2 border-dashed border-stone-400 px-3 text-center text-[10.5px] uppercase text-stone-600">
+            {variant === 'owner' && !(r.ownerCommissionClp > 0)
+              ? 'Sin comisión: no corresponde boleta'
+              : 'La boleta se emite al confirmarse el pago'}
+          </div>
+          <p className="mt-3 text-center text-[10.5px] uppercase">Este comprobante no reemplaza la boleta electrónica del SII</p>
+        </>
+      )}
       <p className="mt-2 text-center text-[11px]">Gracias por usar Spotly</p>
     </article>
   );
@@ -261,6 +328,14 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
   );
   const space = spaces.find((s) => s.id === reservation.spaceId);
   const furnished = Boolean(space?.isFurnished);
+  const [documents, setDocuments] = useState<TaxDocument[]>([]);
+  useEffect(() => {
+    let alive = true;
+    getTaxDocuments(reservation.id).then((d) => alive && setDocuments(d));
+    return () => {
+      alive = false;
+    };
+  }, [reservation.id]);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -305,7 +380,7 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
             </button>
           </div>
         </div>
-        <ReceiptPaper reservation={reservation} payment={payment} furnished={furnished} avaluoFiscalClp={space?.avaluoFiscalClp} variant={variant} />
+        <ReceiptPaper reservation={reservation} payment={payment} furnished={furnished} avaluoFiscalClp={space?.avaluoFiscalClp} variant={variant} documents={documents} />
       </div>
     </div>,
     document.body,

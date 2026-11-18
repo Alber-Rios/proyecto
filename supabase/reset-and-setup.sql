@@ -55,7 +55,7 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
 
 DROP TABLE IF EXISTS
-  public.refund_transfers, public.bank_accounts,
+  public.tax_documents, public.refund_transfers, public.bank_accounts,
   public.support_tickets, public.user_consents, public.payment_refunds,
   public.owner_payouts, public.space_blocks,
   public.space_views, public.user_reports, public.reviews, public.favorites,
@@ -3487,7 +3487,7 @@ SET search_path = public, pg_temp
 AS $$
   SELECT CASE
     WHEN p_action LIKE 'PAYMENT\_%' OR p_action LIKE 'PAYOUT\_%' OR p_action LIKE 'REFUND\_%'
-      OR p_action LIKE 'WALLET\_%' OR p_action LIKE 'DISCOUNT\_%' OR p_action LIKE 'BANK\_%' THEN 'pagos'
+      OR p_action LIKE 'WALLET\_%' OR p_action LIKE 'DISCOUNT\_%' OR p_action LIKE 'BANK\_%' OR p_action LIKE 'TAX\_%' THEN 'pagos'
     WHEN p_action LIKE 'RESERVATION\_%' OR p_action LIKE 'CONTRACT\_%' OR p_action LIKE 'VISIT\_%' THEN 'reservas'
     WHEN p_action LIKE 'LOGIN\_%' OR p_action LIKE 'USER\_LOGGED\_%' OR p_action LIKE 'PASSWORD\_%'
       OR p_action LIKE 'SIGNUP\_%' OR p_action LIKE 'USER\_REGISTERED%' OR p_action = 'EMAIL_VERIFIED'
@@ -4061,6 +4061,145 @@ END;
 $$;
 
 -- ==============================================================================
+-- 7d. DOCUMENTOS TRIBUTARIOS SIMULADOS (proyecto de título)
+-- ==============================================================================
+-- Spotly aún no es emisor electrónico ante el SII. Para demostrar el flujo se
+-- emiten documentos SIMULADOS, sin valor tributario, con la misma estructura
+-- que un DTE real: tipo (39 boleta, 61 nota de crédito), folio correlativo por
+-- tipo, montos neto/IVA/total y un "timbre" (TED) que el comprobante dibuja
+-- como código PDF417. Al conectar un proveedor real (OpenFactura, Bsale,
+-- LibreDTE) se reemplaza la emisión y simulated pasa a false.
+--   * Boleta 39 al arrendatario por el cargo de servicio (al quedar pagada).
+--   * Boleta 39 al propietario por la comisión (al generarse su liquidación).
+--   * Nota de crédito 61 si el cargo de servicio se devuelve completo.
+DROP SEQUENCE IF EXISTS public.tax_folio_39, public.tax_folio_61;
+CREATE SEQUENCE public.tax_folio_39 START 1;
+CREATE SEQUENCE public.tax_folio_61 START 1;
+
+CREATE TABLE IF NOT EXISTS public.tax_documents (
+  id TEXT PRIMARY KEY DEFAULT public.generate_id('dte'),
+  reservation_id TEXT NOT NULL REFERENCES public.reservations(id) ON DELETE RESTRICT,
+  doc_type SMALLINT NOT NULL CHECK (doc_type IN (39, 61)),
+  concept TEXT NOT NULL CHECK (concept IN ('cargo_servicio', 'comision_propietario')),
+  folio BIGINT NOT NULL,
+  recipient_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  recipient_name TEXT,
+  recipient_rut TEXT,
+  net_clp NUMERIC(12,0) NOT NULL CHECK (net_clp >= 0),
+  iva_clp NUMERIC(12,0) NOT NULL CHECK (iva_clp >= 0),
+  total_clp NUMERIC(12,0) NOT NULL CHECK (total_clp >= 0),
+  references_folio BIGINT,
+  ted TEXT NOT NULL,
+  simulated BOOLEAN NOT NULL DEFAULT true,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (doc_type, folio),
+  UNIQUE (reservation_id, doc_type, concept)
+);
+COMMENT ON TABLE public.tax_documents IS
+  'Boletas y notas de crédito SIMULADAS (sin valor tributario) para demostrar la emisión de DTE';
+CREATE INDEX IF NOT EXISTS idx_tax_documents_reservation ON public.tax_documents (reservation_id);
+CREATE INDEX IF NOT EXISTS idx_tax_documents_recipient ON public.tax_documents (recipient_id, issued_at DESC);
+
+ALTER TABLE public.tax_documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Documentos: destinatario o admin" ON public.tax_documents;
+CREATE POLICY "Documentos: destinatario o admin" ON public.tax_documents
+  FOR SELECT TO authenticated
+  USING (recipient_id = auth.uid() OR public.is_admin());
+
+CREATE OR REPLACE FUNCTION public.issue_simulated_document(
+  p_reservation_id TEXT, p_type SMALLINT, p_concept TEXT,
+  p_recipient UUID, p_recipient_name TEXT, p_recipient_rut TEXT,
+  p_total NUMERIC, p_ref_folio BIGINT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_folio BIGINT;
+  v_net NUMERIC := round(p_total / 1.19);
+  v_iva NUMERIC := p_total - round(p_total / 1.19);
+  v_ted TEXT;
+BEGIN
+  IF p_total IS NULL OR p_total <= 0 THEN RETURN; END IF;
+  IF EXISTS (SELECT 1 FROM public.tax_documents
+             WHERE reservation_id = p_reservation_id AND doc_type = p_type AND concept = p_concept) THEN
+    RETURN;
+  END IF;
+  v_folio := CASE p_type WHEN 61 THEN nextval('public.tax_folio_61') ELSE nextval('public.tax_folio_39') END;
+  -- Estructura del TED del SII (DD = datos del documento). FRMT no es una firma real.
+  v_ted := format(
+    '<TED version="1.0"><DD><RE>SPOTLY-DEMO</RE><TD>%s</TD><F>%s</F><FE>%s</FE><RR>%s</RR><RSR>%s</RSR><MNT>%s</MNT><IT1>%s</IT1></DD><FRMT algoritmo="NINGUNO">SIMULADO-SIN-VALOR-TRIBUTARIO</FRMT></TED>',
+    p_type, v_folio, to_char(public.chile_today(), 'YYYY-MM-DD'),
+    coalesce(nullif(p_recipient_rut, ''), '66666666-6'), left(coalesce(p_recipient_name, ''), 40),
+    p_total::bigint, CASE p_concept WHEN 'cargo_servicio' THEN 'Cargo de servicio Spotly' ELSE 'Comision intermediacion Spotly' END);
+  INSERT INTO public.tax_documents (reservation_id, doc_type, concept, folio, recipient_id, recipient_name,
+    recipient_rut, net_clp, iva_clp, total_clp, references_folio, ted)
+  VALUES (p_reservation_id, p_type, p_concept, v_folio, p_recipient, p_recipient_name,
+    p_recipient_rut, v_net, v_iva, p_total, p_ref_folio, v_ted);
+  PERFORM public.write_audit('TAX_DOCUMENT_ISSUED', 'info', coalesce(p_recipient::text, 'sistema'),
+    jsonb_build_object('reservationId', p_reservation_id, 'docType', p_type, 'folio', v_folio,
+      'concept', p_concept, 'totalClp', p_total, 'simulated', true));
+END;
+$$;
+REVOKE ALL ON FUNCTION public.issue_simulated_document(TEXT, SMALLINT, TEXT, UUID, TEXT, TEXT, NUMERIC, BIGINT) FROM PUBLIC;
+
+-- Boleta del cargo de servicio al pagar; nota de crédito si se devuelve todo.
+CREATE OR REPLACE FUNCTION public.reservations_tax_documents()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_folio BIGINT;
+BEGIN
+  IF NEW.payment_status = 'paid' AND (TG_OP = 'INSERT' OR OLD.payment_status IS DISTINCT FROM 'paid') THEN
+    PERFORM public.issue_simulated_document(NEW.id, 39::smallint, 'cargo_servicio',
+      NEW.tenant_id, NEW.tenant_name, NEW.tenant_rut, NEW.platform_fee_clp);
+  END IF;
+  IF TG_OP = 'UPDATE' AND NEW.payment_status = 'refunded' AND OLD.payment_status IS DISTINCT FROM 'refunded' THEN
+    SELECT folio INTO v_folio FROM public.tax_documents
+    WHERE reservation_id = NEW.id AND doc_type = 39 AND concept = 'cargo_servicio';
+    IF v_folio IS NOT NULL THEN
+      PERFORM public.issue_simulated_document(NEW.id, 61::smallint, 'cargo_servicio',
+        NEW.tenant_id, NEW.tenant_name, NEW.tenant_rut, NEW.platform_fee_clp, v_folio);
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS reservations_tax_documents ON public.reservations;
+CREATE TRIGGER reservations_tax_documents
+  AFTER INSERT OR UPDATE OF payment_status ON public.reservations
+  FOR EACH ROW EXECUTE FUNCTION public.reservations_tax_documents();
+
+-- Boleta de la comisión al propietario al generarse su liquidación.
+CREATE OR REPLACE FUNCTION public.owner_payouts_tax_document()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  r public.reservations;
+BEGIN
+  SELECT * INTO r FROM public.reservations WHERE id = NEW.reservation_id;
+  IF FOUND AND coalesce(r.owner_commission_clp, 0) > 0 THEN
+    PERFORM public.issue_simulated_document(r.id, 39::smallint, 'comision_propietario',
+      r.owner_id, r.owner_name, r.owner_rut, r.owner_commission_clp);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS owner_payouts_tax_document ON public.owner_payouts;
+CREATE TRIGGER owner_payouts_tax_document
+  AFTER INSERT ON public.owner_payouts
+  FOR EACH ROW EXECUTE FUNCTION public.owner_payouts_tax_document();
+
+
+-- ==============================================================================
 -- 8. SEGURIDAD POR FILAS (RLS): cada usuario solo ve y modifica lo suyo
 -- ==============================================================================
 ALTER TABLE public.profiles          ENABLE ROW LEVEL SECURITY;
@@ -4454,6 +4593,7 @@ GRANT SELECT ON public.kyc_verifications TO authenticated;
 GRANT SELECT ON public.payments TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.bank_accounts TO authenticated;   -- RLS: solo la propia (admin lee)
 GRANT SELECT ON public.refund_transfers TO authenticated;                        -- RLS: propias o admin
+GRANT SELECT ON public.tax_documents TO authenticated;                          -- RLS: destinatario o admin (simulados)
 GRANT SELECT (id, user_id, status, card_type, card_last4, is_default, created_at)
   ON public.wallet_cards TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.favorites TO authenticated;
