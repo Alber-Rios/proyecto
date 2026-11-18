@@ -220,7 +220,7 @@ export interface Reservation {
   paymentStatus?: PaymentStatus;
   discountCode?: string;
   discountClp?: number;
-  /** Comisión del anfitrión congelada al crear la reserva (0 en lanzamiento/bienvenida). */
+  /** Comisión del propietario congelada al crear la reserva. */
   ownerCommissionRate?: number;
   ownerCommissionClp?: number;
   ownerCommissionReason?: 'lanzamiento' | 'bienvenida' | 'estandar' | 'mensual' | string;

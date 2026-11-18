@@ -78,7 +78,6 @@ export const UserMenu: React.FC<UserMenuProps> = ({ open, currentView, onClose, 
           label: 'Sitio',
           rows: [
             { view: 'home', label: 'Catálogo público', icon: Search, active: onCatalog },
-            { view: 'support', label: 'Ayuda y soporte', icon: HelpCircle, active: currentView === 'support' },
           ],
         },
         { label: 'Cuenta', rows: [{ view: 'profile', label: 'Mi perfil y cuenta', icon: UserRound, active: currentView === 'profile' }] },

@@ -154,7 +154,7 @@ export const PlatformFinancePanel: React.FC = () => {
       {/* Período */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Ganancias de la plataforma</h2>
+          <h2 className="sr-only">Ganancias de la plataforma</h2>
           <p className="text-sm text-slate-600">
             Del {range.from} al {range.to}, según la fecha de pago en Transbank.
           </p>
@@ -405,8 +405,7 @@ export const PlatformFinancePanel: React.FC = () => {
                     <Settings2 className="h-4 w-4 text-slate-600" aria-hidden="true" /> Comisiones vigentes
                   </h3>
                   <p className="text-sm text-slate-600">
-                    Arrendatario 5 % · anfitrión {pct(settings.ownerCommissionRate)} ·
-                    lanzamiento sin comisión hasta el {settings.launchEndsOn} · primeras {settings.ownerFreeBookings} reservas de cada anfitrión sin comisión.
+                    Arrendatario 5 % · propietario {pct(settings.ownerCommissionRate)} desde su primera reserva, en todas las modalidades.
                   </p>
                 </div>
                 {!editing && (
@@ -422,16 +421,7 @@ export const PlatformFinancePanel: React.FC = () => {
                     <input type="number" min={0} max={30} step={0.5} value={Math.round(editing.ownerCommissionRate * 1000) / 10}
                       onChange={(e) => setEditing({ ...editing, ownerCommissionRate: Number(e.target.value) / 100 })} className={`${input} w-full`} />
                   </label>
-                  <label className="text-sm">
-                    <span className="mb-1 block text-slate-700">Fin del lanzamiento</span>
-                    <input type="date" value={editing.launchEndsOn} onChange={(e) => setEditing({ ...editing, launchEndsOn: e.target.value })} className={`${input} w-full`} />
-                  </label>
-                  <label className="text-sm">
-                    <span className="mb-1 block text-slate-700">Reservas de bienvenida</span>
-                    <input type="number" min={0} max={50} value={editing.ownerFreeBookings}
-                      onChange={(e) => setEditing({ ...editing, ownerFreeBookings: Number(e.target.value) })} className={`${input} w-full`} />
-                  </label>
-                  <p className="text-sm text-slate-600 sm:col-span-2 lg:col-span-3">
+                  <p className="text-sm text-slate-600 sm:col-span-1 lg:col-span-2">
                     El cambio queda en la auditoría y solo aplica a reservas nuevas.
                   </p>
                   <div className="flex gap-2">

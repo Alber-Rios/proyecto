@@ -13,7 +13,7 @@ export interface RevenueRow {
   paymentStatus: string;
   /** Arriendo bruto del anfitrión. */
   rent: number;
-  /** Comisión de Spotly al anfitrión (0 en lanzamiento o bienvenida). */
+  /** Comisión de Spotly al propietario. */
   platformFee: number;
   /** Lo que recibe el anfitrión. El descuento lo paga Spotly, no se le resta. */
   net: number;

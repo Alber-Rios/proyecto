@@ -7,7 +7,6 @@ import { ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '.
 import { AuditPanel } from '../components/admin/AuditPanel.tsx';
 import { reservationLedger } from '../utils/ledger.ts';
 import { PlatformFinancePanel } from '../components/admin/PlatformFinancePanel.tsx';
-import { SupportPage } from './SupportPage.tsx';
 import { AdminSpaceDetailModal } from '../components/admin/AdminSpaceDetailModal.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getSpaceRateInfo } from '../utils/formatters.ts';
@@ -36,7 +35,6 @@ import {
   CreditCard,
   TicketPercent,
   Gauge,
-  HelpCircle,
 } from 'lucide-react';
 import { DashboardShell } from '../components/dashboard/DashboardShell.tsx';
 
@@ -83,7 +81,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments' | 'support'
+    'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
   >('overview');
 
   // Filtros de Usuarios y KYC
@@ -309,7 +307,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             label: 'Sitio',
             items: [
               { id: 'go-catalog', label: 'Catálogo público', icon: Search, action: () => onNavigate('home') },
-              { id: 'support', label: 'Ayuda y soporte', icon: HelpCircle },
             ],
           },
         ]}
@@ -340,7 +337,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-slate-900">Expedientes de usuarios</h2>
+                <h2 className="sr-only">Expedientes de usuarios</h2>
                 <span className="text-xs font-semibold text-slate-500 tabular-nums">
                   {filteredUsers.length} registros
                 </span>
@@ -947,9 +944,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
           <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Catálogo y moderación de espacios
-              </h2>
+              <h2 className="sr-only">Catálogo y moderación de espacios</h2>
               <p className="text-xs text-slate-500">
                 Activa o pausa inmuebles publicados por propietarios en Chile.
               </p>
@@ -1084,9 +1079,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
           <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Centro de arbitraje y garantías
-              </h2>
+              <h2 className="sr-only">Centro de arbitraje y garantías</h2>
               <p className="text-xs text-slate-500">
                 Resuelve reclamos entre arrendatarios y propietarios sobre el pago retenido en custodia (arriendo + garantía + cargo de servicio del 5 %).
               </p>
@@ -1157,7 +1150,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   d.status === 'resolved_refund' || d.status === 'resolved_owner';
                 const linkedRes = reservations.find((r) => r.id === d.reservationId);
 
-                // Cálculo real del desglose (Arriendo Hora/Día + Garantía + 5% Comisión)
+                // Desglose: arriendo + garantía + cargo de servicio del 5 %
                 const rentalSubtotal =
                   d.subtotalClp ?? linkedRes?.subtotalClp ?? (d.id === 'disp-001' ? 120000 : Math.round(d.amountClp * 0.65));
                 const securityDeposit =
@@ -1165,7 +1158,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 const platformFee5Pct =
                   d.platformFeeClp ?? linkedRes?.platformFeeClp ?? Math.round(rentalSubtotal * 0.05);
                 const totalCustody = rentalSubtotal + securityDeposit + platformFee5Pct;
-                // El propietario recibe el arriendo menos SU comisión (congelada en la reserva: 0 % en lanzamiento).
+                // El propietario recibe el arriendo menos SU comisión (congelada en la reserva).
                 const ownerNetIfReleased = rentalSubtotal - (linkedRes?.ownerCommissionClp ?? 0) + securityDeposit;
 
                 return (
@@ -1226,13 +1219,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                       <div className="bg-white p-2.5 rounded-lg border border-slate-200/80">
                         <span className="text-xs font-bold text-slate-500 block">
-                          3. Comisión Spotly (5%)
+                          3. Cargo de servicio (5 %)
                         </span>
                         <strong className="text-sm font-bold text-indigo-700 tabular-nums">
                           {formatClp(platformFee5Pct)}
                         </strong>
                         <span className="block text-xs text-slate-500 mt-0.5">
-                          {d.status === 'resolved_refund' ? 'Devuelta al cliente' : '5% sobre el arriendo'}
+                          {d.status === 'resolved_refund' ? 'Devuelto al cliente' : 'Lo paga el arrendatario'}
                         </span>
                       </div>
 
@@ -1282,11 +1275,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         <div className="text-xs text-emerald-900 font-medium">
                           {d.status === 'resolved_refund' ? (
                             <>
-                              <strong>Liquidación ejecutada:</strong> Se reembolsó el 100% al arrendatario ({formatClp(totalCustody)}: {formatClp(rentalSubtotal)} de arriendo + {formatClp(securityDeposit)} de garantía + {formatClp(platformFee5Pct)} del 5% de comisión Spotly).
+                              <strong>Liquidación ejecutada:</strong> Se reembolsó el 100% al arrendatario ({formatClp(totalCustody)}: {formatClp(rentalSubtotal)} de arriendo + {formatClp(securityDeposit)} de garantía + {formatClp(platformFee5Pct)} del cargo de servicio).
                             </>
                           ) : (
                             <>
-                              <strong>Liquidación ejecutada:</strong> Se liberó al propietario {formatClp(ownerNetIfReleased)} (95% del arriendo + garantía de {formatClp(securityDeposit)}) y Spotly retuvo su comisión del 5% ({formatClp(platformFee5Pct)}).
+                              <strong>Liquidación ejecutada:</strong> Se liberó al propietario {formatClp(ownerNetIfReleased)} (arriendo menos su comisión + garantía de {formatClp(securityDeposit)}) y Spotly se quedó con el cargo de servicio ({formatClp(platformFee5Pct)}).
                             </>
                           )}
                         </div>
@@ -1347,7 +1340,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
       {/* MÓDULO 4: VOLUMEN TRANSACCIONADO Y COMISIONES DE LA PLATAFORMA        */}
       {/* ===================================================================== */}
       {activeTab === 'transactions' && <PlatformFinancePanel />}
-      {activeTab === 'support' && <SupportPage embedded onNavigate={onNavigate} onOpenAuth={onOpenAuth} />}
       </TabPanel>
       </DashboardShell>
 

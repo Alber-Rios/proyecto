@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Building, CalendarCheck, Clock, Eye, MapPin, PauseCircle, TrendingUp, Wallet } from 'lucide-react';
+import { ArrowRight, Building, CalendarCheck, Clock, Eye, MapPin, PauseCircle, TrendingUp } from 'lucide-react';
 import type { Reservation, Space, SpaceBlock, VisitRequest } from '../../types.ts';
 import { formatClp } from '../../utils/formatters.ts';
 import {
@@ -8,7 +8,6 @@ import {
   HorizontalBarList,
   OccupancyHeatStrip,
   StatTile,
-  VerticalBarChart,
   pctChange,
   periodBuckets,
   bucketKeyOf,
@@ -161,15 +160,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
         </p>
         <PeriodToggle id="owner" value={period} onChange={setPeriod} />
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatTile
-          label={`Ingresos netos ${text.current}`}
-          value={formatClp(thisPeriod.net)}
-          delta={pctChange(thisPeriod.net, lastPeriod.net)}
-          hint={text.previous}
-          icon={<Wallet className="w-4 h-4" />}
-          onClick={() => onGoTab('finances')}
-        />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatTile
           label={`Reservas ${text.current}`}
           value={String(thisPeriod.count)}
@@ -198,20 +189,19 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Ingresos netos {text.per}</h3>
-            <span className="text-xs text-slate-500">{text.range} · después de comisión</span>
+            <h3 className="text-sm font-bold text-slate-900">Ocupación de los próximos 14 días</h3>
+            <span className="text-xs text-slate-500">Reservas + bloqueos · todos tus espacios activos</span>
           </div>
-          <VerticalBarChart
-            key={period}
-            title={`Ingresos netos ${text.per}`}
-            data={buckets.map((b) => {
-              const v = incomeByBucket.get(b.key) || { net: 0, count: 0 };
-              return { key: b.key, label: b.label, value: v.net, detail: `${v.count} ${v.count === 1 ? 'reserva' : 'reservas'}` };
-            })}
-            formatValue={compactClp}
-          />
+          {activeSpaces.length === 0 ? (
+            <p className="text-xs text-slate-500 py-4 text-center">Cuando tengas espacios activos verás aquí su ocupación.</p>
+          ) : (
+            <OccupancyHeatStrip
+              title="Ocupación diaria próximos 14 días"
+              days={heatDays}
+              onSelect={(iso) => activeSpaces[0] && onOpenCalendar(activeSpaces[0].id, iso)}
+            />
+          )}
         </section>
-
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <h3 className="text-sm font-bold text-slate-900">Pendientes</h3>
           <ActionQueue
@@ -227,23 +217,29 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-bold text-slate-900">Ocupación de los próximos 14 días</h3>
-            <span className="text-xs text-slate-500">Reservas + bloqueos · todos tus espacios activos</span>
+        <section className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Tus ganancias</h3>
+            <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-slate-950">{formatClp(thisPeriod.net)}</p>
+            {lastPeriod.net > 0 && (
+              <p className="text-xs font-semibold text-slate-600">
+                {thisPeriod.net >= lastPeriod.net ? '▲' : '▼'} {Math.abs(Math.round(((thisPeriod.net - lastPeriod.net) / lastPeriod.net) * 100))} % {text.previous}
+              </p>
+            )}
+            <p className="text-xs text-slate-500">
+              Ganancia neta {text.current} · {thisPeriod.count} {thisPeriod.count === 1 ? 'reserva' : 'reservas'} · después de la comisión
+            </p>
           </div>
-          {activeSpaces.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4 text-center">Cuando tengas espacios activos verás aquí su ocupación.</p>
-          ) : (
-            <OccupancyHeatStrip
-              title="Ocupación diaria próximos 14 días"
-              days={heatDays}
-              onSelect={(iso) => activeSpaces[0] && onOpenCalendar(activeSpaces[0].id, iso)}
-            />
-          )}
+          <button
+            type="button"
+            onClick={() => onGoTab('finances')}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 active:scale-[0.98] cursor-pointer"
+          >
+            Ver el detalle en Ganancias <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
         </section>
 
-        <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
+        <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-sm font-bold text-slate-900">Tus espacios que más generan</h3>
             <span className="text-xs text-slate-500">{text.range}</span>

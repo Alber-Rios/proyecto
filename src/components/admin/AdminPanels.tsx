@@ -333,7 +333,7 @@ export const KpiDashboard: React.FC = () => {
     <div className={cardClass}>
       <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Indicadores clave (KPI)</h2>
+          <h2 className="sr-only">Indicadores clave (KPI)</h2>
           <p className="text-xs text-slate-500">
             Calculados en la base de datos a partir de reservas, contratos, verificaciones, valoraciones y visitas.
           </p>
@@ -486,7 +486,7 @@ export const PaymentsPanel: React.FC = () => {
   return (
     <div className={cardClass}>
       <div className="p-5 border-b border-slate-100">
-        <h2 className="text-base font-bold text-slate-900">Transacciones Webpay Plus</h2>
+        <h2 className="sr-only">Transacciones Webpay Plus</h2>
         <p className="text-xs text-slate-500">Registro de órdenes de compra, autorizaciones y reversas informadas por Transbank.</p>
       </div>
       <div className="relative overflow-x-auto">

@@ -17,7 +17,6 @@ import { SpaceAvailabilityViewer } from '../components/SpaceAvailabilityViewer.t
 import { SpaceBlockModal } from '../components/SpaceBlockModal.tsx';
 import { OwnerOverview } from '../components/dashboard/OwnerOverview.tsx';
 import { DashboardShell } from '../components/dashboard/DashboardShell.tsx';
-import { OwnerCommissionNote } from '../components/dashboard/OwnerCommissionNote.tsx';
 import { WalletPage } from './WalletPage.tsx';
 import { TenantReservationsPage } from './TenantReservationsPage.tsx';
 import { FavoritesPage } from './FavoritesPage.tsx';
@@ -629,12 +628,6 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
         active={activeTab}
         onSelect={(id) => setActiveTab(id as typeof activeTab)}
         primaryAction={{ id: 'owner-publish-space-btn', label: 'Publicar espacio', icon: PlusCircle, onClick: handleOpenPublishModal }}
-        footer={
-          <OwnerCommissionNote
-            acceptedBookings={myReceivedBookings.filter((b) => b.status === 'confirmed' || b.status === 'completed').length}
-            onOpen={() => setActiveTab('finances')}
-          />
-        }
         onNavigate={onNavigate}
         sections={[
           {

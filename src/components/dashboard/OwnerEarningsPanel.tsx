@@ -12,7 +12,6 @@ import {
   type OwnerPayout,
   type PlatformSettings,
 } from '../../lib/financeApi.ts';
-import { formatLongDate } from '../../utils/contractTerm.ts';
 import { OwnerRevenueReport } from '../OwnerRevenueReport.tsx';
 
 interface Props {
@@ -108,9 +107,6 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
     return { gross, commission, net, paid, pending, inProgress };
   }, [earning, payouts, payoutByReservation]);
 
-  const completedCount = reservations.filter((r) => r.status === 'confirmed' || r.status === 'completed').length;
-  const inLaunch = todayIso <= settings.launchEndsOn;
-  const freeLeft = Math.max(settings.ownerFreeBookings - completedCount, 0);
 
   const bySpace = useMemo(() => {
     const map = new Map<string, { title: string; commune: string; count: number; gross: number; commission: number; net: number }>();
@@ -155,32 +151,11 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
       {/* Comisión vigente */}
       <div
         role="note"
-        className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${
-          inLaunch || freeLeft > 0 ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'
-        }`}
+        className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
       >
-        <Percent className={`mt-0.5 h-5 w-5 shrink-0 ${inLaunch || freeLeft > 0 ? 'text-emerald-700' : 'text-slate-600'}`} aria-hidden="true" />
+        <Percent className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" aria-hidden="true" />
         <div className="min-w-0 text-sm">
-          {inLaunch ? (
-            <>
-              <p className="font-semibold text-emerald-950">Hoy no pagas comisión: recibes el 100 % de cada arriendo</p>
-              <p className="text-emerald-900">
-                Es así hasta el {formatLongDate(settings.launchEndsOn, false)}. Desde el día siguiente, Spotly se queda con el{' '}
-                {pct(settings.ownerCommissionRate)} de cada arriendo. Por
-                ejemplo, en un arriendo de {formatClp(40000)} recibirías {formatClp(Math.round(40000 * (1 - settings.ownerCommissionRate)))}.
-              </p>
-            </>
-          ) : freeLeft > 0 ? (
-            <>
-              <p className="font-semibold text-emerald-950">
-                {freeLeft === 1 ? 'Tu próxima reserva va sin comisión' : `Tus próximas ${freeLeft} reservas van sin comisión`}
-              </p>
-              <p className="text-emerald-900">
-                Es la bienvenida para anfitriones nuevos: recibes el arriendo completo. Después, Spotly se queda con el{' '}
-                {pct(settings.ownerCommissionRate)} de cada arriendo.
-              </p>
-            </>
-          ) : (
+          {(
             <>
               <p className="font-semibold text-slate-950">
                 Comisión de Spotly: {pct(settings.ownerCommissionRate)}

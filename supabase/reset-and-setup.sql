@@ -3009,8 +3009,9 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
     CHECK (owner_commission_rate BETWEEN 0 AND 0.30),
   owner_commission_rate_monthly NUMERIC(5,4) NOT NULL DEFAULT 0.10
     CHECK (owner_commission_rate_monthly BETWEEN 0 AND 0.30),
-  launch_ends_on DATE NOT NULL DEFAULT DATE '2027-05-31',
-  owner_free_bookings INTEGER NOT NULL DEFAULT 3 CHECK (owner_free_bookings BETWEEN 0 AND 50),
+  -- Columnas heredadas (ya no se usan: no hay etapa sin comisión).
+  launch_ends_on DATE NOT NULL DEFAULT DATE '2000-01-01',
+  owner_free_bookings INTEGER NOT NULL DEFAULT 0 CHECK (owner_free_bookings BETWEEN 0 AND 50),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_by UUID
 );
@@ -3054,23 +3055,13 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   s public.platform_settings;
-  v_done INTEGER;
 BEGIN
   SELECT * INTO s FROM public.platform_settings WHERE id;
   IF NOT FOUND THEN
     rate := 0.10; reason := 'estandar'; RETURN NEXT; RETURN;
   END IF;
-  IF public.chile_today() <= s.launch_ends_on THEN
-    rate := 0; reason := 'lanzamiento'; RETURN NEXT; RETURN;
-  END IF;
-  SELECT count(*) INTO v_done
-  FROM public.reservations
-  WHERE owner_id = p_owner
-    AND status IN ('confirmed', 'completed')
-    AND payment_status IN ('paid', 'partially_refunded', 'refund_pending');
-  IF v_done < s.owner_free_bookings THEN
-    rate := 0; reason := 'bienvenida'; RETURN NEXT; RETURN;
-  END IF;
+  -- Sin etapa de lanzamiento ni reservas de bienvenida: el propietario paga
+  -- la comisión estándar desde su primera reserva.
   -- Una sola tasa para el propietario (10 %), también en arriendos mensuales.
   rate := s.owner_commission_rate; reason := 'estandar';
   RETURN NEXT;
