@@ -621,7 +621,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   };
 
   return (
-    <div className="pb-16">
+    <div>
       <DashboardShell
         area="Mis espacios"
         storageKey="spotly-owner-menu-collapsed"

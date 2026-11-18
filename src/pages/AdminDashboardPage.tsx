@@ -270,7 +270,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
   };
 
   return (
-    <div className="pb-16">
+    <div>
       <DashboardShell
         area="Administración"
         storageKey="spotly-admin-menu-collapsed"
