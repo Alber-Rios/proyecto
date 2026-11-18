@@ -2,7 +2,7 @@ import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'reac
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, LogOut, Menu, X, type LucideIcon } from 'lucide-react';
+import { Bell, ChevronsLeft, ChevronsRight, LogOut, Menu, X, type LucideIcon } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
 import { useReducedMotion } from '../../lib/motionPreference.ts';
 import { getNameInitial } from '../../utils/formatters.ts';
@@ -250,7 +250,7 @@ export function DashboardShell<T extends string>({
   );
 
   const renderNav = (mode: Mode) => (
-    <nav aria-label={`Menú de ${area.toLowerCase()}`} className={`flex flex-col ${mode === 'side' ? 'gap-3' : 'gap-4'}`}>
+    <nav aria-label={`Menú de ${area.toLowerCase()}`} className={`flex flex-col ${mode === 'side' ? 'gap-3 [@media(max-height:820px)]:gap-1.5' : 'gap-4'}`}>
       {sections.map((section, si) => (
         <motion.div
           key={section.label}
@@ -272,7 +272,7 @@ export function DashboardShell<T extends string>({
                 aria-current={on ? 'page' : undefined}
                 aria-label={`${it.label}${extra}`}
                 title={mode === 'side' ? it.label : undefined}
-                className={`group relative isolate flex min-h-11 w-full items-center gap-3 rounded-xl text-sm transition-[color,background-color,transform] duration-150 ease-out cursor-pointer active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 xl:min-h-9 ${rowPad(mode)} ${
+                className={`group relative isolate flex min-h-11 w-full items-center gap-3 rounded-xl text-sm transition-[color,background-color,transform] duration-150 ease-out cursor-pointer active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 xl:min-h-9 [@media(max-height:820px)]:min-h-9 [@media(max-height:820px)]:xl:min-h-8 ${rowPad(mode)} ${
                   on ? 'font-semibold text-white' : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950'
                 }`}
               >
@@ -494,30 +494,19 @@ export function DashboardShell<T extends string>({
           <div
             ref={scrollRef}
             onScroll={updateMore}
-            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-3 pb-3 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]"
+            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-3 pb-4 [@media(max-height:820px)]:gap-2 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]"
           >
             {primary('side')}
             {renderNav('side')}
             {footer && <div className={collapsed ? 'hidden' : 'hidden xl:block'}>{footer}</div>}
           </div>
-          {/* Indica que hay más opciones abajo */}
-          <AnimatePresence>
-            {more && (
-              <motion.button
-                type="button"
-                tabIndex={-1}
-                aria-hidden="true"
-                onClick={() => scrollRef.current?.scrollBy({ top: 200, behavior: reduce ? 'auto' : 'smooth' })}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t from-white via-white/85 to-transparent pb-1 cursor-pointer"
-              >
-                <ChevronDown className="h-4 w-4 text-slate-500" />
-              </motion.button>
-            )}
-          </AnimatePresence>
+          {/* Indica que hay más opciones abajo: una sombra suave que no tapa el texto */}
+          <div
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-slate-900/[0.07] to-transparent transition-opacity duration-200 ${
+              more ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
         </div>
 
         <div className="border-t border-slate-200 px-3 pb-3 pt-2.5">{profile('side')}</div>
