@@ -1,11 +1,40 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, CreditCard, ExternalLink, Info, Landmark, Loader2, Plus, ShieldCheck, Star, Trash2, Wallet } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  CreditCard,
+  ExternalLink,
+  Landmark,
+  Loader2,
+  Plus,
+  ReceiptText,
+  ShieldCheck,
+  Star,
+  Trash2,
+  Undo2,
+  Wallet,
+  X,
+} from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp } from '../utils/formatters.ts';
-import type { PaymentRecord } from '../types.ts';
+import type { PaymentRecord, Reservation, WalletCard } from '../types.ts';
 import { BankAccountCard } from '../components/BankAccountCard.tsx';
-import { getMyRefundTransfers, type RefundTransfer } from '../lib/financeApi.ts';
+import { PaymentReceiptModal } from '../components/PaymentReceipt.tsx';
+import {
+  accountTypeLabel,
+  getMyBankAccount,
+  getMyRefundTransfers,
+  maskAccount,
+  type BankAccount,
+  type RefundTransfer,
+} from '../lib/financeApi.ts';
+
+// Billetera al estilo de las apps de transporte: listas simples de filas
+// (ícono · título · subtítulo · flecha). Los detalles se abren en una hoja.
 
 interface WalletPageProps {
   onOpenAuth: (mode: 'login' | 'register', notice?: string) => void;
@@ -14,32 +43,189 @@ interface WalletPageProps {
 }
 
 const STATUS_LABEL: Record<PaymentRecord['status'], { text: string; className: string }> = {
-  created: { text: 'En proceso', className: 'bg-slate-100 text-slate-700' },
-  authorized: { text: 'Pagado', className: 'bg-emerald-50 text-emerald-700' },
-  failed: { text: 'Rechazado', className: 'bg-rose-50 text-rose-700' },
-  aborted: { text: 'Anulado', className: 'bg-slate-100 text-slate-600' },
-  refunded: { text: 'Reembolsado', className: 'bg-indigo-50 text-indigo-700' },
-  partially_refunded: { text: 'Reembolso parcial', className: 'bg-indigo-50 text-indigo-700' },
+  created: { text: 'En proceso', className: 'text-slate-500' },
+  authorized: { text: 'Pagado', className: 'text-emerald-700' },
+  failed: { text: 'Rechazado', className: 'text-rose-700' },
+  aborted: { text: 'Anulado', className: 'text-slate-500' },
+  refunded: { text: 'Reembolsado', className: 'text-indigo-700' },
+  partially_refunded: { text: 'Reembolso parcial', className: 'text-indigo-700' },
 };
 
 const RESULT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
-  ok: { ok: true, text: 'Tarjeta agregada a tu billetera.' },
+  ok: { ok: true, text: 'Tarjeta agregada.' },
   rechazada: { ok: false, text: 'Transbank no pudo inscribir la tarjeta o cancelaste el proceso. No se guardó nada.' },
-  error: { ok: false, text: 'No se pudo completar la inscripción. Inténtalo nuevamente.' },
+  error: { ok: false, text: 'No se pudo agregar la tarjeta. Inténtalo de nuevo.' },
 };
+
+type SheetState =
+  | { kind: 'add' }
+  | { kind: 'card'; card: WalletCard }
+  | { kind: 'bank' }
+  | null;
+
+/* ---------- Piezas de la lista ---------- */
+
+const BrandBadge: React.FC<{ type: string }> = ({ type }) => {
+  const t = type.toLowerCase();
+  if (t.includes('visa'))
+    return (
+      <span className="flex h-9 w-12 items-center justify-center rounded-lg bg-[#1a3fd6] text-[11px] font-black italic tracking-tight text-white">
+        VISA
+      </span>
+    );
+  if (t.includes('master'))
+    return (
+      <span className="relative flex h-9 w-12 items-center justify-center rounded-lg bg-slate-900" aria-hidden="true">
+        <span className="absolute left-[11px] h-4 w-4 rounded-full bg-[#eb001b]" />
+        <span className="absolute left-[19px] h-4 w-4 rounded-full bg-[#f79e1b]/90" />
+      </span>
+    );
+  if (t.includes('amex') || t.includes('american'))
+    return <span className="flex h-9 w-12 items-center justify-center rounded-lg bg-[#2e77bc] text-[10px] font-black text-white">AMEX</span>;
+  return (
+    <span className="flex h-9 w-12 items-center justify-center rounded-lg bg-slate-200 text-slate-700">
+      <CreditCard className="h-5 w-5" aria-hidden="true" />
+    </span>
+  );
+};
+
+const IconTile: React.FC<{ className: string; children: React.ReactNode }> = ({ className, children }) => (
+  <span className={`flex h-9 w-12 shrink-0 items-center justify-center rounded-lg ${className}`}>{children}</span>
+);
+
+const Row: React.FC<{
+  icon: React.ReactNode;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  subtitleClass?: string;
+  right?: React.ReactNode;
+  onClick?: () => void;
+  ariaLabel?: string;
+}> = ({ icon, title, subtitle, subtitleClass = 'text-slate-500', right, onClick, ariaLabel }) => {
+  const content = (
+    <>
+      {icon}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-semibold text-slate-950">{title}</span>
+        {subtitle && <span className={`block truncate text-sm ${subtitleClass}`}>{subtitle}</span>}
+      </span>
+      {right}
+      {onClick && <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />}
+    </>
+  );
+  return (
+    <li className="border-b border-slate-100 last:border-b-0">
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={ariaLabel}
+          className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 cursor-pointer"
+        >
+          {content}
+        </button>
+      ) : (
+        <div className="flex items-center gap-4 px-4 py-3.5">{content}</div>
+      )}
+    </li>
+  );
+};
+
+const SectionTitle: React.FC<{ id: string; children: React.ReactNode; hint?: string }> = ({ id, children, hint }) => (
+  <div className="px-1">
+    <h2 id={id} className="text-xl font-bold tracking-tight text-slate-950">
+      {children}
+    </h2>
+    {hint && <p className="mt-0.5 text-sm text-slate-500">{hint}</p>}
+  </div>
+);
+
+const PillButton: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode }> = ({ onClick, disabled, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className="inline-flex min-h-12 items-center gap-3 rounded-full bg-slate-100 px-5 text-[15px] font-semibold text-slate-900 transition hover:bg-slate-200 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+  >
+    {children}
+  </button>
+);
+
+/* ---------- Hoja (abajo en celular, centrada en escritorio) ---------- */
+
+const Sheet: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({ title, onClose, children }) => {
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const reduce = useReducedMotion();
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <motion.div
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 sm:items-center sm:p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-w-lg sm:rounded-3xl sm:pb-5"
+        initial={reduce ? { opacity: 0 } : { y: 40, opacity: 0 }}
+        animate={reduce ? { opacity: 1 } : { y: 0, opacity: 1 }}
+        exit={reduce ? { opacity: 0 } : { y: 40, opacity: 0 }}
+        transition={{ type: 'spring', duration: 0.35, bounce: 0.1 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden="true" />
+        <div className="flex items-center justify-between gap-3 px-5 pb-2 pt-3">
+          <h3 id={titleId} className="text-lg font-bold text-slate-950">
+            {title}
+          </h3>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200 cursor-pointer"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="px-5">{children}</div>
+      </motion.div>
+    </motion.div>,
+    document.body,
+  );
+};
+
+/* ---------- Página ---------- */
 
 export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = false }) => {
   const { currentUser, walletCards, payments, reservations, addWalletCard, removeWalletCard, setDefaultWalletCard, refreshWalletCards } =
     useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   const [busy, setBusy] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
-  const [confirmAdd, setConfirmAdd] = useState(false);
+  const [sheet, setSheet] = useState<SheetState>(null);
+  const [receiptFor, setReceiptFor] = useState<Reservation | null>(null);
   const [refunds, setRefunds] = useState<RefundTransfer[]>([]);
+  const [bank, setBank] = useState<BankAccount | null | undefined>(undefined);
+
   const loadRefunds = () => void getMyRefundTransfers().then(setRefunds);
   useEffect(loadRefunds, [currentUser?.id]);
+  useEffect(() => {
+    if (currentUser) getMyBankAccount(currentUser.id).then(setBank).catch(() => setBank(null));
+  }, [currentUser?.id]);
   const waitingData = refunds.filter((r) => r.status === 'awaiting_data');
 
   useEffect(() => {
@@ -54,7 +240,7 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
 
   const myPayments = useMemo(
     () => (currentUser ? payments.filter((p) => reservations.some((r) => r.id === p.reservationId && r.tenantId === currentUser.id)) : []),
-    [payments, reservations, currentUser]
+    [payments, reservations, currentUser],
   );
 
   if (!currentUser) {
@@ -82,8 +268,10 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
     setNotice(null);
     try {
       await task();
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo completar la acción.');
+      return false;
     } finally {
       setBusy(null);
     }
@@ -91,299 +279,272 @@ export const WalletPage: React.FC<WalletPageProps> = ({ onOpenAuth, embedded = f
 
   const isOwner = currentUser.role === 'owner' || !!currentUser.ownerTermsAccepted;
   const maxCards = walletCards.length >= 5;
-
-  const addCardButton = (
-    <button
-      type="button"
-      onClick={() => setConfirmAdd(true)}
-      disabled={busy !== null || maxCards || confirmAdd}
-      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-bold text-white transition hover:bg-rose-700 active:scale-[0.97] disabled:opacity-50 cursor-pointer"
-    >
-      <Plus className="h-4 w-4" aria-hidden="true" /> Agregar tarjeta
-    </button>
-  );
+  const closeSheet = () => {
+    setSheet(null);
+    setConfirmDelete(false);
+  };
 
   return (
-    <div className={embedded ? 'max-w-3xl space-y-8' : 'max-w-3xl mx-auto py-8 sm:py-12 px-4 space-y-8'}>
-      <header>
-        {!embedded && (
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Wallet className="w-6 h-6 text-rose-600" aria-hidden="true" /> Billetera
-          </h1>
-        )}
-        <p className={`text-sm text-slate-600 ${embedded ? '' : 'mt-1'}`}>
-          {isOwner
-            ? 'Aquí manejas tu plata en Spotly: con qué pagas cuando arriendas y dónde te depositamos lo que ganas.'
-            : 'Aquí manejas con qué pagas tus reservas y dónde te devolvemos dinero si hace falta.'}
-        </p>
-        <nav aria-label="Secciones de la billetera" className="mt-4 grid grid-cols-2 gap-2 sm:max-w-md">
-          <a href="#para-pagar" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50">
-            <CreditCard className="h-4 w-4 text-rose-600" aria-hidden="true" />
-            <span className="min-w-0">
-              <span className="block">Para pagar</span>
-              <span className="block text-xs font-normal text-slate-500">{walletCards.length ? `${walletCards.length} tarjeta${walletCards.length > 1 ? 's' : ''}` : 'Sin tarjetas'}</span>
-            </span>
-          </a>
-          <a href="#para-recibir" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50">
-            <Landmark className="h-4 w-4 text-emerald-700" aria-hidden="true" />
-            <span className="min-w-0">
-              <span className="block">Para recibir</span>
-              <span className="block text-xs font-normal text-slate-500">Cuenta bancaria</span>
-            </span>
-          </a>
-        </nav>
-      </header>
+    <div className={embedded ? 'max-w-2xl space-y-8' : 'max-w-2xl mx-auto py-8 sm:py-12 px-4 space-y-8'}>
+      {!embedded && <h1 className="text-3xl font-bold tracking-tight text-slate-950">Billetera</h1>}
 
       {notice && (
         <div
           role="status"
-          className={`p-3.5 rounded-2xl border text-sm font-semibold flex items-center gap-2 ${
-            notice.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
+          className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold ${
+            notice.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'
           }`}
         >
-          {notice.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+          {notice.ok ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
           {notice.text}
         </div>
       )}
-      {error && (
-        <div role="alert" className="p-3.5 rounded-2xl border bg-rose-50 border-rose-200 text-rose-800 text-sm font-semibold">
+      {error && !sheet && (
+        <div role="alert" className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
           {error}
         </div>
       )}
 
-      {waitingData.length > 0 && (
-        <a href="#para-recibir" role="status" className="block rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          <p className="font-bold">
-            Tienes {waitingData.length === 1 ? 'una devolución' : `${waitingData.length} devoluciones`} de{' '}
-            {formatClp(waitingData.reduce((n, r) => n + r.amountClp, 0))} esperando tus datos bancarios
-          </p>
-          <p>No pudimos devolverla a tu tarjeta. Completa tu cuenta bancaria más abajo y te la transferimos.</p>
-        </a>
-      )}
-
-      {/* ---------- 1. Para pagar ---------- */}
-      <section id="para-pagar" className="scroll-mt-24 space-y-3" aria-labelledby="mis-tarjetas">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-rose-600">1 · Para pagar</p>
-            <h2 id="mis-tarjetas" className="text-lg font-bold text-slate-950">Mis tarjetas</h2>
-            <p className="text-sm text-slate-600">Paga tus reservas en un clic, sin volver a escribir los datos.</p>
-          </div>
-          {walletCards.length > 0 && !confirmAdd && addCardButton}
-        </div>
-
-        {confirmAdd && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" role="region" aria-labelledby="add-card-title">
-            <h3 id="add-card-title" className="text-base font-bold text-slate-950">Vas a agregar tu tarjeta en Transbank</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Por seguridad, la tarjeta no se escribe en Spotly: se inscribe en la página oficial de Transbank (Webpay Oneclick).
-            </p>
-            <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-              {[
-                ['Te llevamos a Webpay', 'Se abre la página segura de Transbank.'],
-                ['Ingresas tu tarjeta', 'Número, fecha y clave, solo en Transbank.'],
-                ['Vuelves a Spotly', 'La tarjeta aparece aquí, lista para pagar.'],
-              ].map(([t, d], i) => (
-                <li key={t} className="flex gap-3 rounded-xl bg-slate-50 p-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{i + 1}</span>
-                  <span>
-                    <span className="block font-semibold text-slate-900">{t}</span>
-                    <span className="text-slate-600">{d}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-3 flex items-start gap-1.5 text-xs text-slate-600">
-              <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
-              Spotly solo guarda el tipo de tarjeta y los 4 últimos dígitos. No se hace ningún cobro al inscribirla.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => run('add', () => addWalletCard('/billetera'))}
-                disabled={busy !== null}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-rose-600 px-5 text-sm font-bold text-white transition hover:bg-rose-700 active:scale-[0.97] disabled:opacity-60 cursor-pointer"
-              >
-                {busy === 'add' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ExternalLink className="h-4 w-4" aria-hidden="true" />}
-                {busy === 'add' ? 'Abriendo Transbank…' : 'Continuar a Transbank'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmAdd(false)}
-                disabled={busy === 'add'}
-                className="min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                Ahora no
-              </button>
-            </div>
-          </div>
-        )}
-
-        {walletCards.length === 0 ? (
-          !confirmAdd && (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
-                <CreditCard className="h-6 w-6" aria-hidden="true" />
-              </span>
-              <p className="text-sm text-slate-600">Aún no tienes tarjetas guardadas.</p>
-              {addCardButton}
-            </div>
-          )
-        ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* ---------- Métodos de pago ---------- */}
+      <section className="space-y-3" aria-labelledby="w-pay">
+        <SectionTitle id="w-pay">Métodos de pago</SectionTitle>
+        {walletCards.length > 0 && (
+          <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             {walletCards.map((card) => (
-              <li key={card.id} className="p-4 rounded-2xl bg-slate-900 text-white space-y-4 shadow-md">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm font-bold">
-                    <CreditCard className="w-5 h-5 text-rose-300" /> {card.cardType}
-                  </span>
-                  {card.isDefault && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                      Predeterminada
-                    </span>
-                  )}
-                </div>
-                <p className="font-mono text-lg">•••• •••• •••• {card.last4}</p>
-                <div className="flex items-center gap-2">
-                  {!card.isDefault && (
-                    <button
-                      type="button"
-                      onClick={() => run(`def-${card.id}`, () => setDefaultWalletCard(card.id))}
-                      disabled={busy !== null}
-                      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Star className="w-3.5 h-3.5" /> Usar por defecto
-                    </button>
-                  )}
-                  {confirmDelete === card.id ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => run(`del-${card.id}`, () => removeWalletCard(card.id)).then(() => setConfirmDelete(null))}
-                        disabled={busy !== null}
-                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-xs font-bold cursor-pointer"
-                      >
-                        {busy === `del-${card.id}` ? 'Eliminando…' : 'Sí, eliminar'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(null)}
-                        className="px-3 py-1.5 rounded-lg bg-white/10 text-xs font-bold cursor-pointer"
-                      >
-                        No
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(card.id)}
-                      disabled={busy !== null}
-                      className="ml-auto px-3 py-1.5 rounded-lg bg-white/10 hover:bg-rose-600 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                      aria-label={`Eliminar tarjeta terminada en ${card.last4}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Eliminar
-                    </button>
-                  )}
-                </div>
-              </li>
+              <Row
+                key={card.id}
+                icon={<BrandBadge type={card.cardType} />}
+                title={`${card.cardType} ••••${card.last4}`}
+                subtitle={card.isDefault ? 'Predeterminada' : 'Toca para ver opciones'}
+                subtitleClass={card.isDefault ? 'text-blue-600' : 'text-slate-500'}
+                onClick={() => setSheet({ kind: 'card', card })}
+                ariaLabel={`Tarjeta ${card.cardType} terminada en ${card.last4}${card.isDefault ? ', predeterminada' : ''}`}
+              />
             ))}
           </ul>
         )}
-        {maxCards && <p className="text-xs text-slate-500">Puedes guardar hasta 5 tarjetas. Elimina una para agregar otra.</p>}
-        <details className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
-          <summary className="flex cursor-pointer items-center gap-2 font-semibold">
-            <Info className="h-4 w-4 shrink-0" aria-hidden="true" /> Datos de prueba de Transbank (ambiente de integración)
-          </summary>
-          <p className="mt-2">
-            Tarjeta VISA <strong>4051 8856 0044 6623</strong>, CVV <strong>123</strong> y cualquier fecha futura. Si te pide autenticación: RUT{' '}
-            <strong>11.111.111-1</strong> y clave <strong>123</strong>.
-          </p>
-        </details>
+        <PillButton onClick={() => setSheet({ kind: 'add' })} disabled={maxCards || busy !== null}>
+          <Plus className="h-5 w-5" aria-hidden="true" /> Agrega un método de pago
+        </PillButton>
+        {maxCards && <p className="px-1 text-sm text-slate-500">Puedes guardar hasta 5 tarjetas.</p>}
       </section>
 
-      {/* ---------- 2. Para recibir ---------- */}
-      <section id="para-recibir" className="scroll-mt-24 space-y-3" aria-labelledby="para-recibir-t">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">2 · Para recibir</p>
-          <h2 id="para-recibir-t" className="text-lg font-bold text-slate-950">Tu cuenta bancaria</h2>
-          <p className="text-sm text-slate-600">
-            {isOwner
-              ? 'Cada martes te transferimos aquí lo que ganaste con los arriendos terminados.'
-              : 'Solo la usamos si una devolución no puede volver a tu tarjeta.'}
-          </p>
-        </div>
-        <BankAccountCard
-          userId={currentUser.id}
-          defaultName={currentUser.fullName}
-          defaultRut={currentUser.rut}
-          defaultEmail={currentUser.email}
-          highlight={waitingData.length > 0}
-          purpose={isOwner ? 'Depósitos de los martes y devoluciones.' : 'Devoluciones por transferencia.'}
-          onSaved={loadRefunds}
-        />
-        {refunds.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-bold text-slate-900">Devoluciones por transferencia</h3>
-          <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
-            {refunds.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-                <span>
-                  <span className="block font-semibold text-slate-900">{formatClp(r.amountClp)}</span>
-                  <span className="text-xs text-slate-500">
-                    Reserva {r.reservationId} · {new Date(r.createdAt).toLocaleDateString('es-CL')}
-                    {r.transferReference ? ` · comprobante ${r.transferReference}` : ''}
-                  </span>
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                    r.status === 'paid'
-                      ? 'bg-emerald-50 text-emerald-800'
-                      : r.status === 'awaiting_data'
-                        ? 'bg-amber-100 text-amber-900'
-                        : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  {r.status === 'paid' ? 'Transferida' : r.status === 'awaiting_data' ? 'Faltan tus datos' : r.status === 'pending' ? 'Por transferir' : 'Anulada'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+      {/* ---------- Para recibir dinero ---------- */}
+      <section className="space-y-3" aria-labelledby="w-receive">
+        <SectionTitle id="w-receive">Para recibir dinero</SectionTitle>
+        <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <Row
+            icon={
+              <IconTile className="bg-emerald-100 text-emerald-800">
+                <Landmark className="h-5 w-5" aria-hidden="true" />
+              </IconTile>
+            }
+            title={bank ? bank.bank : 'Cuenta bancaria'}
+            subtitle={
+              bank === undefined
+                ? 'Cargando…'
+                : bank
+                  ? `${accountTypeLabel(bank.accountType)} ${maskAccount(bank.accountNumber)}`
+                  : waitingData.length
+                    ? 'Agrégala para recibir tu devolución'
+                    : isOwner
+                      ? 'Agrégala para recibir tus depósitos del martes'
+                      : 'Agrégala por si te devolvemos dinero'
+            }
+            subtitleClass={!bank && bank !== undefined ? 'text-blue-600' : 'text-slate-500'}
+            onClick={() => setSheet({ kind: 'bank' })}
+          />
+          {refunds.map((r) => (
+            <Row
+              key={r.id}
+              icon={
+                <IconTile className="bg-indigo-100 text-indigo-800">
+                  <Undo2 className="h-5 w-5" aria-hidden="true" />
+                </IconTile>
+              }
+              title={`Devolución ${formatClp(r.amountClp)}`}
+              subtitle={
+                r.status === 'paid'
+                  ? `Transferida${r.transferReference ? ` · comprobante ${r.transferReference}` : ''}`
+                  : r.status === 'awaiting_data'
+                    ? 'Faltan tus datos bancarios'
+                    : r.status === 'pending'
+                      ? 'Por transferir'
+                      : 'Anulada'
+              }
+              subtitleClass={r.status === 'awaiting_data' ? 'text-amber-700' : r.status === 'paid' ? 'text-emerald-700' : 'text-slate-500'}
+              onClick={r.status === 'awaiting_data' ? () => setSheet({ kind: 'bank' }) : undefined}
+            />
+          ))}
+        </ul>
       </section>
 
-      <section className="space-y-3" aria-labelledby="movimientos">
-        <h2 id="movimientos" className="text-lg font-bold text-slate-950">
-          Movimientos
-        </h2>
+      {/* ---------- Movimientos ---------- */}
+      <section className="space-y-3" aria-labelledby="w-moves">
+        <SectionTitle id="w-moves">Movimientos</SectionTitle>
         {myPayments.length === 0 ? (
-          <p className="text-sm text-slate-500">Todavía no tienes pagos registrados.</p>
+          <p className="px-1 text-sm text-slate-500">Todavía no tienes pagos.</p>
         ) : (
-          <ul className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+          <ul className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             {myPayments.slice(0, 20).map((p) => {
               const res = reservations.find((r) => r.id === p.reservationId);
               const label = STATUS_LABEL[p.status] || STATUS_LABEL.created;
+              const canOpen = res && ['authorized', 'refunded', 'partially_refunded'].includes(p.status);
               return (
-                <li key={p.id} className="p-3.5 flex items-center justify-between gap-3 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 truncate">{res?.spaceTitle || 'Reserva'}</p>
-                    <p className="text-xs text-slate-500">
-                      {new Date(p.transactionDate || p.createdAt).toLocaleDateString('es-CL')} ·{' '}
-                      {p.provider === 'oneclick_mall' ? 'Tarjeta guardada' : 'Webpay'}
-                      {p.cardLast4 ? ` ···· ${p.cardLast4}` : ''}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-bold text-slate-900">{formatClp(p.amountClp)}</p>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${label.className}`}>{label.text}</span>
-                  </div>
-                </li>
+                <Row
+                  key={p.id}
+                  icon={
+                    <IconTile className="bg-slate-100 text-slate-700">
+                      <ReceiptText className="h-5 w-5" aria-hidden="true" />
+                    </IconTile>
+                  }
+                  title={res?.spaceTitle || 'Reserva'}
+                  subtitle={
+                    <>
+                      {new Date(p.transactionDate || p.createdAt).toLocaleDateString('es-CL')}
+                      {p.cardLast4 ? ` · ••••${p.cardLast4}` : ''} · <span className={label.className}>{label.text}</span>
+                    </>
+                  }
+                  right={<span className="shrink-0 text-[15px] font-semibold tabular-nums text-slate-950">{formatClp(p.amountClp)}</span>}
+                  onClick={canOpen ? () => setReceiptFor(res) : undefined}
+                  ariaLabel={canOpen ? `Ver comprobante de ${res?.spaceTitle}` : undefined}
+                />
               );
             })}
           </ul>
         )}
       </section>
+
+      {/* ---------- Hojas ---------- */}
+      <AnimatePresence>
+        {sheet?.kind === 'add' && (
+          <Sheet key="add" title="Agregar tarjeta" onClose={closeSheet}>
+            <p className="text-[15px] text-slate-600">
+              Te llevamos a la página segura de <strong className="text-slate-900">Transbank</strong>. Ahí escribes tu tarjeta y vuelves solo a
+              Spotly.
+            </p>
+            <ul className="mt-4 space-y-3 text-[15px]">
+              <li className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
+                Spotly nunca ve el número completo.
+              </li>
+              <li className="flex items-center gap-3">
+                <CreditCard className="h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
+                No se cobra nada al agregarla.
+              </li>
+            </ul>
+            {error && (
+              <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">
+                {error}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => run('add', () => addWalletCard('/billetera'))}
+              disabled={busy !== null}
+              className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 text-[15px] font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+            >
+              {busy === 'add' ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <ExternalLink className="h-5 w-5" aria-hidden="true" />}
+              {busy === 'add' ? 'Abriendo Transbank…' : 'Continuar a Transbank'}
+            </button>
+            <details className="mt-4 text-sm text-slate-500">
+              <summary className="cursor-pointer">Datos de prueba (ambiente de integración)</summary>
+              <p className="mt-1">
+                VISA 4051 8856 0044 6623 · CVV 123 · fecha futura. Autenticación: RUT 11.111.111-1, clave 123.
+              </p>
+            </details>
+          </Sheet>
+        )}
+
+        {sheet?.kind === 'card' && (
+          <Sheet key="card" title={`${sheet.card.cardType} ••••${sheet.card.last4}`} onClose={closeSheet}>
+            <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
+              <BrandBadge type={sheet.card.cardType} />
+              <span className="text-[15px] text-slate-700">{sheet.card.isDefault ? 'Es tu tarjeta predeterminada.' : 'Tarjeta guardada.'}</span>
+            </div>
+            {error && (
+              <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">
+                {error}
+              </p>
+            )}
+            <ul className="mt-3 -mx-4">
+              {!sheet.card.isDefault && (
+                <Row
+                  icon={
+                    <IconTile className="bg-blue-50 text-blue-700">
+                      {busy === 'def' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Star className="h-5 w-5" aria-hidden="true" />}
+                    </IconTile>
+                  }
+                  title="Usar como predeterminada"
+                  onClick={async () => {
+                    if (await run('def', () => setDefaultWalletCard(sheet.card.id))) closeSheet();
+                  }}
+                />
+              )}
+              {!confirmDelete ? (
+                <Row
+                  icon={
+                    <IconTile className="bg-rose-50 text-rose-700">
+                      <Trash2 className="h-5 w-5" aria-hidden="true" />
+                    </IconTile>
+                  }
+                  title={<span className="text-rose-700">Eliminar tarjeta</span>}
+                  onClick={() => setConfirmDelete(true)}
+                />
+              ) : (
+                <li className="px-4 py-3">
+                  <p className="text-[15px] text-slate-700">¿Eliminar esta tarjeta? Tendrás que agregarla de nuevo para usarla.</p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (await run('del', () => removeWalletCard(sheet.card.id))) closeSheet();
+                      }}
+                      disabled={busy !== null}
+                      className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60 cursor-pointer"
+                    >
+                      {busy === 'del' && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />} Sí, eliminar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="min-h-11 flex-1 rounded-xl bg-slate-100 text-sm font-semibold text-slate-800 hover:bg-slate-200 cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </li>
+              )}
+            </ul>
+          </Sheet>
+        )}
+
+        {sheet?.kind === 'bank' && (
+          <Sheet key="bank" title="Cuenta para recibir dinero" onClose={closeSheet}>
+            <p className="mb-3 text-[15px] text-slate-600">
+              {isOwner
+                ? 'Cada martes te depositamos aquí lo que ganaste. También la usamos si una devolución no puede volver a tu tarjeta.'
+                : 'Solo la usamos si una devolución no puede volver a tu tarjeta.'}
+            </p>
+            <BankAccountCard
+              bare
+              userId={currentUser.id}
+              defaultName={currentUser.fullName}
+              defaultRut={currentUser.rut}
+              defaultEmail={currentUser.email}
+              purpose=""
+              onSaved={(b) => {
+                setBank(b);
+                loadRefunds();
+                closeSheet();
+                setNotice({ ok: true, text: 'Cuenta guardada.' });
+              }}
+            />
+          </Sheet>
+        )}
+      </AnimatePresence>
+
+      {receiptFor && <PaymentReceiptModal reservation={receiptFor} variant="tenant" onClose={() => setReceiptFor(null)} />}
     </div>
   );
 };

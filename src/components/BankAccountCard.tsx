@@ -25,12 +25,14 @@ interface Props {
   /** Resalta el bloque cuando hay dinero esperando estos datos. */
   highlight?: boolean;
   onSaved?: (b: BankAccount) => void;
+  /** Sin marco ni encabezado (dentro de una hoja o modal). */
+  bare?: boolean;
 }
 
 const field = 'w-full min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10';
 const labelCls = 'mb-1 block text-xs font-semibold text-slate-700';
 
-export const BankAccountCard: React.FC<Props> = ({ userId, defaultName, defaultRut, defaultEmail, purpose, highlight, onSaved }) => {
+export const BankAccountCard: React.FC<Props> = ({ userId, defaultName, defaultRut, defaultEmail, purpose, highlight, onSaved, bare }) => {
   const id = useId();
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,11 +101,12 @@ export const BankAccountCard: React.FC<Props> = ({ userId, defaultName, defaultR
 
   return (
     <section
-      aria-labelledby={`${id}-t`}
-      className={`rounded-2xl border bg-white p-5 transition-shadow ${highlight ? 'border-amber-300 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]' : 'border-slate-200'}`}
+      aria-labelledby={bare ? undefined : `${id}-t`}
+      aria-label={bare ? 'Cuenta bancaria' : undefined}
+      className={bare ? '' : `rounded-2xl border bg-white p-5 transition-shadow ${highlight ? 'border-amber-300 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]' : 'border-slate-200'}`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+      <div className={bare ? (account && !editing ? 'flex justify-end' : 'hidden') : 'flex flex-wrap items-start justify-between gap-3'}>
+        <div className={bare ? 'hidden' : 'flex items-start gap-3'}>
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
             <Landmark className="h-5 w-5" aria-hidden="true" />
           </span>
@@ -128,7 +131,7 @@ export const BankAccountCard: React.FC<Props> = ({ userId, defaultName, defaultR
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Cargando…
         </p>
       ) : account && !editing ? (
-        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+        <dl className={`${bare ? "mt-2" : "mt-4"} grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4`}>
           <div>
             <dt className="text-xs text-slate-500">Titular</dt>
             <dd className="font-semibold text-slate-900">{account.holderName}</dd>
@@ -147,7 +150,7 @@ export const BankAccountCard: React.FC<Props> = ({ userId, defaultName, defaultR
           </div>
         </dl>
       ) : (
-        <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" noValidate>
+        <form onSubmit={submit} className={`${bare ? "" : "mt-4"} grid grid-cols-1 gap-3 sm:grid-cols-2`} noValidate>
           <div>
             <label htmlFor={`${id}-n`} className={labelCls}>Nombre del titular</label>
             <input id={`${id}-n`} value={form.holderName} onChange={set('holderName')} autoComplete="name" className={field} />
