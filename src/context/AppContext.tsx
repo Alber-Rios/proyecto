@@ -44,6 +44,7 @@ import {
   getVisitRequestsFromDb,
   insertVisitRequestToDb,
   getSpacePrivateDetails,
+  type SpacePrivateDetails,
   fetchWalletCards,
 } from '../lib/supabase.ts';
 import {
@@ -228,7 +229,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => getAuditLogs());
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [spaceBlocks, setSpaceBlocks] = useState<SpaceBlock[]>([]);
-  const [spacePrivateDetails, setSpacePrivateDetails] = useState<Record<string, { ownerRut: string; address: string }>>({});
+  const [spacePrivateDetails, setSpacePrivateDetails] = useState<Record<string, SpacePrivateDetails>>({});
 
   // Notificaciones: se persisten en Supabase (tabla notifications) y llegan en tiempo real.
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -1663,7 +1664,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     () =>
       spaces.map((s) => {
         const details = spacePrivateDetails[s.id];
-        return details ? { ...s, ownerRut: details.ownerRut, address: details.address } : s;
+        return details
+          ? { ...s, ownerRut: details.ownerRut, address: details.address, avaluoFiscalClp: details.avaluoFiscalClp ?? s.avaluoFiscalClp }
+          : s;
       }),
     [spaces, spacePrivateDetails]
   );

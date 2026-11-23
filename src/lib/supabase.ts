@@ -60,24 +60,30 @@ export const SPACE_PUBLIC_COLUMNS = [
   'space_environment', 'rental_modality', 'enabled_modalities', 'price_unit', 'commune', 'region',
   'price_per_day', 'price_per_hour', 'price_per_month', 'capacity', 'surface_m2', 'amenities',
   'rules', 'opening_hours', 'security_deposit', 'images', 'is_verified', 'status', 'rating',
-  'reviews_count', 'min_booking_days', 'min_booking_hours', 'instant_booking', 'created_at', 'is_furnished', 'avaluo_fiscal_clp',
+  'reviews_count', 'min_booking_days', 'min_booking_hours', 'instant_booking', 'created_at', 'is_furnished',
 ].join(',');
 
-// Bases creadas antes de agregar el avalúo fiscal: se reintenta sin esa columna
-// para que el catálogo y las publicaciones sigan funcionando.
-const LEGACY_SPACE_COLUMNS = SPACE_PUBLIC_COLUMNS.replace(',avaluo_fiscal_clp', '');
+// El avalúo fiscal no es público: llega con getSpacePrivateDetails() (solo dueño y admin).
+// Bases creadas antes de agregar el avalúo: al guardar se reintenta sin esa columna.
+const LEGACY_SPACE_COLUMNS = SPACE_PUBLIC_COLUMNS;
 const missingAvaluo = (e: { message?: string } | null) => Boolean(e && /avaluo_fiscal_clp/.test(e.message || ''));
 
-export async function getSpacePrivateDetails(): Promise<Record<string, { ownerRut: string; address: string }>> {
+export type SpacePrivateDetails = { ownerRut: string; address: string; avaluoFiscalClp?: number };
+
+export async function getSpacePrivateDetails(): Promise<Record<string, SpacePrivateDetails>> {
   if (!isSupabaseConfigured()) return {};
   const { data, error } = await supabase.rpc('get_spaces_private_details');
   if (error) {
     console.warn('No se pudieron cargar los datos privados de los espacios:', error.message);
     return {};
   }
-  const result: Record<string, { ownerRut: string; address: string }> = {};
+  const result: Record<string, SpacePrivateDetails> = {};
   for (const row of data || []) {
-    result[row.space_id] = { ownerRut: row.owner_rut || '', address: row.address || '' };
+    result[row.space_id] = {
+      ownerRut: row.owner_rut || '',
+      address: row.address || '',
+      avaluoFiscalClp: row.avaluo_fiscal_clp == null ? undefined : Number(row.avaluo_fiscal_clp),
+    };
   }
   return result;
 }

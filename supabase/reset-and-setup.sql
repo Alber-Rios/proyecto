@@ -2010,13 +2010,20 @@ $$;
 -- Dirección exacta y RUT del propietario: solo para el propietario, administración
 -- y quien tiene una reserva o visita en el espacio.
 CREATE FUNCTION public.get_spaces_private_details()
-RETURNS TABLE (space_id TEXT, owner_rut TEXT, address TEXT)
-LANGUAGE sql
+RETURNS TABLE (space_id TEXT, owner_rut TEXT, address TEXT, avaluo_fiscal_clp NUMERIC)
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT s.id, s.owner_rut, s.address
+#variable_conflict use_column
+BEGIN
+  -- plpgsql: el cuerpo se valida al ejecutarse (avaluo_fiscal_clp se agrega más abajo).
+  RETURN QUERY
+  -- El avalúo fiscal solo para el propietario y el administrador; el arrendatario
+  -- con reserva ve RUT del propietario y dirección, pero no sus datos tributarios.
+  SELECT s.id, s.owner_rut, s.address,
+         CASE WHEN public.is_admin() OR s.owner_id = auth.uid() THEN s.avaluo_fiscal_clp END
   FROM public.spaces s
   WHERE public.is_admin()
      OR s.owner_id = auth.uid()
@@ -2033,6 +2040,7 @@ AS $$
          AND v.tenant_id = auth.uid()
          AND v.status IN ('confirmed', 'completed')
      );
+END;
 $$;
 
 -- ---------- Visitas: datos confiables y transiciones ----------
@@ -4570,8 +4578,10 @@ GRANT SELECT (
   price_per_day, price_per_hour, price_per_month, capacity, surface_m2, amenities,
   rules, opening_hours, security_deposit, images, is_verified, status, rating,
   reviews_count, min_booking_days, min_booking_hours, instant_booking, created_at, updated_at,
-  is_furnished, avaluo_fiscal_clp
+  is_furnished
 ) ON public.spaces TO anon, authenticated;
+-- avaluo_fiscal_clp es dato tributario del propietario: solo lo leen él y el
+-- administrador, con get_spaces_private_details().
 GRANT SELECT ON public.reviews TO anon;
 GRANT INSERT (space_id, viewer_id) ON public.space_views TO anon, authenticated;
 

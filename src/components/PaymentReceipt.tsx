@@ -96,16 +96,27 @@ const daysLabel = (d: number) => {
   return `${String(v).replace('.', ',')} ${v === 1 ? 'DÍA' : 'DÍAS'}`;
 };
 
+type Kind = 'summary' | 'boleta';
+
+/**
+ * Cada persona ve solo lo suyo, en dos documentos separados:
+ * - Arrendatario: «Comprobante de pago» (lo que pagó) y la boleta de Spotly por el cargo de servicio.
+ * - Propietario: «Liquidación» (lo que recibe y su IVA) y la boleta de Spotly por la comisión.
+ * El arrendatario nunca ve la comisión, el avalúo ni el IVA del propietario;
+ * el propietario nunca ve el cargo de servicio, el descuento, la tarjeta ni el RUT del arrendatario.
+ */
 export const ReceiptPaper: React.FC<{
   reservation: Reservation;
   payment?: PaymentRecord;
   furnished: boolean;
   avaluoFiscalClp?: number;
   variant: Variant;
+  kind?: Kind;
   /** Documentos tributarios simulados de la reserva. */
   documents?: TaxDocument[];
-}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, documents = [] }) => {
-  const concept = variant === 'tenant' ? 'cargo_servicio' : 'comision_propietario';
+}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, kind = 'summary', documents = [] }) => {
+  const isTenant = variant === 'tenant';
+  const concept = isTenant ? 'cargo_servicio' : 'comision_propietario';
   const boleta = documents.find((d) => d.docType === 39 && d.concept === concept);
   const creditNote = documents.find((d) => d.docType === 61 && d.concept === concept);
   const issuerName = placeholder(LEGAL_ENTITY.name) || 'SPOTLY';
@@ -114,11 +125,9 @@ export const ReceiptPaper: React.FC<{
   const { qty, unit } = unitsLabel(r);
   const unitPrice = qty > 0 ? Math.round(r.subtotalClp / qty) : r.subtotalClp;
   const fee = r.platformFeeClp || 0;
-  const feeNet = netOf(fee);
   const discount = r.discountClp || 0;
   const deposit = r.securityDepositClp || 0;
   const commission = r.ownerCommissionClp || 0;
-  const commissionNet = netOf(commission);
   const commissionPct = String(Math.round((r.ownerCommissionRate || 0) * 1000) / 10).replace('.', ',');
   const paidAt = payment?.transactionDate || r.paidAt || r.confirmedAt || r.createdAt;
   const refunded = r.refundAmountClp || payment?.refundedAmountClp || 0;
@@ -126,54 +135,171 @@ export const ReceiptPaper: React.FC<{
   const tax = furnished && avaluoFiscalClp ? computeRentTax(r.subtotalClp, avaluoFiscalClp, rentalDays(r)) : null;
   const modality =
     r.rentalModality === 'por_hora' ? 'POR HORA' : r.rentalModality === 'mensual' ? 'MENSUAL' : r.rentalModality === 'abierto' ? 'ABIERTO' : 'POR DÍA';
+  const showBoleta = kind === 'boleta' && Boolean(boleta);
+  const boletaGross = boleta?.totalClp ?? (isTenant ? fee : commission);
+  const boletaNet = boleta?.netClp ?? netOf(boletaGross);
+  const boletaIva = boleta?.ivaClp ?? boletaGross - boletaNet;
 
-  const rentTaxBlock = (who: 'tenant' | 'owner') =>
-    !furnished ? (
-      <Section title={who === 'tenant' ? `B) ARRIENDO · DEL PROPIETARIO` : 'IVA DE TU ARRIENDO'} note="Sin amoblar: exento de IVA">
-        <Line k="RENTA" v={peso(r.subtotalClp)} />
-        <Line k="IVA" v="EXENTO" />
-      </Section>
-    ) : tax ? (
-      <Section
-        title={who === 'tenant' ? 'B) ARRIENDO AMOBLADO · DEL PROPIETARIO' : 'IVA DE TU ARRIENDO · LO DECLARAS TÚ'}
-        note="IVA incluido en el precio · art. 17 DL 825"
-      >
-        <Line k="RENTA NETA" v={peso(tax.net)} />
-        <Line k={`REBAJA AVALÚO 11% · ${daysLabel(tax.days)}`} v={`-${peso(tax.rebate)}`} />
-        <Line k="BASE IMPONIBLE" v={peso(tax.base)} />
-        <Line k="IVA 19%" v={peso(tax.iva)} />
-        <Line k="TOTAL ARRIENDO" v={peso(r.subtotalClp)} strong />
-        <p className="text-[10px] text-stone-600">AVALÚO FISCAL DECLARADO: {peso(avaluoFiscalClp || 0)}</p>
-      </Section>
-    ) : (
-      <Section
-        title={who === 'tenant' ? 'B) ARRIENDO AMOBLADO · DEL PROPIETARIO' : 'IVA DE TU ARRIENDO · LO DECLARAS TÚ'}
-        note="IVA incluido en el precio"
-      >
-        <Line k="TOTAL ARRIENDO" v={peso(r.subtotalClp)} />
-        <p className="text-[10px] uppercase text-stone-600">
-          {who === 'tenant'
-            ? 'El propietario calcula el IVA con el avalúo fiscal de su propiedad y emite su boleta o factura.'
-            : 'Agrega el avalúo fiscal en tu publicación y aquí verás el detalle: renta neta, rebaja, base imponible e IVA.'}
-        </p>
-      </Section>
+  const title = showBoleta ? `BOLETA N° ${boleta!.folio}` : isTenant ? 'COMPROBANTE DE PAGO' : 'LIQUIDACIÓN';
+  const label = showBoleta ? 'Boleta electrónica de Spotly' : isTenant ? 'Comprobante de pago' : 'Liquidación para el propietario';
+
+  // Datos de la reserva: cada uno ve su propio RUT; del otro, solo el nombre.
+  const reservationData = (
+    <div className="mt-2 space-y-0.5 text-[11px]">
+      <Line k="FECHA:" v={fmtDateTime(showBoleta ? boleta!.issuedAt : paidAt)} />
+      <Line k="RESERVA:" v={<span className="break-all text-[10.5px]">{r.id.toUpperCase()}</span>} />
+      {isTenant ? (
+        <>
+          <Line k="CLIENTE:" v={<span className="uppercase">{r.tenantName}</span>} />
+          {r.tenantRut && <Line k="RUT:" v={formatRut(r.tenantRut)} />}
+          {!showBoleta && <Line k="PROPIETARIO:" v={<span className="uppercase">{r.ownerName}</span>} />}
+        </>
+      ) : (
+        <>
+          <Line k={showBoleta ? 'CLIENTE:' : 'PROPIETARIO:'} v={<span className="uppercase">{r.ownerName}</span>} />
+          {r.ownerRut && <Line k="RUT:" v={formatRut(r.ownerRut)} />}
+          {!showBoleta && <Line k="ARRENDATARIO:" v={<span className="uppercase">{r.tenantName}</span>} />}
+        </>
+      )}
+      <Line k="ESPACIO:" v={<span className="block max-w-[12rem] truncate text-right uppercase">{r.spaceTitle}</span>} />
+      {!showBoleta && (
+        <>
+          {r.spaceAddress && <Line k="DIRECCIÓN:" v={<span className="block max-w-[12rem] truncate text-right uppercase">{r.spaceAddress}</span>} />}
+          <Line k="MODALIDAD:" v={`${modality}${furnished ? ' · AMOBLADO' : ''}`} />
+          <Line k="FECHAS:" v={r.startDate === r.endDate ? r.startDate : `${r.startDate} → ${r.endDate}`} />
+          {r.rentalModality === 'por_hora' && r.hourStart !== undefined && r.hourEnd !== undefined && (
+            <Line k="HORARIO:" v={`${String(r.hourStart).padStart(2, '0')}:00 - ${String(r.hourEnd).padStart(2, '0')}:00`} />
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  const tableHead = (
+    <>
+      <Rule double />
+      <div className="flex justify-between text-[11px] font-bold">
+        <span>DESCRIPCIÓN</span>
+        <span>VALOR</span>
+      </div>
+      <Rule double />
+    </>
+  );
+
+  let body: React.ReactNode;
+  if (showBoleta) {
+    // Solo el servicio que vende Spotly a esta persona.
+    body = (
+      <div className="space-y-1.5">
+        {tableHead}
+        <Line k={isTenant ? 'CARGO DE SERVICIO SPOTLY 5%' : `COMISIÓN DE INTERMEDIACIÓN ${commissionPct}%`} v={peso(boletaGross)} />
+        <Rule />
+        <Line k="MONTO NETO" v={peso(boletaNet)} />
+        <Line k="IVA 19%" v={peso(boletaIva)} />
+        <Line k={<span className="text-[15px]">TOTAL</span>} v={<span className="text-[15px]">{peso(boletaGross)}</span>} strong />
+        {!isTenant && <p className="text-[10px] uppercase text-stone-600">Se descontó de tu depósito. No pagas nada aparte.</p>}
+        {creditNote && (
+          <>
+            <Rule double />
+            <p className="text-center text-[11px] font-bold">NOTA DE CRÉDITO N° {creditNote.folio}</p>
+            <Line k={`ANULA BOLETA N° ${creditNote.referencesFolio ?? boleta!.folio}`} v={`-${peso(creditNote.totalClp)}`} strong />
+            <p className="text-[10px] uppercase text-stone-600">
+              {isTenant ? 'Se te devolvió el cargo de servicio completo.' : 'La comisión se anuló.'}
+            </p>
+          </>
+        )}
+      </div>
     );
+  } else if (isTenant) {
+    body = (
+      <div className="space-y-1.5">
+        {tableHead}
+        <div>
+          <p className="uppercase">Arriendo {furnished ? 'amoblado' : 'del espacio'}</p>
+          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
+          <p className="pl-2 text-[10px] uppercase text-stone-600">
+            {furnished ? 'IVA incluido · lo declara el propietario' : 'Exento de IVA'}
+          </p>
+        </div>
+        <Line k="CARGO DE SERVICIO SPOTLY 5%" v={peso(fee)} />
+        {deposit > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(deposit)} />}
+        {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
+        <Rule />
+        <Line k={<span className="text-[15px]">{refunded > 0 ? 'TOTAL PAGADO' : 'TOTAL'}</span>} v={<span className="text-[15px]">{peso(r.totalClp)}</span>} strong />
+        {refunded > 0 && (
+          <>
+            <Line k={r.paymentStatus === 'refund_pending' ? 'DEVOLUCIÓN EN CURSO' : 'DEVUELTO'} v={`-${peso(refunded)}`} />
+            <Line k={<span className="text-[15px]">COBRO FINAL</span>} v={<span className="text-[15px]">{peso(Math.max(r.totalClp - refunded, 0))}</span>} strong />
+          </>
+        )}
+
+        <Rule double />
+        <p className="text-center text-[11px] font-bold">PAGO</p>
+        <Line k={payment?.cardLast4 ? `WEBPAY ****${payment.cardLast4}` : 'WEBPAY'} v={peso(payment?.amountClp ?? r.totalClp)} />
+        <Line k="CUOTAS" v={payment?.installmentsNumber ? payment.installmentsNumber : 'SIN CUOTAS'} />
+        {payment?.authorizationCode && <Line k="COD. AUTORIZACIÓN" v={payment.authorizationCode} />}
+
+        <p className="pt-1 text-[10px] uppercase text-stone-600">
+          {boleta
+            ? `El cargo de servicio tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»). El arriendo lo cobra Spotly por cuenta del propietario.`
+            : 'El arriendo lo cobra Spotly por cuenta del propietario (mandato de cobro).'}
+        </p>
+      </div>
+    );
+  } else {
+    body = (
+      <div className="space-y-1.5">
+        {tableHead}
+        <div>
+          <p className="uppercase">Arriendo cobrado</p>
+          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
+        </div>
+        <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={commission ? `-${peso(commission)}` : peso(0)} />
+        <Rule />
+        <Line k={<span className="text-[15px]">A DEPOSITAR</span>} v={<span className="text-[15px]">{peso(ownerGets)}</span>} strong />
+        <Line k="DEPÓSITO" v={r.status === 'completed' ? `MARTES ${nextTuesday(r.endDate)}` : 'MARTES TRAS EL ARRIENDO'} />
+        {deposit > 0 && <Line k="GARANTÍA EN CUSTODIA" v={peso(deposit)} />}
+
+        <Rule double />
+        <p className="text-center text-[11px] font-bold">IVA DE TU ARRIENDO</p>
+        {!furnished ? (
+          <p className="text-center text-[10.5px] uppercase text-stone-600">Sin amoblar: exento de IVA. No tienes nada que declarar por IVA.</p>
+        ) : tax ? (
+          <Section title="LO DECLARAS TÚ" note="IVA incluido en el precio · art. 17 DL 825">
+            <Line k="RENTA NETA" v={peso(tax.net)} />
+            <Line k={`REBAJA AVALÚO 11% · ${daysLabel(tax.days)}`} v={`-${peso(tax.rebate)}`} />
+            <Line k="BASE IMPONIBLE" v={peso(tax.base)} />
+            <Line k="IVA 19%" v={peso(tax.iva)} />
+            <Line k="TOTAL ARRIENDO" v={peso(r.subtotalClp)} strong />
+            <p className="text-[10px] text-stone-600">AVALÚO FISCAL DECLARADO: {peso(avaluoFiscalClp || 0)}</p>
+            <Rule />
+            <Line k="DEPÓSITO MENOS TU IVA" v={peso(ownerGets - tax.iva)} strong />
+            <p className="text-[10px] uppercase text-stone-600">Estimado: confirma con tu contador antes de declarar.</p>
+          </Section>
+        ) : (
+          <p className="text-[10.5px] uppercase text-stone-600">
+            Amoblado: el precio incluye IVA y lo declaras tú. Agrega el avalúo fiscal en tu publicación para ver el cálculo.
+          </p>
+        )}
+        <p className="pt-1 text-[10px] uppercase text-stone-600">
+          {boleta ? `La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»).` : 'La boleta de la comisión se emite al liquidar.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <article
       className="receipt-paper mx-auto w-full max-w-[22rem] bg-[#fffdf8] px-5 pb-8 pt-5 font-mono text-[12px] leading-[1.45] text-stone-900 shadow-[0_10px_30px_rgba(15,10,25,0.18)]"
-      aria-label={variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación para el propietario'}
+      aria-label={label}
     >
-      <div className="bg-stone-900 py-1.5 text-center text-[17px] font-bold tracking-[0.12em] text-[#fffdf8]">
-        {boleta ? `BOLETA N° ${boleta.folio}` : variant === 'tenant' ? 'COMPROBANTE' : 'LIQUIDACIÓN'}
-      </div>
-      {boleta?.simulated && (
+      <div className="bg-stone-900 py-1.5 text-center text-[17px] font-bold tracking-[0.12em] text-[#fffdf8]">{title}</div>
+      {showBoleta && boleta!.simulated && (
         <p className="mt-1 border border-stone-900 py-0.5 text-center text-[10.5px] font-bold uppercase tracking-wide">
           Simulación · sin valor tributario
         </p>
       )}
-
-      {(r.status === 'cancelled' || refunded > 0) && (
+      {(r.status === 'cancelled' || refunded > 0) && !showBoleta && (
         <p className="mt-2 bg-stone-200 py-1 text-center text-[11px] font-bold uppercase tracking-wide">
           Reserva cancelada{refunded > 0 ? (r.paymentStatus === 'refund_pending' ? ' · devolución en curso' : ' · con devolución') : ''}
         </p>
@@ -184,144 +310,24 @@ export const ReceiptPaper: React.FC<{
         {issuerRut && <p>R.U.T. {issuerRut}</p>}
         <p>Giro: intermediación de arriendos</p>
         {issuerAddress && <p className="text-[11px]">{issuerAddress}</p>}
-        {boleta && <p className="mt-1 text-[13px] font-bold">Boleta electrónica</p>}
-        {boleta && (
-          <p className="text-[11px]">
-            {variant === 'tenant' ? 'Por el cargo de servicio' : 'Por la comisión de intermediación'} · folio {boleta.folio}
-          </p>
-        )}
+        {showBoleta && <p className="mt-1 text-[13px] font-bold">Boleta electrónica</p>}
       </header>
 
-      <div className="mt-2 space-y-0.5 text-[11px]">
-        <Line k="FECHA EMISIÓN:" v={fmtDateTime(boleta?.issuedAt || paidAt)} />
-        <Line k="RESERVA:" v={<span className="break-all text-[10.5px]">{r.id.toUpperCase()}</span>} />
-        {/* Cada uno ve sus propios datos; del otro solo el nombre. */}
-        <Line k="CLIENTE:" v={<span className="uppercase">{r.tenantName}</span>} />
-        {variant === 'tenant' && r.tenantRut && <Line k="RUT:" v={formatRut(r.tenantRut)} />}
-        <Line k="PROPIETARIO:" v={<span className="uppercase">{r.ownerName}</span>} />
-        {variant === 'owner' && r.ownerRut && <Line k="RUT:" v={formatRut(r.ownerRut)} />}
-        <Line k="ESPACIO:" v={<span className="block max-w-[12rem] truncate text-right uppercase">{r.spaceTitle}</span>} />
-        {r.spaceAddress && <Line k="DIRECCIÓN:" v={<span className="block max-w-[12rem] truncate text-right uppercase">{r.spaceAddress}</span>} />}
-        <Line k="MODALIDAD:" v={`${modality}${furnished ? ' · AMOBLADO' : ''}`} />
-        <Line k="FECHAS:" v={r.startDate === r.endDate ? r.startDate : `${r.startDate} → ${r.endDate}`} />
-        {r.rentalModality === 'por_hora' && r.hourStart !== undefined && r.hourEnd !== undefined && (
-          <Line k="HORARIO:" v={`${String(r.hourStart).padStart(2, '0')}:00 - ${String(r.hourEnd).padStart(2, '0')}:00`} />
-        )}
-      </div>
+      {reservationData}
+      {body}
 
-      <Rule double />
-      <div className="flex justify-between text-[11px] font-bold">
-        <span>DESCRIPCIÓN</span>
-        <span>CANT X PRECIO&nbsp;&nbsp;VALOR</span>
-      </div>
-      <Rule double />
-
-      {variant === 'tenant' ? (
-        <div className="space-y-1.5">
-          <div>
-            <p className="uppercase">Arriendo {furnished ? 'amoblado (IVA incl.)' : 'sin amoblar'}</p>
-            <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
-          </div>
-          <Line k="CARGO SERVICIO SPOTLY 5%" v={peso(fee)} />
-          {deposit > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(deposit)} />}
-          {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
-          <Rule />
-          <Line k={<span className="text-[15px]">{refunded > 0 ? 'TOTAL PAGADO' : 'TOTAL'}</span>} v={<span className="text-[15px]">{peso(r.totalClp)}</span>} strong />
-          {refunded > 0 && (
-            <>
-              <Line k={r.paymentStatus === 'refund_pending' ? 'DEVOLUCIÓN EN CURSO' : 'DEVUELTO'} v={`-${peso(refunded)}`} />
-              <Line k={<span className="text-[15px]">COBRO FINAL</span>} v={<span className="text-[15px]">{peso(Math.max(r.totalClp - refunded, 0))}</span>} strong />
-            </>
-          )}
-
-          {/* Si se devolvió todo no hay impuestos que detallar; si se devolvió el arriendo, solo queda el servicio. */}
-          {!(refunded > 0 && r.totalClp - refunded <= 0) && (
-            <>
-              <Rule double />
-              <p className="text-center text-[11px] font-bold">DETALLE DE IMPUESTOS</p>
-              <Section title="A) SERVICIO SPOTLY · LO EMITE SPOTLY" note="Afecto a IVA">
-                <Line k="TOTAL NETO" v={peso(feeNet)} />
-                <Line k="IVA 19%" v={peso(fee - feeNet)} />
-                <Line k="TOTAL SERVICIO" v={peso(fee)} strong />
-              </Section>
-              {refunded === 0 && rentTaxBlock('tenant')}
-              {refunded === 0 && deposit > 0 && (
-                <Section title="C) GARANTÍA" note="No es venta ni servicio: no lleva IVA">
-                  <Line k="EN CUSTODIA" v={peso(deposit)} />
-                </Section>
-              )}
-              <Rule />
-              <Line
-                k="IVA TOTAL INCLUIDO"
-                v={refunded > 0 || tax || !furnished ? peso(fee - feeNet + (refunded > 0 ? 0 : tax?.iva || 0)) : `${peso(fee - feeNet)} + IVA ARRIENDO`}
-                strong
-              />
-            </>
-          )}
-
-          <Rule double />
-          <p className="text-center text-[11px] font-bold">PAGO</p>
-          <Line k={payment?.cardLast4 ? `WEBPAY ****${payment.cardLast4}` : 'WEBPAY'} v={peso(payment?.amountClp ?? r.totalClp)} />
-          <Line k="CUOTAS" v={payment?.installmentsNumber ? payment.installmentsNumber : 'SIN CUOTAS'} />
-          {payment?.authorizationCode && <Line k="COD. AUTORIZACIÓN" v={payment.authorizationCode} />}
-
-          <p className="pt-1 text-[10px] uppercase text-stone-600">
-            Spotly cobra el arriendo por cuenta del propietario (mandato de cobro) y se lo transfiere, menos su comisión.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          <div>
-            <p className="uppercase">Arriendo cobrado</p>
-            <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
-          </div>
-          <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={commission ? `-${peso(commission)}` : peso(0)} />
-          <Rule />
-          <Line k={<span className="text-[15px]">A DEPOSITAR</span>} v={<span className="text-[15px]">{peso(ownerGets)}</span>} strong />
-          <Line k="DEPÓSITO" v={r.status === 'completed' ? `MARTES ${nextTuesday(r.endDate)}` : 'MARTES TRAS EL ARRIENDO'} />
-          {deposit > 0 && <Line k="GARANTÍA EN CUSTODIA" v={peso(deposit)} />}
-
-          <Rule double />
-          <p className="text-center text-[11px] font-bold">DETALLE DE IMPUESTOS</p>
-          {rentTaxBlock('owner')}
-          {commission > 0 && (
-            <Section title="COMISIÓN SPOTLY · LA EMITE SPOTLY" note="Afecta a IVA · IVA incluido">
-              <Line k="TOTAL NETO" v={peso(commissionNet)} />
-              <Line k="IVA 19%" v={peso(commission - commissionNet)} />
-              <Line k="TOTAL COMISIÓN" v={peso(commission)} strong />
-            </Section>
-          )}
-          {tax && (
-            <>
-              <Rule />
-              <Line k="DEPÓSITO MENOS TU IVA" v={peso(ownerGets - tax.iva)} strong />
-              <p className="text-[10px] uppercase text-stone-600">Estimado: confirma con tu contador antes de declarar.</p>
-            </>
-          )}
-        </div>
-      )}
-
-      {creditNote && (
-        <>
-          <Rule double />
-          <p className="text-center text-[11px] font-bold">NOTA DE CRÉDITO N° {creditNote.folio}</p>
-          <Line k={`ANULA BOLETA N° ${creditNote.referencesFolio ?? ''}`} v={`-${peso(creditNote.totalClp)}`} strong />
-          <p className="text-[10px] uppercase text-stone-600">Se devolvió el cargo de servicio completo.</p>
-        </>
-      )}
-
-      {boleta ? (
+      {showBoleta ? (
         <div className="mt-5 space-y-1 text-center">
-          <Pdf417Stamp ted={boleta.ted} />
+          <Pdf417Stamp ted={boleta!.ted} />
           <p className="text-[10.5px] font-bold uppercase">Timbre electrónico S.I.I. (simulado)</p>
           <p className="text-[10px] uppercase text-stone-600">
             Documento de demostración para proyecto de título. No es una boleta válida ante el SII.
           </p>
-          <p className="text-[10px] text-stone-600">Emitida {fmtDateTime(boleta.issuedAt)}</p>
+          <p className="text-[10px] text-stone-600">Emitida {fmtDateTime(boleta!.issuedAt)}</p>
         </div>
       ) : (
         <p className="mt-5 text-center text-[10.5px] uppercase text-stone-600">
-          Comprobante de pago. No reemplaza la boleta electrónica del SII.
+          {isTenant ? 'Comprobante de pago.' : 'Liquidación del arriendo.'} No es una boleta.
         </p>
       )}
       <p className="mt-2 text-center text-[11px]">Gracias por usar Spotly</p>
@@ -339,6 +345,8 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
   const space = spaces.find((s) => s.id === reservation.spaceId);
   const furnished = Boolean(space?.isFurnished);
   const [documents, setDocuments] = useState<TaxDocument[]>([]);
+  const [kind, setKind] = useState<Kind>('summary');
+  const hasBoleta = documents.some((d) => d.docType === 39 && d.concept === (variant === 'tenant' ? 'cargo_servicio' : 'comision_propietario'));
   useEffect(() => {
     let alive = true;
     getTaxDocuments(reservation.id).then((d) => alive && setDocuments(d));
@@ -390,7 +398,36 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
             </button>
           </div>
         </div>
-        <ReceiptPaper reservation={reservation} payment={payment} furnished={furnished} avaluoFiscalClp={space?.avaluoFiscalClp} variant={variant} documents={documents} />
+        {hasBoleta && (
+          <div role="tablist" aria-label="Documento" className="receipt-actions grid grid-cols-2 gap-1 rounded-xl bg-white/10 p-1">
+            {([
+              ['summary', variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación'],
+              ['boleta', 'Boleta Spotly'],
+            ] as const).map(([k, text]) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={kind === k}
+                onClick={() => setKind(k)}
+                className={`min-h-10 rounded-lg px-3 text-sm font-semibold transition cursor-pointer ${
+                  kind === k ? 'bg-white text-slate-900' : 'text-white hover:bg-white/10'
+                }`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
+        <ReceiptPaper
+          reservation={reservation}
+          payment={payment}
+          furnished={furnished}
+          avaluoFiscalClp={variant === 'owner' ? space?.avaluoFiscalClp : undefined}
+          variant={variant}
+          kind={hasBoleta ? kind : 'summary'}
+          documents={documents}
+        />
       </div>
     </div>,
     document.body,
