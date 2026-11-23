@@ -91,6 +91,7 @@ const Section: React.FC<{ title: string; note?: string; children: React.ReactNod
 );
 
 const daysLabel = (d: number) => {
+  if (d < 1) return `${Math.round(d * 24)} H`;
   const v = Math.round(d * 100) / 100;
   return `${String(v).replace('.', ',')} ${v === 1 ? 'DÍA' : 'DÍAS'}`;
 };
@@ -174,7 +175,7 @@ export const ReceiptPaper: React.FC<{
 
       {(r.status === 'cancelled' || refunded > 0) && (
         <p className="mt-2 bg-stone-200 py-1 text-center text-[11px] font-bold uppercase tracking-wide">
-          Reserva cancelada{refunded > 0 ? ' · con devolución' : ''}
+          Reserva cancelada{refunded > 0 ? (r.paymentStatus === 'refund_pending' ? ' · devolución en curso' : ' · con devolución') : ''}
         </p>
       )}
 
@@ -228,26 +229,35 @@ export const ReceiptPaper: React.FC<{
           <Line k={<span className="text-[15px]">{refunded > 0 ? 'TOTAL PAGADO' : 'TOTAL'}</span>} v={<span className="text-[15px]">{peso(r.totalClp)}</span>} strong />
           {refunded > 0 && (
             <>
-              <Line k="DEVUELTO A TU TARJETA" v={`-${peso(refunded)}`} />
+              <Line k={r.paymentStatus === 'refund_pending' ? 'DEVOLUCIÓN EN CURSO' : 'DEVUELTO'} v={`-${peso(refunded)}`} />
               <Line k={<span className="text-[15px]">COBRO FINAL</span>} v={<span className="text-[15px]">{peso(Math.max(r.totalClp - refunded, 0))}</span>} strong />
             </>
           )}
 
-          <Rule double />
-          <p className="text-center text-[11px] font-bold">DETALLE DE IMPUESTOS</p>
-          <Section title="A) SERVICIO SPOTLY · LO EMITE SPOTLY" note="Afecto a IVA">
-            <Line k="TOTAL NETO" v={peso(feeNet)} />
-            <Line k="IVA 19%" v={peso(fee - feeNet)} />
-            <Line k="TOTAL SERVICIO" v={peso(fee)} strong />
-          </Section>
-          {rentTaxBlock('tenant')}
-          {deposit > 0 && (
-            <Section title="C) GARANTÍA" note="No es venta ni servicio: no lleva IVA">
-              <Line k="EN CUSTODIA" v={peso(deposit)} />
-            </Section>
+          {/* Si se devolvió todo no hay impuestos que detallar; si se devolvió el arriendo, solo queda el servicio. */}
+          {!(refunded > 0 && r.totalClp - refunded <= 0) && (
+            <>
+              <Rule double />
+              <p className="text-center text-[11px] font-bold">DETALLE DE IMPUESTOS</p>
+              <Section title="A) SERVICIO SPOTLY · LO EMITE SPOTLY" note="Afecto a IVA">
+                <Line k="TOTAL NETO" v={peso(feeNet)} />
+                <Line k="IVA 19%" v={peso(fee - feeNet)} />
+                <Line k="TOTAL SERVICIO" v={peso(fee)} strong />
+              </Section>
+              {refunded === 0 && rentTaxBlock('tenant')}
+              {refunded === 0 && deposit > 0 && (
+                <Section title="C) GARANTÍA" note="No es venta ni servicio: no lleva IVA">
+                  <Line k="EN CUSTODIA" v={peso(deposit)} />
+                </Section>
+              )}
+              <Rule />
+              <Line
+                k="IVA TOTAL INCLUIDO"
+                v={refunded > 0 || tax || !furnished ? peso(fee - feeNet + (refunded > 0 ? 0 : tax?.iva || 0)) : `${peso(fee - feeNet)} + IVA ARRIENDO`}
+                strong
+              />
+            </>
           )}
-          <Rule />
-          <Line k="IVA TOTAL INCLUIDO" v={tax || !furnished ? peso(fee - feeNet + (tax?.iva || 0)) : `${peso(fee - feeNet)} + IVA ARRIENDO`} strong />
 
           <Rule double />
           <p className="text-center text-[11px] font-bold">PAGO</p>
