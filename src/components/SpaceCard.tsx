@@ -4,7 +4,7 @@ import { useAutoCarousel } from '../hooks/useAutoCarousel.ts';
 import { Space } from '../types.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, getSpaceRateInfo } from '../utils/formatters.ts';
-import { PLATFORM_FEE_RATE } from '../utils/pricing.ts';
+import { platformFeeFor, rentIvaFor } from '../utils/pricing.ts';
 import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import {
   MapPin,
@@ -173,7 +173,7 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
                   </span>
                   <span className="text-xs text-slate-500 font-medium"> {rate.unitLabel}</span>
                   <span className="block text-xs text-slate-500 tabular-nums">
-                    {formatClp(Math.round(rate.amount * (1 + PLATFORM_FEE_RATE)))} con comisión Spotly e IVA
+                    {formatClp(rate.amount + rentIvaFor(rate.amount, space.isFurnished) + platformFeeFor(rate.amount))} con IVA y comisión Spotly
                   </span>
                 </div>
               );

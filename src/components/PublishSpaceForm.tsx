@@ -1,7 +1,7 @@
 import { communesOf, normalizeCommune } from '../data/chileCommunes.ts';
 import { OwnerPriceBreakdown, TenantPriceBreakdown } from './PriceBreakdown.tsx';
 import { DEFAULT_PLATFORM_SETTINGS } from '../lib/financeApi.ts';
-import { PLATFORM_FEE_RATE } from '../utils/pricing.ts';
+import { platformFeeFor, rentIvaFor } from '../utils/pricing.ts';
 import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -172,7 +172,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
   const [surface, setSurface] = useState<number | ''>(initial?.surfaceM2 && initial.surfaceM2 > 1 ? initial.surfaceM2 : '');
   const [description, setDescription] = useState(initial?.description || '');
   const [isFurnished, setIsFurnished] = useState(Boolean(initial?.isFurnished));
-  const [avaluo, setAvaluo] = useState(initial?.avaluoFiscalClp ? String(initial.avaluoFiscalClp) : '');
+  const avaluo = initial?.avaluoFiscalClp ? String(initial.avaluoFiscalClp) : '';
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities || []);
   const [rules, setRules] = useState<string[]>(initial?.rules || []);
   const [showExtras, setShowExtras] = useState(Boolean(initial && ((initial.amenities?.length || 0) + (initial.rules?.length || 0) > 0)));
@@ -550,8 +550,9 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               <div className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2">
                 <p className="text-xs font-bold text-slate-800">Cómo se arma el precio</p>
                 <p className="text-xs text-slate-600">
-                  El arrendatario paga <strong>el valor del arriendo + la comisión de Spotly del 5 %</strong>. A ti se te descuenta
-                  <strong> la comisión de Spotly del 10 %</strong>. Ambas comisiones ya incluyen su IVA (19 %), que Spotly declara. Los arriendos por hora y por día no llevan garantía.
+                  El precio que escribes es <strong>sin IVA</strong>. El arrendatario paga <strong>arriendo + IVA del arriendo (solo si es amoblado o
+                  equipado) + comisión de Spotly del 5 % + IVA de la comisión</strong>. A ti se te descuenta <strong>la comisión de Spotly del 10 % + su
+                  IVA</strong>, y recibes el IVA del arriendo para declararlo. Los arriendos por hora y por día no llevan garantía.
                 </p>
                 {(() => {
                   const sample = [
@@ -560,16 +561,17 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                     { price: byMonth ? Number(monthPrice) || 0 : 0, unit: '1 mes' },
                   ].find((x) => x.price > 0);
                   if (!sample) return <p className="text-[11px] text-slate-500">Escribe un precio para ver el ejemplo.</p>;
-                  const fee = Math.round(sample.price * PLATFORM_FEE_RATE);
+                  const fee = platformFeeFor(sample.price);
+                  const rentIva = rentIvaFor(sample.price, isFurnished);
                   return (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-xl bg-slate-50 px-3 py-2">
                         <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Paga el arrendatario ({sample.unit})</p>
-                        <TenantPriceBreakdown rentClp={sample.price} feeClp={fee} furnished={isFurnished} totalClp={sample.price + fee} totalHint=" " compact />
+                        <TenantPriceBreakdown rentNetClp={sample.price} rentIvaClp={rentIva} feeClp={fee} furnished={isFurnished} totalClp={sample.price + rentIva + fee} totalHint=" " compact />
                       </div>
                       <div className="rounded-xl bg-slate-50 px-3 py-2">
                         <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Recibes tú ({sample.unit})</p>
-                        <OwnerPriceBreakdown rentClp={sample.price} commissionRate={DEFAULT_PLATFORM_SETTINGS.ownerCommissionRate} compact />
+                        <OwnerPriceBreakdown rentNetClp={sample.price} rentIvaClp={rentIva} commissionRate={DEFAULT_PLATFORM_SETTINGS.ownerCommissionRate} compact />
                       </div>
                     </div>
                   );
@@ -740,39 +742,14 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               </p>
               <ul className="mt-2 space-y-1 pl-8 text-xs text-slate-600">
                 <li>
-                  <strong className="text-slate-800">Lleva IVA:</strong> el precio que publiques ya debe incluirlo. El arrendatario no paga nada extra.
+                  <strong className="text-slate-800">Lleva IVA:</strong> al precio se le suma el 19 % de IVA y lo paga el arrendatario. Por ejemplo,
+                  un arriendo de {formatClp(20000)} queda en {formatClp(23800)} más la comisión de Spotly.
                 </li>
                 <li>
-                  <strong className="text-slate-800">No es el 19 % de todo:</strong> el SII te deja descontar una parte según el avalúo fiscal de tu
-                  propiedad, así que pagas menos.
-                </li>
-                <li>
-                  <strong className="text-slate-800">Lo declaras tú</strong> y emites tu boleta o factura. Spotly solo emite la de su comisión.
+                  <strong className="text-slate-800">Lo recibes tú y lo declaras tú:</strong> el IVA del arriendo se te deposita junto con el
+                  arriendo, y emites tu boleta o factura. Spotly solo emite la de su comisión.
                 </li>
               </ul>
-              {isFurnished && (
-                <div className="mt-3 pl-8">
-                  <label htmlFor="ps-avaluo" className="block text-xs font-bold text-slate-800">
-                    Avalúo fiscal del inmueble <span className="font-normal text-slate-500">(opcional)</span>
-                  </label>
-                  <div className="relative mt-1 max-w-xs">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
-                    <input
-                      id="ps-avaluo"
-                      inputMode="numeric"
-                      value={avaluo ? Number(avaluo).toLocaleString('es-CL') : ''}
-                      onChange={(e) => setAvaluo(e.target.value.replace(/\D/g, '').slice(0, 13))}
-                      placeholder="120.000.000"
-                      aria-describedby="ps-avaluo-help"
-                      className={`${inputClass} pl-7 tabular-nums`}
-                    />
-                  </div>
-                  <p id="ps-avaluo-help" className="mt-1 text-xs text-slate-600">
-                    Está en tu certificado de avalúo fiscal (sii.cl). Con este dato, tus comprobantes calculan solos cuánto IVA te toca pagar (renta neta,
-                    rebaja, base imponible e IVA).
-                  </p>
-                </div>
-              )}
             </div>
 
             <div className="rounded-2xl border border-slate-200">

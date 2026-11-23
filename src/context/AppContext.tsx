@@ -119,6 +119,7 @@ interface AppContextType {
     endDate: string;
     totalDays: number;
     subtotalClp: number;
+    rentIvaClp?: number;
     platformFeeClp: number;
     securityDepositClp: number;
     totalClp: number;
@@ -833,6 +834,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     endDate: string;
     totalDays: number;
     subtotalClp: number;
+    rentIvaClp?: number;
     platformFeeClp: number;
     securityDepositClp: number;
     totalClp: number;
@@ -895,6 +897,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timeSlotString: bookingData.timeSlotString,
       rentalMonth: bookingData.rentalMonth,
       subtotalClp: bookingData.subtotalClp,
+      rentIvaClp: bookingData.rentIvaClp || 0,
       platformFeeClp: bookingData.platformFeeClp,
       securityDepositClp: bookingData.securityDepositClp,
       totalClp: bookingData.totalClp,

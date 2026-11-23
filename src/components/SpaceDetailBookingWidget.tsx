@@ -1085,7 +1085,8 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
           {/* DESGLOSE TRANSPARENTE DE COSTOS: arriendo + comisión Spotly + IVA de la comisión */}
           <div className="border-t border-slate-100 pt-4">
             <TenantPriceBreakdown
-              rentClp={calculations.subtotal}
+              rentNetClp={calculations.rentNet}
+              rentIvaClp={calculations.rentIva}
               rentDetail={
                 <>
                   {formatClp(calculations.basePrice)} × {calculations.unitLabel}

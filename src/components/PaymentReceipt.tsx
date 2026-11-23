@@ -5,7 +5,6 @@ import { useApp } from '../context/AppContext.tsx';
 import { LEGAL_ENTITY } from '../data/legalEntity.ts';
 import type { PaymentRecord, Reservation } from '../types.ts';
 import { formatRut } from '../utils/formatters.ts';
-import { computeRentTax, rentalDays } from '../utils/rentTax.ts';
 import { getTaxDocuments, type TaxDocument } from '../lib/financeApi.ts';
 
 // Comprobante con formato de boleta térmica (como las del comercio en Chile).
@@ -90,11 +89,6 @@ const Section: React.FC<{ title: string; note?: string; children: React.ReactNod
   </section>
 );
 
-const daysLabel = (d: number) => {
-  if (d < 1) return `${Math.round(d * 24)} H`;
-  const v = Math.round(d * 100) / 100;
-  return `${String(v).replace('.', ',')} ${v === 1 ? 'DÍA' : 'DÍAS'}`;
-};
 
 type Kind = 'summary' | 'boleta';
 
@@ -123,7 +117,6 @@ export const ReceiptPaper: React.FC<{
   const issuerRut = placeholder(LEGAL_ENTITY.rut);
   const issuerAddress = placeholder(LEGAL_ENTITY.address);
   const { qty, unit } = unitsLabel(r);
-  const unitPrice = qty > 0 ? Math.round(r.subtotalClp / qty) : r.subtotalClp;
   const fee = r.platformFeeClp || 0;
   const discount = r.discountClp || 0;
   const deposit = r.securityDepositClp || 0;
@@ -132,7 +125,9 @@ export const ReceiptPaper: React.FC<{
   const paidAt = payment?.transactionDate || r.paidAt || r.confirmedAt || r.createdAt;
   const refunded = r.refundAmountClp || payment?.refundedAmountClp || 0;
   const ownerGets = r.subtotalClp - commission;
-  const tax = furnished && avaluoFiscalClp ? computeRentTax(r.subtotalClp, avaluoFiscalClp, rentalDays(r)) : null;
+  const rentIva = r.rentIvaClp || 0;
+  const rentNet = r.subtotalClp - rentIva;
+  const unitNet = qty > 0 ? Math.round(rentNet / qty) : rentNet;
   const modality =
     r.rentalModality === 'por_hora' ? 'POR HORA' : r.rentalModality === 'mensual' ? 'MENSUAL' : r.rentalModality === 'abierto' ? 'ABIERTO' : 'POR DÍA';
   const showBoleta = kind === 'boleta' && Boolean(boleta);
@@ -215,15 +210,12 @@ export const ReceiptPaper: React.FC<{
       <div className="space-y-1.5">
         {tableHead}
         <div>
-          <p className="uppercase">Valor del arriendo{furnished ? ' (amoblado)' : ''}</p>
-          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
-          <p className="pl-2 text-[10px] uppercase text-stone-600">
-            {furnished ? 'IVA incluido · lo declara el propietario' : 'Exento de IVA'}
-          </p>
+          <p className="uppercase">Arriendo{furnished ? ' amoblado' : ''}</p>
+          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitNet)}</span>} v={peso(rentNet)} />
         </div>
-        <Line k="COMISIÓN SPOTLY 5%" v={peso(fee)} />
-        <Line k={<span className="pl-2 text-stone-600">NETO</span>} v={<span className="text-stone-600">{peso(netOf(fee))}</span>} />
-        <Line k={<span className="pl-2 text-stone-600">IVA 19%</span>} v={<span className="text-stone-600">{peso(fee - netOf(fee))}</span>} />
+        <Line k="IVA ARRIENDO 19%" v={rentIva > 0 ? peso(rentIva) : 'EXENTO'} />
+        <Line k="COMISIÓN SPOTLY 5%" v={peso(netOf(fee))} />
+        <Line k="IVA COMISIÓN 19%" v={peso(fee - netOf(fee))} />
         {deposit > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(deposit)} />}
         {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
         <Rule />
@@ -243,8 +235,8 @@ export const ReceiptPaper: React.FC<{
 
         <p className="pt-1 text-[10px] uppercase text-stone-600">
           {boleta
-            ? `Total = arriendo + comisión Spotly (IVA incluido). La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»). El arriendo lo cobra Spotly por cuenta del propietario.`
-            : 'Total = arriendo + comisión Spotly (IVA incluido). El arriendo lo cobra Spotly por cuenta del propietario (mandato de cobro).'}
+            ? `Total = arriendo + IVA del arriendo + comisión Spotly + IVA de la comisión. La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»). El arriendo lo cobra Spotly por cuenta del propietario.`
+            : 'Total = arriendo + IVA del arriendo + comisión Spotly + IVA de la comisión. El arriendo y su IVA los cobra Spotly por cuenta del propietario (mandato de cobro).'}
         </p>
       </div>
     );
@@ -253,12 +245,12 @@ export const ReceiptPaper: React.FC<{
       <div className="space-y-1.5">
         {tableHead}
         <div>
-          <p className="uppercase">Valor del arriendo</p>
-          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
+          <p className="uppercase">Arriendo</p>
+          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitNet)}</span>} v={peso(rentNet)} />
         </div>
-        <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={`-${peso(commission)}`} />
-        <Line k={<span className="pl-2 text-stone-600">NETO</span>} v={<span className="text-stone-600">-{peso(netOf(commission))}</span>} />
-        <Line k={<span className="pl-2 text-stone-600">IVA 19%</span>} v={<span className="text-stone-600">-{peso(commission - netOf(commission))}</span>} />
+        <Line k="IVA ARRIENDO 19%" v={rentIva > 0 ? `+${peso(rentIva)}` : 'EXENTO'} />
+        <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={`-${peso(netOf(commission))}`} />
+        <Line k="IVA COMISIÓN 19%" v={`-${peso(commission - netOf(commission))}`} />
         <Rule />
         <Line k={<span className="text-[15px]">A DEPOSITAR</span>} v={<span className="text-[15px]">{peso(ownerGets)}</span>} strong />
         <Line k="DEPÓSITO" v={r.status === 'completed' ? `MARTES ${nextTuesday(r.endDate)}` : 'MARTES TRAS EL ARRIENDO'} />
@@ -266,24 +258,14 @@ export const ReceiptPaper: React.FC<{
 
         <Rule double />
         <p className="text-center text-[11px] font-bold">IVA DE TU ARRIENDO</p>
-        {!furnished ? (
-          <p className="text-center text-[10.5px] uppercase text-stone-600">Sin amoblar: exento de IVA. No tienes nada que declarar por IVA.</p>
-        ) : tax ? (
-          <Section title="LO DECLARAS TÚ" note="IVA incluido en el precio · art. 17 DL 825">
-            <Line k="RENTA NETA" v={peso(tax.net)} />
-            <Line k={`REBAJA AVALÚO 11% · ${daysLabel(tax.days)}`} v={`-${peso(tax.rebate)}`} />
-            <Line k="BASE IMPONIBLE" v={peso(tax.base)} />
-            <Line k="IVA 19%" v={peso(tax.iva)} />
-            <Line k="TOTAL ARRIENDO" v={peso(r.subtotalClp)} strong />
-            <p className="text-[10px] text-stone-600">AVALÚO FISCAL DECLARADO: {peso(avaluoFiscalClp || 0)}</p>
-            <Rule />
-            <Line k="DEPÓSITO MENOS TU IVA" v={peso(ownerGets - tax.iva)} strong />
-            <p className="text-[10px] uppercase text-stone-600">Estimado: confirma con tu contador antes de declarar.</p>
+        {rentIva > 0 ? (
+          <Section title="LO DECLARAS TÚ" note="Espacio amoblado o equipado">
+            <Line k="ARRIENDO NETO" v={peso(rentNet)} />
+            <Line k="IVA 19% (INCLUIDO EN TU DEPÓSITO)" v={peso(rentIva)} />
+            <p className="text-[10px] uppercase text-stone-600">Declara y paga este IVA al SII. Confirma con tu contador.</p>
           </Section>
         ) : (
-          <p className="text-[10.5px] uppercase text-stone-600">
-            Amoblado: el precio incluye IVA y lo declaras tú. Agrega el avalúo fiscal en tu publicación para ver el cálculo.
-          </p>
+          <p className="text-center text-[10.5px] uppercase text-stone-600">Sin amoblar: exento de IVA. No tienes nada que declarar por IVA.</p>
         )}
         <p className="pt-1 text-[10px] uppercase text-stone-600">
           {boleta ? `La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»).` : 'La boleta de la comisión se emite al liquidar.'}

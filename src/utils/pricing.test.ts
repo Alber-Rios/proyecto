@@ -15,31 +15,46 @@ describe('inclusiveDays', () => {
 });
 
 describe('calculateBookingAmounts (RF-15 / CP-09)', () => {
+  it('suma el IVA del arriendo (amoblado) y el IVA de la comisión', () => {
+    const r = calculateBookingAmounts({ space: { ...space, isFurnished: true }, modality: 'por_hora', startDate: '2026-10-12', endDate: '2026-10-12', hourStart: 10, hourEnd: 11 });
+    expect(r.rentNet).toBe(20000);
+    expect(r.rentIva).toBe(3800);
+    expect(r.subtotal).toBe(23800);
+    expect(r.platformFee).toBe(1190); // 1.000 + 190 de IVA
+    expect(r.total).toBe(24990);
+  });
+
+  it('sin amoblar el arriendo es exento: solo lleva IVA la comisión', () => {
+    const r = calculateBookingAmounts({ space, modality: 'por_hora', startDate: '2026-10-12', endDate: '2026-10-12', hourStart: 10, hourEnd: 11 });
+    expect(r.rentIva).toBe(0);
+    expect(r.total).toBe(21190);
+  });
+
   it('calcula tarifa diaria y comisión del 5 %, sin garantía', () => {
     const r = calculateBookingAmounts({ space, modality: 'por_dia', startDate: '2026-10-12', endDate: '2026-10-13' });
     expect(r.units).toBe(2);
     expect(r.subtotal).toBe(200000);
-    expect(r.platformFee).toBe(10000);
+    expect(r.platformFee).toBe(11900); // 5 % de 200.000 = 10.000 + IVA 1.900
     expect(r.deposit).toBe(0);
-    expect(r.total).toBe(210000);
+    expect(r.total).toBe(211900);
     expect(r.priceUnit).toBe('day');
   });
 
   it('cobra la garantía solo en arriendos mensuales', () => {
     const r = calculateBookingAmounts({ space, modality: 'mensual', startDate: '2026-10-01', endDate: '2026-10-30' });
     expect(r.subtotal).toBe(2000000);
-    expect(r.platformFee).toBe(100000);
+    expect(r.platformFee).toBe(119000);
     expect(r.deposit).toBe(80000);
-    expect(r.total).toBe(2180000);
+    expect(r.total).toBe(2199000);
     const hourly = calculateBookingAmounts({ space, modality: 'por_hora', startDate: '2026-10-12', endDate: '2026-10-12', hourStart: 10, hourEnd: 14 });
     expect(hourly.deposit).toBe(0);
-    expect(hourly.total).toBe(80000 + 4000);
+    expect(hourly.total).toBe(80000 + 4760);
   });
 
   it('no cobra garantía mensual si el propietario no la exige', () => {
     const r = calculateBookingAmounts({ space: { ...space, securityDeposit: 0 }, modality: 'mensual', startDate: '2026-10-01', endDate: '2026-10-30' });
     expect(r.deposit).toBe(0);
-    expect(r.total).toBe(2100000);
+    expect(r.total).toBe(2119000);
   });
 
   it('calcula por hora según el rango horario', () => {
@@ -77,7 +92,7 @@ describe('calculateBookingAmounts (RF-15 / CP-09)', () => {
   it('aplica el descuento sin superar el subtotal', () => {
     const r = calculateBookingAmounts({ space, modality: 'por_dia', startDate: '2026-10-12', endDate: '2026-10-12', discountClp: 10000 });
     expect(r.discount).toBe(10000);
-    expect(r.total).toBe(100000 + 5000 - 10000);
+    expect(r.total).toBe(100000 + 5950 - 10000);
     const capped = calculateBookingAmounts({ space, modality: 'por_dia', startDate: '2026-10-12', endDate: '2026-10-12', discountClp: 999999 });
     expect(capped.discount).toBe(100000);
   });

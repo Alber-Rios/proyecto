@@ -207,7 +207,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     : selectedModality;
 
   const calculations = useMemo(() => {
-    if (!space) return { units: 1, label: 'día', subtotal: 0, platformFee: 0, deposit: 0, total: 0, basePrice: 0, discount: 0 };
+    if (!space) return { units: 1, label: 'día', rentNet: 0, rentIva: 0, subtotal: 0, platformFee: 0, deposit: 0, total: 0, basePrice: 0, discount: 0 };
     const amounts = calculateBookingAmounts({
       space,
       modality: activeModality,
@@ -220,6 +220,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return {
       units: amounts.units,
       label: amounts.label,
+      rentNet: amounts.rentNet,
+      rentIva: amounts.rentIva,
       subtotal: amounts.subtotal,
       platformFee: amounts.platformFee,
       deposit: amounts.deposit,
@@ -310,6 +312,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       endDate,
       totalDays: calculations.units,
       subtotalClp: calculations.subtotal,
+      rentIvaClp: calculations.rentIva,
       platformFeeClp: calculations.platformFee,
       securityDepositClp: calculations.deposit,
       totalClp: calculations.total,
@@ -753,8 +756,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     term={previewTerm}
                     lockNotice="Al confirmar el pago, esta fecha y horario quedan bloqueados solo para ti en Spotly: nadie más puede reservarlos."
                     amounts={[
-                      { label: `Arriendo (${calculations.units} ${calculations.label})`, value: calculations.subtotal },
-                      { label: `Comisión Spotly 5 % (neto ${formatClp(splitIva(calculations.platformFee).net)} + IVA ${formatClp(splitIva(calculations.platformFee).iva)})`, value: calculations.platformFee },
+                      { label: `Arriendo (${calculations.units} ${calculations.label})`, value: calculations.rentNet },
+                      ...(calculations.rentIva > 0 ? [{ label: 'IVA del arriendo (19 %)', value: calculations.rentIva }] : []),
+                      { label: 'Comisión Spotly (5 % del arriendo)', value: splitIva(calculations.platformFee).net },
+                      { label: 'IVA de la comisión (19 %)', value: splitIva(calculations.platformFee).iva },
                       ...(calculations.deposit > 0
                         ? [{ label: 'Garantía reembolsable', value: calculations.deposit }]
                         : []),
@@ -905,6 +910,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     unitLabel={calculations.label}
                     basePrice={calculations.basePrice}
                     subtotalClp={calculations.subtotal}
+                    rentIvaClp={calculations.rentIva}
                     platformFeeClp={calculations.platformFee}
                     depositClp={calculations.deposit}
                     furnished={space.isFurnished}

@@ -19,6 +19,7 @@ interface CheckoutPaymentBoxProps {
   unitLabel: string;
   basePrice: number;
   subtotalClp: number;
+  rentIvaClp?: number;
   platformFeeClp: number;
   depositClp: number;
   furnished?: boolean;
@@ -38,6 +39,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
   unitLabel,
   basePrice,
   subtotalClp,
+  rentIvaClp = 0,
   platformFeeClp,
   depositClp,
   furnished,
@@ -76,7 +78,8 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
     setValidating(true);
     setCodeMessage(null);
     try {
-      const result = await validateDiscountCode(code, subtotalClp);
+      // El descuento se calcula sobre el arriendo neto (sin IVA).
+      const result = await validateDiscountCode(code, subtotalClp - rentIvaClp);
       if (result.valid && result.code) {
         onDiscountChange({
           code: result.code,
@@ -133,7 +136,8 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
       {/* Detalle del cobro: arriendo + comisión Spotly + IVA de la comisión */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200">
         <TenantPriceBreakdown
-          rentClp={subtotalClp}
+          rentNetClp={subtotalClp - rentIvaClp}
+          rentIvaClp={rentIvaClp}
           rentDetail={`${formatClp(basePrice)} × ${units} ${unitLabel}`}
           feeClp={platformFeeClp}
           furnished={furnished}

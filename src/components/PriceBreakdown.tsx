@@ -1,12 +1,12 @@
 import React from 'react';
 import { formatClp } from '../utils/formatters.ts';
-import { splitIva } from '../utils/pricing.ts';
+import { ownerCommissionFor, splitIva } from '../utils/pricing.ts';
 
-// Desglose del precio, igual en toda la web:
-//   Arrendatario: valor del arriendo + comisión Spotly 5 % + IVA de la comisión (= total).
-//   Propietario:  valor del arriendo − comisión Spotly 10 % − IVA de la comisión (= recibes).
-// La comisión de Spotly lleva IVA (la emite Spotly). El arriendo es del propietario:
-// exento si no es amoblado; si es amoblado, el precio ya incluye su IVA y lo declara él.
+// Desglose del precio, igual en toda la web (el IVA se suma encima):
+//   Arrendatario: arriendo + IVA del arriendo + comisión Spotly 5 % + IVA de la comisión = total.
+//   Propietario:  arriendo + IVA del arriendo − comisión Spotly 10 % − IVA de la comisión = recibes.
+// El IVA del arriendo solo existe si el espacio es amoblado o equipado (lo declara el propietario);
+// el de la comisión lo declara Spotly.
 
 type Row = { label: React.ReactNode; hint?: React.ReactNode; value: number; sign?: '+' | '−'; tone?: 'muted' | 'good' };
 
@@ -24,8 +24,12 @@ const Line: React.FC<Row & { compact?: boolean; sub?: boolean }> = ({ label, hin
 );
 
 export const TenantPriceBreakdown: React.FC<{
-  rentClp: number;
+  /** Arriendo neto (sin IVA). */
+  rentNetClp: number;
+  /** IVA del arriendo (19 %); 0 si el espacio no es amoblado. */
+  rentIvaClp: number;
   rentDetail?: React.ReactNode;
+  /** Comisión Spotly con su IVA. */
   feeClp: number;
   furnished?: boolean;
   depositClp?: number;
@@ -33,32 +37,32 @@ export const TenantPriceBreakdown: React.FC<{
   totalClp: number;
   totalHint?: React.ReactNode;
   compact?: boolean;
-}> = ({ rentClp, rentDetail, feeClp, furnished, depositClp = 0, discount, totalClp, totalHint, compact }) => {
+}> = ({ rentNetClp, rentIvaClp, rentDetail, feeClp, furnished, depositClp = 0, discount, totalClp, totalHint, compact }) => {
   const fee = splitIva(feeClp);
+  const hasIva = rentIvaClp > 0 || furnished;
   return (
     <div className="text-xs">
-      <Line
-        compact={compact}
-        label="Valor del arriendo"
-        hint={
-          <>
-            {rentDetail}
-            {rentDetail ? ' · ' : ''}
-            {furnished ? 'IVA incluido, lo declara el propietario' : 'exento de IVA'}
-          </>
-        }
-        value={rentClp}
-      />
-      <Line compact={compact} label="Comisión Spotly (5 % del arriendo)" value={feeClp} />
-      <Line sub label="↳ Neto" value={fee.net} />
-      <Line sub label="↳ IVA 19 %" value={fee.iva} />
+      <Line compact={compact} label="Arriendo" hint={rentDetail} value={rentNetClp} />
+      {hasIva ? (
+        <Line compact={compact} label="IVA del arriendo (19 %)" hint="Espacio amoblado o equipado" value={rentIvaClp} />
+      ) : (
+        <div className={`flex items-start justify-between gap-3 ${compact ? 'py-0.5' : 'py-1'}`}>
+          <span className="text-slate-700">
+            IVA del arriendo
+            <span className="block text-[11px] leading-snug text-slate-500">Sin amoblar: exento</span>
+          </span>
+          <span className="shrink-0 font-semibold text-slate-900">$0</span>
+        </div>
+      )}
+      <Line compact={compact} label={`Comisión Spotly (5 % de ${formatClp(rentNetClp)})`} value={fee.net} />
+      <Line compact={compact} label="IVA de la comisión (19 %)" value={fee.iva} />
       {depositClp > 0 && <Line compact={compact} label="Garantía" hint="Se devuelve al terminar" value={depositClp} />}
       {discount && discount.clp > 0 && <Line compact={compact} label={discount.label} value={discount.clp} sign="−" tone="good" />}
       <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-slate-200 pt-2">
         <span>
           <span className="block text-sm font-bold text-slate-900">Total a pagar</span>
           <span className="block text-[11px] text-slate-500">
-            {totalHint ?? 'Arriendo + comisión Spotly (IVA incluido). No hay cobros después.'}
+            {totalHint ?? 'Arriendo + IVA + comisión Spotly + IVA. No hay cobros después.'}
           </span>
         </span>
         <span className="shrink-0 text-base font-bold tabular-nums text-rose-600">{formatClp(totalClp)}</span>
@@ -68,26 +72,27 @@ export const TenantPriceBreakdown: React.FC<{
 };
 
 export const OwnerPriceBreakdown: React.FC<{
-  rentClp: number;
+  rentNetClp: number;
+  rentIvaClp?: number;
   rentDetail?: React.ReactNode;
   commissionRate: number;
-  /** Comisión ya congelada en la reserva; si no viene, se calcula con la tasa. */
+  /** Comisión ya congelada en la reserva (con IVA); si no viene, se calcula con la tasa. */
   commissionClp?: number;
   compact?: boolean;
   totalLabel?: string;
-}> = ({ rentClp, rentDetail, commissionRate, commissionClp, compact, totalLabel = 'Recibes' }) => {
-  const gross = commissionClp ?? Math.round(rentClp * commissionRate);
+}> = ({ rentNetClp, rentIvaClp = 0, rentDetail, commissionRate, commissionClp, compact, totalLabel = 'Recibes' }) => {
+  const gross = commissionClp ?? ownerCommissionFor(rentNetClp, commissionRate);
   const c = splitIva(gross);
   const pct = String(Math.round(commissionRate * 1000) / 10).replace('.', ',');
   return (
     <div className="text-xs">
-      <Line compact={compact} label="Valor del arriendo" hint={rentDetail} value={rentClp} />
-      <Line compact={compact} label={`Comisión Spotly (${pct} % del arriendo)`} value={gross} sign="−" />
-      <Line sub label="↳ Neto" value={c.net} sign="−" />
-      <Line sub label="↳ IVA 19 %" value={c.iva} sign="−" />
+      <Line compact={compact} label="Arriendo" hint={rentDetail} value={rentNetClp} />
+      {rentIvaClp > 0 && <Line compact={compact} label="IVA del arriendo (19 %)" hint="Te lo pagamos; lo declaras tú" value={rentIvaClp} />}
+      <Line compact={compact} label={`Comisión Spotly (${pct} % de ${formatClp(rentNetClp)})`} value={c.net} sign="−" />
+      <Line compact={compact} label="IVA de la comisión (19 %)" value={c.iva} sign="−" />
       <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-slate-200 pt-2">
         <span className="text-sm font-bold text-slate-900">{totalLabel}</span>
-        <span className="shrink-0 text-base font-bold tabular-nums text-emerald-700">{formatClp(rentClp - gross)}</span>
+        <span className="shrink-0 text-base font-bold tabular-nums text-emerald-700">{formatClp(rentNetClp + rentIvaClp - gross)}</span>
       </div>
     </div>
   );

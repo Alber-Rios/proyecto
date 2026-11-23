@@ -6,6 +6,7 @@
 import type { PriceUnit, Space } from '../types.ts';
 
 export const PLATFORM_FEE_RATE = 0.05;
+export const IVA_RATE = 0.19;
 export const DEFAULT_HOURLY_PRICE = 45000;
 export const DEFAULT_MONTHLY_PRICE = 3800000;
 // El arriendo mensual se cobra en bloques de 30 días corridos.
@@ -17,7 +18,13 @@ export interface BookingAmounts {
   units: number;
   label: string;
   basePrice: number;
+  /** Arriendo neto: unidades × tarifa. */
+  rentNet: number;
+  /** IVA del arriendo (19 %), solo si el espacio es amoblado o equipado. */
+  rentIva: number;
+  /** Lo que se cobra por el arriendo: neto + IVA del arriendo. */
   subtotal: number;
+  /** Comisión Spotly: 5 % del arriendo neto + su IVA. */
   platformFee: number;
   deposit: number;
   discount: number;
@@ -41,7 +48,7 @@ export function inclusiveDays(startDate: string, endDate: string): number {
 }
 
 export function calculateBookingAmounts(params: {
-  space: Pick<Space, 'pricePerDay' | 'pricePerHour' | 'pricePerMonth' | 'securityDeposit'>;
+  space: Pick<Space, 'pricePerDay' | 'pricePerHour' | 'pricePerMonth' | 'securityDeposit'> & { isFurnished?: boolean };
   modality: BookingModality;
   startDate: string;
   endDate: string;
@@ -72,14 +79,31 @@ export function calculateBookingAmounts(params: {
     label = units === 1 ? 'día' : 'días';
   }
 
-  const subtotal = units * basePrice;
-  const platformFee = Math.round(subtotal * PLATFORM_FEE_RATE);
+  const rentNet = units * basePrice;
+  const rentIva = rentIvaFor(rentNet, space.isFurnished);
+  const subtotal = rentNet + rentIva;
+  const platformFee = platformFeeFor(rentNet);
   // Garantía: solo en arriendos mensuales y solo si el propietario la exige.
   const deposit = priceUnit === 'month' ? depositFor(space) : 0;
-  const discount = Math.min(Math.max(Math.round(params.discountClp || 0), 0), subtotal);
+  const discount = Math.min(Math.max(Math.round(params.discountClp || 0), 0), rentNet);
   const total = subtotal + platformFee + deposit - discount;
 
-  return { units, label, basePrice, subtotal, platformFee, deposit, discount, total, priceUnit };
+  return { units, label, basePrice, rentNet, rentIva, subtotal, platformFee, deposit, discount, total, priceUnit };
+}
+
+// IVA del arriendo: 19 % sobre el neto, solo en espacios amoblados o equipados.
+export function rentIvaFor(rentNet: number, furnished?: boolean): number {
+  return furnished ? Math.round(rentNet * IVA_RATE) : 0;
+}
+
+// Comisión Spotly al arrendatario: 5 % del arriendo neto, más 19 % de IVA.
+export function platformFeeFor(rentNet: number): number {
+  return Math.round(Math.round(rentNet * PLATFORM_FEE_RATE) * (1 + IVA_RATE));
+}
+
+// Comisión al propietario: tasa sobre el arriendo neto, más 19 % de IVA.
+export function ownerCommissionFor(rentNet: number, rate: number): number {
+  return Math.round(Math.round(rentNet * rate) * (1 + IVA_RATE));
 }
 
 // Garantía mensual definida por el propietario (0 = no exige garantía).

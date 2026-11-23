@@ -732,6 +732,11 @@ CREATE TABLE public.support_tickets (
 );
 COMMENT ON TABLE public.support_tickets IS 'Solicitudes de soporte de usuarios';
 
+-- IVA del arriendo (19 %) cuando el espacio es amoblado o equipado. Va incluido en
+-- subtotal_clp (subtotal = arriendo neto + IVA del arriendo); lo declara el propietario.
+ALTER TABLE public.reservations
+  ADD COLUMN IF NOT EXISTS rent_iva_clp NUMERIC(12,0) NOT NULL DEFAULT 0 CHECK (rent_iva_clp >= 0);
+
 -- La reserva apunta a su contrato (lo fija el disparador de contratos).
 ALTER TABLE public.reservations
   ADD CONSTRAINT reservations_digital_contract_fk
@@ -1495,8 +1500,11 @@ END;
 $$;
 
 -- Montos esperados según la tarifa publicada (misma regla que src/utils/pricing.ts):
--- subtotal + comisión 5 %; la garantía solo se cobra en arriendos mensuales y solo
--- si el propietario la exige.
+--   arriendo neto = unidades × tarifa
+--   IVA del arriendo = 19 % del arriendo neto (solo si el espacio es amoblado/equipado)
+--   subtotal = arriendo neto + IVA del arriendo
+--   comisión Spotly = 5 % del arriendo neto + 19 % de IVA sobre esa comisión
+-- La garantía solo se cobra en arriendos mensuales y solo si el propietario la exige.
 CREATE FUNCTION public.expected_reservation_amounts(
   p_space public.spaces,
   p_price_unit TEXT,
@@ -1514,6 +1522,8 @@ DECLARE
   v_days INTEGER := (p_end - p_start) + 1;
   v_units INTEGER;
   v_price NUMERIC;
+  v_net NUMERIC;
+  v_rent_iva NUMERIC;
   v_subtotal NUMERIC;
   v_fee NUMERIC;
   v_deposit NUMERIC;
@@ -1534,8 +1544,10 @@ BEGIN
     RAISE EXCEPTION 'El espacio no tiene tarifa publicada para esta modalidad de arriendo';
   END IF;
 
-  v_subtotal := v_units * v_price;
-  v_fee := round(v_subtotal * 0.05);
+  v_net := v_units * v_price;
+  v_rent_iva := CASE WHEN COALESCE(p_space.is_furnished, false) THEN round(v_net * 0.19) ELSE 0 END;
+  v_subtotal := v_net + v_rent_iva;
+  v_fee := round(round(v_net * 0.05) * 1.19);
   v_deposit := CASE
     WHEN p_price_unit = 'month' AND COALESCE(p_space.security_deposit, 0) > 0 THEN round(p_space.security_deposit)
     ELSE 0
@@ -1544,6 +1556,7 @@ BEGIN
   RETURN jsonb_build_object(
     'units', v_units,
     'subtotal', v_subtotal,
+    'rent_iva', v_rent_iva,
     'platform_fee', v_fee,
     'deposit', v_deposit
   );
@@ -1639,6 +1652,7 @@ BEGIN
     v_space, v_unit, NEW.start_date, NEW.end_date, NEW.hour_start, NEW.hour_end);
 
   IF abs(NEW.subtotal_clp - (v_expected->>'subtotal')::numeric) > 1
+     OR abs(COALESCE(NEW.rent_iva_clp, 0) - (v_expected->>'rent_iva')::numeric) > 1
      OR abs(NEW.platform_fee_clp - (v_expected->>'platform_fee')::numeric) > 1
      OR abs(NEW.security_deposit_clp - (v_expected->>'deposit')::numeric) > 1 THEN
     RAISE EXCEPTION 'Monto inconsistente con la tarifa publicada (esperado subtotal %, comisión %, garantía %)',
@@ -1663,7 +1677,8 @@ BEGIN
       RAISE EXCEPTION 'Código de descuento inválido, vencido o sin cupos disponibles';
     END IF;
     NEW.discount_code := v_code;
-    NEW.discount_clp := round(NEW.subtotal_clp * v_percent / 100.0);
+    -- El descuento se calcula sobre el arriendo neto (sin IVA) y lo absorbe Spotly.
+    NEW.discount_clp := round((NEW.subtotal_clp - COALESCE(NEW.rent_iva_clp, 0)) * v_percent / 100.0);
     IF v_max_discount IS NOT NULL THEN
       NEW.discount_clp := LEAST(NEW.discount_clp, v_max_discount);
     END IF;
@@ -3091,7 +3106,8 @@ BEGIN
     SELECT * INTO v FROM public.owner_commission_terms(NEW.owner_id, COALESCE(NEW.price_unit, 'day'));
     NEW.owner_commission_rate := v.rate;
     NEW.owner_commission_reason := v.reason;
-    NEW.owner_commission_clp := round(COALESCE(NEW.subtotal_clp, 0) * v.rate);
+    -- 10 % del arriendo neto (sin el IVA del arriendo) + 19 % de IVA sobre la comisión.
+    NEW.owner_commission_clp := round(round((COALESCE(NEW.subtotal_clp, 0) - COALESCE(NEW.rent_iva_clp, 0)) * v.rate) * 1.19);
   ELSE
     NEW.owner_commission_rate := OLD.owner_commission_rate;
     NEW.owner_commission_reason := OLD.owner_commission_reason;

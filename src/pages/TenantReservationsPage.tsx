@@ -739,7 +739,8 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                   Pago
                 </div>
                 <TenantPriceBreakdown
-                  rentClp={selectedBookingDetail.subtotalClp}
+                  rentNetClp={selectedBookingDetail.subtotalClp - (selectedBookingDetail.rentIvaClp || 0)}
+                  rentIvaClp={selectedBookingDetail.rentIvaClp || 0}
                   feeClp={selectedBookingDetail.platformFeeClp}
                   furnished={spaces.find((sp) => sp.id === selectedBookingDetail.spaceId)?.isFurnished}
                   depositClp={selectedBookingDetail.securityDepositClp}

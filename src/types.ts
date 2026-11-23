@@ -220,6 +220,8 @@ export interface Reservation {
   paymentStatus?: PaymentStatus;
   discountCode?: string;
   discountClp?: number;
+  /** IVA del arriendo (19 %), incluido en subtotalClp; solo espacios amoblados. */
+  rentIvaClp?: number;
   /** Comisión del propietario congelada al crear la reserva. */
   ownerCommissionRate?: number;
   ownerCommissionClp?: number;

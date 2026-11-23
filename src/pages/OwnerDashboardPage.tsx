@@ -1545,7 +1545,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                         <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between font-bold">
                           <span className="text-slate-500 font-medium">Para ti:</span>
                           <span className="text-emerald-700 font-bold text-xs">
-                            {formatClp(res.subtotalClp - (res.platformFeeClp || 0))}
+                            {formatClp(res.subtotalClp - (res.ownerCommissionClp || 0))}
                           </span>
                         </div>
                       </div>

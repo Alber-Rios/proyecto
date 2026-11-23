@@ -165,7 +165,7 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
                 La comisión lleva IVA y se descuenta del arriendo. Queda fija al momento de cada reserva. Ejemplo:
               </p>
               <div className="mt-2 max-w-sm rounded-xl bg-slate-50 px-3 py-2">
-                <OwnerPriceBreakdown rentClp={40000} commissionRate={settings.ownerCommissionRate} compact />
+                <OwnerPriceBreakdown rentNetClp={40000} commissionRate={settings.ownerCommissionRate} compact />
               </div>
             </>
           )}
