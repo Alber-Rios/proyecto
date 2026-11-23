@@ -156,13 +156,30 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
                 Esta reserva no tiene un pago aprobado: se anulará y el horario quedará disponible sin cargos.
               </p>
             ) : (
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                <p className="text-xs text-slate-700">{refundPreview.description}</p>
-                <p className="text-sm font-bold text-slate-900">
-                  Reembolso estimado: {formatClp(refundPreview.refundClp)}
-                </p>
+              <div className="space-y-3">
+                <div className="rounded-2xl bg-emerald-50 p-4 text-center">
+                  <p className="text-xs font-semibold text-emerald-800">Te devolvemos</p>
+                  <p className="text-3xl font-bold tracking-tight tabular-nums text-emerald-900">{formatClp(refundPreview.refundClp)}</p>
+                </div>
+                <dl className="space-y-1.5 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-600">Pagaste</dt>
+                    <dd className="font-semibold tabular-nums text-slate-900">{formatClp(reservation.totalClp)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-slate-600">Te devolvemos</dt>
+                    <dd className="font-semibold tabular-nums text-emerald-700">{formatClp(refundPreview.refundClp)}</dd>
+                  </div>
+                  {reservation.totalClp - refundPreview.refundClp > 0 && (
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-slate-600">Cargo de servicio (no se devuelve)</dt>
+                      <dd className="font-semibold tabular-nums text-slate-900">{formatClp(reservation.totalClp - refundPreview.refundClp)}</dd>
+                    </div>
+                  )}
+                </dl>
+                <p className="text-xs text-slate-600">{refundPreview.description}</p>
                 <p className="text-xs text-slate-500">
-                  El monto definitivo lo calcula el servidor al confirmar, según la hora exacta de la cancelación.
+                  La devolución vuelve a la misma tarjeta. Si no se puede, te pediremos tus datos bancarios para transferirte.
                 </p>
               </div>
             )}

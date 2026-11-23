@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { OwnerEarningsPanel } from '../components/dashboard/OwnerEarningsPanel.tsx';
 import { Space, Reservation, DigitalContract, VisitRequest, ReservationStatus } from '../types.ts';
 import { PaymentReceiptModal } from '../components/PaymentReceipt.tsx';
+import { PublishSuccessDialog } from '../components/dashboard/PublishSuccessDialog.tsx';
 import { wasPaid } from '../lib/receipts.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatHourRange, formatRut, formatUnits, getSpaceRateInfo, getTodayIso } from '../utils/formatters.ts';
@@ -108,6 +109,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
   const [activeTab, setActiveTab] = useState<'overview' | 'spaces' | 'bookings' | 'finances' | 'calendar' | 'visits' | 'wallet' | 'trips' | 'favorites' | 'support'>('overview');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
+  const [publishDone, setPublishDone] = useState<{ kind: 'published' | 'edited'; title: string } | null>(null);
   const [selectedContract, setSelectedContract] = useState<DigitalContract | null>(null);
   const [receiptFor, setReceiptFor] = useState<Reservation | null>(null);
 
@@ -482,10 +484,10 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
     if (editingSpace) {
       const { status: _status, isVerified: _verified, ...changes } = data;
       updateSpace(editingSpace.id, changes);
-      alert('Cambios guardados.');
+      setPublishDone({ kind: 'edited', title: data.title });
     } else {
       createSpace({ ...data, status: 'pending_approval', isVerified: false });
-      alert('¡Publicación enviada! Tu espacio quedó en revisión y aparecerá en el catálogo cuando administración lo apruebe.');
+      setPublishDone({ kind: 'published', title: data.title });
     }
 
     resetForm();
@@ -2154,6 +2156,17 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
         </div>
       )}
 
+      {publishDone && (
+        <PublishSuccessDialog
+          kind={publishDone.kind}
+          title={publishDone.title}
+          onViewSpaces={() => {
+            setPublishDone(null);
+            setActiveTab('spaces');
+          }}
+          onClose={() => setPublishDone(null)}
+        />
+      )}
       {receiptFor && <PaymentReceiptModal reservation={receiptFor} variant="owner" onClose={() => setReceiptFor(null)} />}
 
       {/* Modal para visualizar contratos */}

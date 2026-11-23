@@ -67,13 +67,13 @@ export function calculateRefund(input: RefundInput, actor: CancellationActor, no
       refundClp: rent + input.securityDepositClp + fee,
       tier: 'full',
       hoursBeforeStart: hours,
-      description: 'Con 24 horas o más de anticipación se devuelve todo lo pagado: arriendo, garantía y comisión.',
+      description: 'Cancelas con 24 horas o más de anticipación, así que te devolvemos todo lo que pagaste.',
     };
   }
   return {
     refundClp: rent + input.securityDepositClp,
     tier: 'fee_charged',
     hoursBeforeStart: hours,
-    description: `Con menos de 24 horas de anticipación se devuelve el arriendo y la garantía; se cobra solo la comisión de servicio (${fee.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}).`,
+    description: `Cancelas con menos de 24 horas de anticipación: te devolvemos todo menos el cargo de servicio (${fee.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}).`,
   };
 }

@@ -1,3 +1,4 @@
+import { communesOf, normalizeCommune } from '../data/chileCommunes.ts';
 import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -46,13 +47,6 @@ const REGIONS = [
   'Región de Los Lagos',
   'Región de Aysén',
   'Región de Magallanes',
-];
-
-const SUGGESTED_COMMUNES = [
-  'Santiago Centro', 'Providencia', 'Las Condes', 'Vitacura', 'Lo Barnechea', 'Ñuñoa', 'La Reina',
-  'Macul', 'Peñalolén', 'La Florida', 'Puente Alto', 'Maipú', 'San Miguel', 'Estación Central',
-  'Independencia', 'Recoleta', 'Huechuraba', 'Colina', 'Lampa', 'Pirque', 'San José de Maipo',
-  'Viña del Mar', 'Valparaíso', 'Concepción', 'La Serena', 'Pucón', 'Puerto Varas',
 ];
 
 const AMENITIES = [
@@ -386,7 +380,17 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 <label htmlFor="ps-region" className={labelClass}>
                   Región
                 </label>
-                <select id="ps-region" value={region} onChange={(e) => setRegion(e.target.value)} className={inputClass}>
+                <select
+                  id="ps-region"
+                  value={region}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setRegion(next);
+                    // Si la comuna elegida no es de la nueva región, se limpia.
+                    if (!communesOf(next).some((c) => normalizeCommune(c) === normalizeCommune(commune))) setCommune('');
+                  }}
+                  className={inputClass}
+                >
                   {REGIONS.map((r) => (
                     <option key={r} value={r}>
                       {r}
@@ -398,19 +402,18 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 <label htmlFor="ps-commune" className={labelClass}>
                   Comuna
                 </label>
-                <input
-                  id="ps-commune"
-                  list="ps-communes"
-                  value={commune}
-                  onChange={(e) => setCommune(e.target.value)}
-                  placeholder="Ej: Ñuñoa"
-                  className={inputClass}
-                />
-                <datalist id="ps-communes">
-                  {SUGGESTED_COMMUNES.map((c) => (
-                    <option key={c} value={c} />
+                <select id="ps-commune" value={commune} onChange={(e) => setCommune(e.target.value)} className={inputClass}>
+                  <option value="">Elige la comuna</option>
+                  {/* Publicaciones antiguas con una comuna escrita a mano: se conserva para no perderla. */}
+                  {commune && !communesOf(region).some((c) => normalizeCommune(c) === normalizeCommune(commune)) && (
+                    <option value={commune}>{commune} (revisar)</option>
+                  )}
+                  {communesOf(region).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
             </div>
 
@@ -706,11 +709,20 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 <span className="text-xs font-bold text-slate-800">¿Tu espacio es amoblado o equipado?</span>
               </label>
               <p id="ps-furnished-help" className="mt-1.5 pl-8 text-xs text-slate-600">
-                Por ejemplo, una oficina con escritorios o una cocina con equipos. Ese arriendo lleva IVA (19 %) y el precio que publiques
-                debe incluirlo, porque el arrendatario ve el precio final. El IVA no se calcula sobre todo el arriendo: a la renta le restas la
-                proporción del 11 % anual del avalúo fiscal del inmueble, y sobre el resto aplicas el 19 %. Tú lo declaras al SII y emites el
-                documento; Spotly solo emite boleta por su comisión. Ante dudas, consulta con tu contador.
+                Por ejemplo, una oficina con escritorios o una cocina con equipos.
               </p>
+              <ul className="mt-2 space-y-1 pl-8 text-xs text-slate-600">
+                <li>
+                  <strong className="text-slate-800">Lleva IVA:</strong> el precio que publiques ya debe incluirlo. El arrendatario no paga nada extra.
+                </li>
+                <li>
+                  <strong className="text-slate-800">No es el 19 % de todo:</strong> el SII te deja descontar una parte según el avalúo fiscal de tu
+                  propiedad, así que pagas menos.
+                </li>
+                <li>
+                  <strong className="text-slate-800">Lo declaras tú</strong> y emites tu boleta o factura. Spotly solo emite la de su comisión.
+                </li>
+              </ul>
               {isFurnished && (
                 <div className="mt-3 pl-8">
                   <label htmlFor="ps-avaluo" className="block text-xs font-bold text-slate-800">
@@ -729,7 +741,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                     />
                   </div>
                   <p id="ps-avaluo-help" className="mt-1 text-xs text-slate-600">
-                    Está en tu certificado de avalúo fiscal del SII. Con él, cada comprobante muestra el detalle del IVA de tu arriendo (renta neta,
+                    Está en tu certificado de avalúo fiscal (sii.cl). Con este dato, tus comprobantes calculan solos cuánto IVA te toca pagar (renta neta,
                     rebaja, base imponible e IVA).
                   </p>
                 </div>

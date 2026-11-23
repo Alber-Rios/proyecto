@@ -18,11 +18,6 @@ const peso = (n: number) => `$ ${Math.round(n).toLocaleString('es-CL')}`;
 const netOf = (gross: number) => Math.round(gross / 1.19);
 const placeholder = (v: string) => (v.startsWith('[') ? '' : v);
 
-function receiptNumber(r: Reservation) {
-  const digits = r.id.replace(/\D/g, '');
-  return (digits.slice(-8) || r.id.slice(-8)).padStart(8, '0');
-}
-
 function fmtDateTime(iso?: string) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -169,11 +164,17 @@ export const ReceiptPaper: React.FC<{
       aria-label={variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación para el propietario'}
     >
       <div className="bg-stone-900 py-1.5 text-center text-[17px] font-bold tracking-[0.12em] text-[#fffdf8]">
-        {boleta ? `BOLETA N° ${boleta.folio}` : `${variant === 'tenant' ? 'RESERVA' : 'LIQUIDACIÓN'}: ${receiptNumber(r)}`}
+        {boleta ? `BOLETA N° ${boleta.folio}` : variant === 'tenant' ? 'COMPROBANTE' : 'LIQUIDACIÓN'}
       </div>
       {boleta?.simulated && (
         <p className="mt-1 border border-stone-900 py-0.5 text-center text-[10.5px] font-bold uppercase tracking-wide">
           Simulación · sin valor tributario
+        </p>
+      )}
+
+      {(r.status === 'cancelled' || refunded > 0) && (
+        <p className="mt-2 bg-stone-200 py-1 text-center text-[11px] font-bold uppercase tracking-wide">
+          Reserva cancelada{refunded > 0 ? ' · con devolución' : ''}
         </p>
       )}
 
@@ -182,9 +183,7 @@ export const ReceiptPaper: React.FC<{
         {issuerRut && <p>R.U.T. {issuerRut}</p>}
         <p>Giro: intermediación de arriendos</p>
         {issuerAddress && <p className="text-[11px]">{issuerAddress}</p>}
-        <p className="mt-1 text-[13px] font-bold">
-          {boleta ? 'Boleta electrónica' : variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación de arriendo'}
-        </p>
+        {boleta && <p className="mt-1 text-[13px] font-bold">Boleta electrónica</p>}
         {boleta && (
           <p className="text-[11px]">
             {variant === 'tenant' ? 'Por el cargo de servicio' : 'Por la comisión de intermediación'} · folio {boleta.folio}
@@ -194,11 +193,12 @@ export const ReceiptPaper: React.FC<{
 
       <div className="mt-2 space-y-0.5 text-[11px]">
         <Line k="FECHA EMISIÓN:" v={fmtDateTime(boleta?.issuedAt || paidAt)} />
-        <Line k="RESERVA:" v={<span className="break-all text-[10.5px]">#{r.id}</span>} />
+        <Line k="RESERVA:" v={<span className="break-all text-[10.5px]">{r.id.toUpperCase()}</span>} />
+        {/* Cada uno ve sus propios datos; del otro solo el nombre. */}
         <Line k="CLIENTE:" v={<span className="uppercase">{r.tenantName}</span>} />
-        {r.tenantRut && <Line k="RUT CLIENTE:" v={formatRut(r.tenantRut)} />}
+        {variant === 'tenant' && r.tenantRut && <Line k="RUT:" v={formatRut(r.tenantRut)} />}
         <Line k="PROPIETARIO:" v={<span className="uppercase">{r.ownerName}</span>} />
-        {r.ownerRut && <Line k="RUT PROPIETARIO:" v={formatRut(r.ownerRut)} />}
+        {variant === 'owner' && r.ownerRut && <Line k="RUT:" v={formatRut(r.ownerRut)} />}
         <Line k="ESPACIO:" v={<span className="block max-w-[12rem] truncate text-right uppercase">{r.spaceTitle}</span>} />
         {r.spaceAddress && <Line k="DIRECCIÓN:" v={<span className="block max-w-[12rem] truncate text-right uppercase">{r.spaceAddress}</span>} />}
         <Line k="MODALIDAD:" v={`${modality}${furnished ? ' · AMOBLADO' : ''}`} />
@@ -225,7 +225,13 @@ export const ReceiptPaper: React.FC<{
           {deposit > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(deposit)} />}
           {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
           <Rule />
-          <Line k={<span className="text-[15px]">TOTAL</span>} v={<span className="text-[15px]">{peso(r.totalClp)}</span>} strong />
+          <Line k={<span className="text-[15px]">{refunded > 0 ? 'TOTAL PAGADO' : 'TOTAL'}</span>} v={<span className="text-[15px]">{peso(r.totalClp)}</span>} strong />
+          {refunded > 0 && (
+            <>
+              <Line k="DEVUELTO A TU TARJETA" v={`-${peso(refunded)}`} />
+              <Line k={<span className="text-[15px]">COBRO FINAL</span>} v={<span className="text-[15px]">{peso(Math.max(r.totalClp - refunded, 0))}</span>} strong />
+            </>
+          )}
 
           <Rule double />
           <p className="text-center text-[11px] font-bold">DETALLE DE IMPUESTOS</p>
@@ -248,8 +254,7 @@ export const ReceiptPaper: React.FC<{
           <Line k={payment?.cardLast4 ? `WEBPAY ****${payment.cardLast4}` : 'WEBPAY'} v={peso(payment?.amountClp ?? r.totalClp)} />
           <Line k="CUOTAS" v={payment?.installmentsNumber ? payment.installmentsNumber : 'SIN CUOTAS'} />
           {payment?.authorizationCode && <Line k="COD. AUTORIZACIÓN" v={payment.authorizationCode} />}
-          {payment?.buyOrder && <Line k="ORDEN DE COMPRA" v={<span className="text-[10.5px]">{payment.buyOrder}</span>} />}
-          {refunded > 0 && <Line k="DEVUELTO" v={`-${peso(refunded)}`} strong />}
+
           <p className="pt-1 text-[10px] uppercase text-stone-600">
             Spotly cobra el arriendo por cuenta del propietario (mandato de cobro) y se lo transfiere, menos su comisión.
           </p>
@@ -305,14 +310,9 @@ export const ReceiptPaper: React.FC<{
           <p className="text-[10px] text-stone-600">Emitida {fmtDateTime(boleta.issuedAt)}</p>
         </div>
       ) : (
-        <>
-          <div className="mt-5 flex min-h-[4.5rem] items-center justify-center border-2 border-dashed border-stone-400 px-3 text-center text-[10.5px] uppercase text-stone-600">
-            {variant === 'owner' && !(r.ownerCommissionClp > 0)
-              ? 'Sin comisión: no corresponde boleta'
-              : 'La boleta se emite al confirmarse el pago'}
-          </div>
-          <p className="mt-3 text-center text-[10.5px] uppercase">Este comprobante no reemplaza la boleta electrónica del SII</p>
-        </>
+        <p className="mt-5 text-center text-[10.5px] uppercase text-stone-600">
+          Comprobante de pago. No reemplaza la boleta electrónica del SII.
+        </p>
       )}
       <p className="mt-2 text-center text-[11px]">Gracias por usar Spotly</p>
     </article>
