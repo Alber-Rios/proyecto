@@ -74,6 +74,6 @@ export function calculateRefund(input: RefundInput, actor: CancellationActor, no
     refundClp: rent + input.securityDepositClp,
     tier: 'fee_charged',
     hoursBeforeStart: hours,
-    description: `Cancelas con menos de 24 horas de anticipación: te devolvemos todo menos el cargo de servicio (${fee.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}).`,
+    description: `Cancelas con menos de 24 horas de anticipación: te devolvemos todo menos la comisión Spotly con su IVA (${fee.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}).`,
   };
 }

@@ -1081,7 +1081,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             <div>
               <h2 className="sr-only">Centro de arbitraje y garantías</h2>
               <p className="text-xs text-slate-500">
-                Resuelve reclamos entre arrendatarios y propietarios sobre el pago retenido en custodia (arriendo + garantía + cargo de servicio del 5 %).
+                Resuelve reclamos entre arrendatarios y propietarios sobre el pago retenido en custodia (arriendo + garantía + comisión Spotly del 5 %).
               </p>
             </div>
 
@@ -1114,7 +1114,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span>1. ¿Qué incluye el Monto en Custodia?</span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Cuando el arrendatario paga, Spotly retiene en custodia: <strong>Valor hora/Día</strong> + <strong>Garantía de daños</strong> + <strong>cargo de servicio del 5 %</strong> que paga el arrendatario.
+                Cuando el arrendatario paga, Spotly retiene en custodia: <strong>Valor hora/Día</strong> + <strong>Garantía de daños</strong> + <strong>comisión Spotly del 5 %</strong> que paga el arrendatario.
               </p>
             </div>
 
@@ -1124,7 +1124,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span>2. Si reembolsas al Arrendatario</span>
               </div>
               <p className="text-xs text-emerald-800 leading-relaxed">
-                Por falla del lugar (ej. corte de luz, recinto cerrado), se devuelve el <strong>100% de todo lo pagado</strong> (arriendo + garantía + cargo de servicio). Spotly devuelve también su 5 %.
+                Por falla del lugar (ej. corte de luz, recinto cerrado), se devuelve el <strong>100% de todo lo pagado</strong> (arriendo + garantía + comisión Spotly). Spotly devuelve también su 5 %.
               </p>
             </div>
 
@@ -1134,7 +1134,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span>3. Si liberas al Propietario</span>
               </div>
               <p className="text-xs text-indigo-800 leading-relaxed">
-                Si hubo daños o el reclamo no procede, el propietario recibe el <strong>arriendo (menos su comisión, si le corresponde) + la garantía</strong>, y Spotly se queda con el <strong>cargo de servicio del 5 %</strong>.
+                Si hubo daños o el reclamo no procede, el propietario recibe el <strong>arriendo (menos su comisión, si le corresponde) + la garantía</strong>, y Spotly se queda con el <strong>comisión Spotly del 5 %</strong>.
               </p>
             </div>
           </div>
@@ -1150,7 +1150,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   d.status === 'resolved_refund' || d.status === 'resolved_owner';
                 const linkedRes = reservations.find((r) => r.id === d.reservationId);
 
-                // Desglose: arriendo + garantía + cargo de servicio del 5 %
+                // Desglose: arriendo + garantía + comisión Spotly del 5 %
                 const rentalSubtotal =
                   d.subtotalClp ?? linkedRes?.subtotalClp ?? (d.id === 'disp-001' ? 120000 : Math.round(d.amountClp * 0.65));
                 const securityDeposit =
@@ -1219,7 +1219,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                       <div className="bg-white p-2.5 rounded-lg border border-slate-200/80">
                         <span className="text-xs font-bold text-slate-500 block">
-                          3. Cargo de servicio (5 %)
+                          3. Comisión Spotly 5 % (con IVA)
                         </span>
                         <strong className="text-sm font-bold text-indigo-700 tabular-nums">
                           {formatClp(platformFee5Pct)}
@@ -1275,11 +1275,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         <div className="text-xs text-emerald-900 font-medium">
                           {d.status === 'resolved_refund' ? (
                             <>
-                              <strong>Liquidación ejecutada:</strong> Se reembolsó el 100% al arrendatario ({formatClp(totalCustody)}: {formatClp(rentalSubtotal)} de arriendo + {formatClp(securityDeposit)} de garantía + {formatClp(platformFee5Pct)} del cargo de servicio).
+                              <strong>Liquidación ejecutada:</strong> Se reembolsó el 100% al arrendatario ({formatClp(totalCustody)}: {formatClp(rentalSubtotal)} de arriendo + {formatClp(securityDeposit)} de garantía + {formatClp(platformFee5Pct)} de la comisión Spotly).
                             </>
                           ) : (
                             <>
-                              <strong>Liquidación ejecutada:</strong> Se liberó al propietario {formatClp(ownerNetIfReleased)} (arriendo menos su comisión + garantía de {formatClp(securityDeposit)}) y Spotly se quedó con el cargo de servicio ({formatClp(platformFee5Pct)}).
+                              <strong>Liquidación ejecutada:</strong> Se liberó al propietario {formatClp(ownerNetIfReleased)} (arriendo menos su comisión + garantía de {formatClp(securityDeposit)}) y Spotly se quedó con la comisión Spotly ({formatClp(platformFee5Pct)}).
                             </>
                           )}
                         </div>
@@ -1305,7 +1305,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 d.id,
                                 'resolved_refund',
                                 resolutionNotes[d.id] ||
-                                  'Fallo a favor del arrendatario por incumplimiento del recinto. Se reembolsa 100% (arriendo + garantía + cargo de servicio).'
+                                  'Fallo a favor del arrendatario por incumplimiento del recinto. Se reembolsa 100% (arriendo + garantía + comisión Spotly).'
                               )
                             }
                             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"

@@ -1,4 +1,5 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
+import { TenantPriceBreakdown } from '../components/PriceBreakdown.tsx';
 import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -48,7 +49,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
   onOpenAuth,
   embedded = false,
 }) => {
-  const { currentUser, reservations, contracts, visitRequests, createDispute, refreshReservations } = useApp();
+  const { currentUser, reservations, contracts, visitRequests, createDispute, refreshReservations, spaces } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   const routerNavigate = useNavigate();
   const paymentResult = searchParams.get('pago');
@@ -737,30 +738,15 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                 <div className="font-bold text-slate-800 text-xs">
                   Pago
                 </div>
-                <div className="flex justify-between py-1 text-slate-600">
-                  <span>Arriendo</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatClp(selectedBookingDetail.subtotalClp)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1 text-slate-600">
-                  <span>Cargo de servicio Spotly (5 %)</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatClp(selectedBookingDetail.platformFeeClp)}
-                  </span>
-                </div>
-                {selectedBookingDetail.securityDepositClp > 0 && (
-                  <div className="flex justify-between py-1 text-slate-600">
-                    <span>Garantía (se devuelve)</span>
-                    <span className="font-semibold text-slate-900">
-                      {formatClp(selectedBookingDetail.securityDepositClp)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between p-3 bg-slate-100 rounded-xl font-bold text-sm text-slate-900">
-                  <span>Total</span>
-                  <span className="text-rose-600">{formatClp(selectedBookingDetail.totalClp)}</span>
-                </div>
+                <TenantPriceBreakdown
+                  rentClp={selectedBookingDetail.subtotalClp}
+                  feeClp={selectedBookingDetail.platformFeeClp}
+                  furnished={spaces.find((sp) => sp.id === selectedBookingDetail.spaceId)?.isFurnished}
+                  depositClp={selectedBookingDetail.securityDepositClp}
+                  discount={selectedBookingDetail.discountClp ? { label: `Descuento ${selectedBookingDetail.discountCode || ''}`.trim(), clp: selectedBookingDetail.discountClp } : null}
+                  totalClp={selectedBookingDetail.totalClp}
+                  totalHint="Arriendo + comisión Spotly (IVA incluido)."
+                />
               </div>
 
               {selectedBookingDetail.paymentSimulation && (

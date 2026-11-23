@@ -130,3 +130,9 @@ export function calculateDiscount(subtotal: number, percentOff: number, maxDisco
   const raw = Math.round((subtotal * Math.min(percentOff, 100)) / 100);
   return maxDiscountClp && maxDiscountClp > 0 ? Math.min(raw, maxDiscountClp) : raw;
 }
+
+// Separa un monto con IVA incluido en neto + IVA 19 % (mismo redondeo que las boletas).
+export function splitIva(gross: number): { net: number; iva: number } {
+  const net = Math.round(gross / 1.19);
+  return { net, iva: gross - net };
+}

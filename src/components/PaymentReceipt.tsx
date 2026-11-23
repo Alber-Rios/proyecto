@@ -100,10 +100,10 @@ type Kind = 'summary' | 'boleta';
 
 /**
  * Cada persona ve solo lo suyo, en dos documentos separados:
- * - Arrendatario: «Comprobante de pago» (lo que pagó) y la boleta de Spotly por el cargo de servicio.
+ * - Arrendatario: «Comprobante de pago» (arriendo + comisión Spotly 5 % + IVA de la comisión) y la boleta de Spotly por esa comisión.
  * - Propietario: «Liquidación» (lo que recibe y su IVA) y la boleta de Spotly por la comisión.
  * El arrendatario nunca ve la comisión, el avalúo ni el IVA del propietario;
- * el propietario nunca ve el cargo de servicio, el descuento, la tarjeta ni el RUT del arrendatario.
+ * el propietario nunca ve la comisión del arrendatario, el descuento, la tarjeta ni el RUT del arrendatario.
  */
 export const ReceiptPaper: React.FC<{
   reservation: Reservation;
@@ -192,7 +192,7 @@ export const ReceiptPaper: React.FC<{
     body = (
       <div className="space-y-1.5">
         {tableHead}
-        <Line k={isTenant ? 'CARGO DE SERVICIO SPOTLY 5%' : `COMISIÓN DE INTERMEDIACIÓN ${commissionPct}%`} v={peso(boletaGross)} />
+        <Line k={isTenant ? 'COMISIÓN SPOTLY 5%' : `COMISIÓN SPOTLY ${commissionPct}%`} v={peso(boletaGross)} />
         <Rule />
         <Line k="MONTO NETO" v={peso(boletaNet)} />
         <Line k="IVA 19%" v={peso(boletaIva)} />
@@ -204,7 +204,7 @@ export const ReceiptPaper: React.FC<{
             <p className="text-center text-[11px] font-bold">NOTA DE CRÉDITO N° {creditNote.folio}</p>
             <Line k={`ANULA BOLETA N° ${creditNote.referencesFolio ?? boleta!.folio}`} v={`-${peso(creditNote.totalClp)}`} strong />
             <p className="text-[10px] uppercase text-stone-600">
-              {isTenant ? 'Se te devolvió el cargo de servicio completo.' : 'La comisión se anuló.'}
+              {isTenant ? 'Se te devolvió la comisión de Spotly completa.' : 'La comisión se anuló.'}
             </p>
           </>
         )}
@@ -215,13 +215,15 @@ export const ReceiptPaper: React.FC<{
       <div className="space-y-1.5">
         {tableHead}
         <div>
-          <p className="uppercase">Arriendo {furnished ? 'amoblado' : 'del espacio'}</p>
+          <p className="uppercase">Valor del arriendo{furnished ? ' (amoblado)' : ''}</p>
           <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
           <p className="pl-2 text-[10px] uppercase text-stone-600">
             {furnished ? 'IVA incluido · lo declara el propietario' : 'Exento de IVA'}
           </p>
         </div>
-        <Line k="CARGO DE SERVICIO SPOTLY 5%" v={peso(fee)} />
+        <Line k="COMISIÓN SPOTLY 5%" v={peso(fee)} />
+        <Line k={<span className="pl-2 text-stone-600">NETO</span>} v={<span className="text-stone-600">{peso(netOf(fee))}</span>} />
+        <Line k={<span className="pl-2 text-stone-600">IVA 19%</span>} v={<span className="text-stone-600">{peso(fee - netOf(fee))}</span>} />
         {deposit > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(deposit)} />}
         {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
         <Rule />
@@ -241,8 +243,8 @@ export const ReceiptPaper: React.FC<{
 
         <p className="pt-1 text-[10px] uppercase text-stone-600">
           {boleta
-            ? `El cargo de servicio tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»). El arriendo lo cobra Spotly por cuenta del propietario.`
-            : 'El arriendo lo cobra Spotly por cuenta del propietario (mandato de cobro).'}
+            ? `Total = arriendo + comisión Spotly (IVA incluido). La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»). El arriendo lo cobra Spotly por cuenta del propietario.`
+            : 'Total = arriendo + comisión Spotly (IVA incluido). El arriendo lo cobra Spotly por cuenta del propietario (mandato de cobro).'}
         </p>
       </div>
     );
@@ -251,10 +253,12 @@ export const ReceiptPaper: React.FC<{
       <div className="space-y-1.5">
         {tableHead}
         <div>
-          <p className="uppercase">Arriendo cobrado</p>
+          <p className="uppercase">Valor del arriendo</p>
           <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitPrice)}</span>} v={peso(r.subtotalClp)} />
         </div>
-        <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={commission ? `-${peso(commission)}` : peso(0)} />
+        <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={`-${peso(commission)}`} />
+        <Line k={<span className="pl-2 text-stone-600">NETO</span>} v={<span className="text-stone-600">-{peso(netOf(commission))}</span>} />
+        <Line k={<span className="pl-2 text-stone-600">IVA 19%</span>} v={<span className="text-stone-600">-{peso(commission - netOf(commission))}</span>} />
         <Rule />
         <Line k={<span className="text-[15px]">A DEPOSITAR</span>} v={<span className="text-[15px]">{peso(ownerGets)}</span>} strong />
         <Line k="DEPÓSITO" v={r.status === 'completed' ? `MARTES ${nextTuesday(r.endDate)}` : 'MARTES TRAS EL ARRIENDO'} />

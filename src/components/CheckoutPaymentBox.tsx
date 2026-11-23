@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { TenantPriceBreakdown } from './PriceBreakdown.tsx';
 import { CreditCard, Info, Loader2, Lock, Plus, ShieldCheck, Tag, Wallet, X } from 'lucide-react';
 import { formatClp } from '../utils/formatters.ts';
 import { validateDiscountCode } from '../lib/dataAccess.ts';
@@ -20,6 +21,7 @@ interface CheckoutPaymentBoxProps {
   subtotalClp: number;
   platformFeeClp: number;
   depositClp: number;
+  furnished?: boolean;
   discount: AppliedDiscount | null;
   onDiscountChange: (discount: AppliedDiscount | null) => void;
   onPay: (choice: PaymentChoice) => Promise<void>;
@@ -38,6 +40,7 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
   subtotalClp,
   platformFeeClp,
   depositClp,
+  furnished,
   discount,
   onDiscountChange,
   onPay,
@@ -127,36 +130,17 @@ export const CheckoutPaymentBox: React.FC<CheckoutPaymentBoxProps> = ({
         </div>
       )}
 
-      {/* Detalle del cobro */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2 text-xs">
-        <div className="flex justify-between">
-          <span className="text-slate-600">
-            {formatClp(basePrice)} × {units} {unitLabel}
-          </span>
-          <span className="font-bold text-slate-900">{formatClp(subtotalClp)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-slate-600">Comisión de servicio Spotly (5 %)</span>
-          <span className="font-bold text-slate-900">{formatClp(platformFeeClp)}</span>
-        </div>
-        {depositClp > 0 && (
-          <div className="flex justify-between">
-            <span className="text-slate-600">Garantía mensual (reembolsable)</span>
-            <span className="font-bold text-slate-900">{formatClp(depositClp)}</span>
-          </div>
-        )}
-        {discount && (
-          <div className="flex justify-between text-emerald-700">
-            <span className="flex items-center gap-1">
-              <Tag className="w-3.5 h-3.5" /> Descuento {discount.code}
-            </span>
-            <span className="font-bold">−{formatClp(discountClp)}</span>
-          </div>
-        )}
-        <div className="flex justify-between border-t border-slate-200 pt-2 text-sm">
-          <span className="font-bold text-slate-900">Total a pagar</span>
-          <span className="font-bold text-rose-600">{formatClp(total)}</span>
-        </div>
+      {/* Detalle del cobro: arriendo + comisión Spotly + IVA de la comisión */}
+      <div className="p-4 rounded-2xl bg-white border border-slate-200">
+        <TenantPriceBreakdown
+          rentClp={subtotalClp}
+          rentDetail={`${formatClp(basePrice)} × ${units} ${unitLabel}`}
+          feeClp={platformFeeClp}
+          furnished={furnished}
+          depositClp={depositClp}
+          discount={discount ? { label: <span className="inline-flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> Descuento {discount.code}</span>, clp: discountClp } : null}
+          totalClp={total}
+        />
       </div>
 
       {/* Código de descuento */}

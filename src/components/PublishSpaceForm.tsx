@@ -1,4 +1,7 @@
 import { communesOf, normalizeCommune } from '../data/chileCommunes.ts';
+import { OwnerPriceBreakdown, TenantPriceBreakdown } from './PriceBreakdown.tsx';
+import { DEFAULT_PLATFORM_SETTINGS } from '../lib/financeApi.ts';
+import { PLATFORM_FEE_RATE } from '../utils/pricing.ts';
 import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -544,10 +547,34 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   )}
                 </div>
               </ModalityRow>
-              <p className="text-xs text-slate-500">
-                Spotly cobra al arrendatario un cargo de servicio de 5 % y a ti una comisión de 10 % sobre el arriendo. Los arriendos por hora y por día no
-                llevan garantía.
-              </p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2">
+                <p className="text-xs font-bold text-slate-800">Cómo se arma el precio</p>
+                <p className="text-xs text-slate-600">
+                  El arrendatario paga <strong>el valor del arriendo + la comisión de Spotly del 5 %</strong>. A ti se te descuenta
+                  <strong> la comisión de Spotly del 10 %</strong>. Ambas comisiones ya incluyen su IVA (19 %), que Spotly declara. Los arriendos por hora y por día no llevan garantía.
+                </p>
+                {(() => {
+                  const sample = [
+                    { price: byHour ? Number(hourPrice) || 0 : 0, unit: '1 hora' },
+                    { price: byDay ? Number(dayPrice) || 0 : 0, unit: '1 día' },
+                    { price: byMonth ? Number(monthPrice) || 0 : 0, unit: '1 mes' },
+                  ].find((x) => x.price > 0);
+                  if (!sample) return <p className="text-[11px] text-slate-500">Escribe un precio para ver el ejemplo.</p>;
+                  const fee = Math.round(sample.price * PLATFORM_FEE_RATE);
+                  return (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Paga el arrendatario ({sample.unit})</p>
+                        <TenantPriceBreakdown rentClp={sample.price} feeClp={fee} furnished={isFurnished} totalClp={sample.price + fee} totalHint=" " compact />
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Recibes tú ({sample.unit})</p>
+                        <OwnerPriceBreakdown rentClp={sample.price} commissionRate={DEFAULT_PLATFORM_SETTINGS.ownerCommissionRate} compact />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">

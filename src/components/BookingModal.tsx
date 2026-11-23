@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Space, DigitalContract, VisitRequest } from '../types.ts';
-import { calculateBookingAmounts } from '../utils/pricing.ts';
+import { calculateBookingAmounts, splitIva } from '../utils/pricing.ts';
 import { getCategoryLabel } from '../utils/spaceCategories.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut, getTodayIso, getOffsetDateIso } from '../utils/formatters.ts';
@@ -754,7 +754,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     lockNotice="Al confirmar el pago, esta fecha y horario quedan bloqueados solo para ti en Spotly: nadie más puede reservarlos."
                     amounts={[
                       { label: `Arriendo (${calculations.units} ${calculations.label})`, value: calculations.subtotal },
-                      { label: 'Comisión de servicio Spotly (5 %)', value: calculations.platformFee },
+                      { label: `Comisión Spotly 5 % (neto ${formatClp(splitIva(calculations.platformFee).net)} + IVA ${formatClp(splitIva(calculations.platformFee).iva)})`, value: calculations.platformFee },
                       ...(calculations.deposit > 0
                         ? [{ label: 'Garantía reembolsable', value: calculations.deposit }]
                         : []),
@@ -907,6 +907,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     subtotalClp={calculations.subtotal}
                     platformFeeClp={calculations.platformFee}
                     depositClp={calculations.deposit}
+                    furnished={space.isFurnished}
                     discount={discount}
                     onDiscountChange={setDiscount}
                     onPay={handlePay}

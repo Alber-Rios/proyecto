@@ -173,7 +173,7 @@ export const SpaceCard: React.FC<SpaceCardProps> = ({ space, onSelect }) => {
                   </span>
                   <span className="text-xs text-slate-500 font-medium"> {rate.unitLabel}</span>
                   <span className="block text-xs text-slate-500 tabular-nums">
-                    {formatClp(Math.round(rate.amount * (1 + PLATFORM_FEE_RATE)))} con cargo de servicio
+                    {formatClp(Math.round(rate.amount * (1 + PLATFORM_FEE_RATE)))} con comisión Spotly e IVA
                   </span>
                 </div>
               );

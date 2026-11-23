@@ -210,7 +210,7 @@ export const PlatformFinancePanel: React.FC = () => {
                 <caption className="sr-only">Cómo se forma la ganancia</caption>
                 <tbody className="divide-y divide-slate-100">
                   {[
-                    ['Cargo de servicio que paga el arrendatario (5 % sobre el arriendo)', t.tenantFeesClp, ''],
+                    ['Comisión Spotly que paga el arrendatario (5 % sobre el arriendo)', t.tenantFeesClp, ''],
                     ['Comisión descontada a los propietarios', t.ownerCommissionsClp, ''],
                     ['Multas por cancelar con menos de 24 h', t.cancellationFeesClp, ''],
                     ['Códigos de descuento (los paga Spotly)', t.discountsClp ? -t.discountsClp : 0, ''],

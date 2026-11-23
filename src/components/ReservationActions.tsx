@@ -172,7 +172,7 @@ export const ReservationActions: React.FC<ReservationActionsProps> = ({ reservat
                   </div>
                   {reservation.totalClp - refundPreview.refundClp > 0 && (
                     <div className="flex justify-between gap-3">
-                      <dt className="text-slate-600">Cargo de servicio (no se devuelve)</dt>
+                      <dt className="text-slate-600">Comisión Spotly + IVA (no se devuelve)</dt>
                       <dd className="font-semibold tabular-nums text-slate-900">{formatClp(reservation.totalClp - refundPreview.refundClp)}</dd>
                     </div>
                   )}

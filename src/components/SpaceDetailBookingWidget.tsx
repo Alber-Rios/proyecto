@@ -1,4 +1,5 @@
 import { AnimatedNumber } from './motion/AnimatedNumber.tsx';
+import { TenantPriceBreakdown } from './PriceBreakdown.tsx';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Space, VisitRequest } from '../types.ts';
@@ -1081,49 +1082,26 @@ export const SpaceDetailBookingWidget: React.FC<SpaceDetailBookingWidgetProps> =
             </div>
           )}
 
-          {/* DESGLOSE TRANSPARENTE DE COSTOS */}
-          <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-1">
-              <span>Detalle</span>
-              <span>Monto</span>
-            </div>
-
-            <div className="flex items-center justify-between text-slate-700">
-              <span>
-                {formatClp(calculations.basePrice)} × {calculations.unitLabel}
-                {activeModality === 'por_hora' && (
-                  <> ({String(hourStart).padStart(2, '0')}:00 - {String(hourEnd).padStart(2, '0')}:00)</>
-                )}
-              </span>
-              <span className="font-bold">{formatClp(calculations.subtotal)}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-700">
-              <span>Comisión de servicio Spotly (5 %)</span>
-              <span className="font-bold">{formatClp(calculations.platformFee)}</span>
-            </div>
-            {calculations.deposit > 0 && (
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="flex items-center gap-1">
-                  Garantía (se devuelve)
-                  <Info className="w-3 h-3 text-slate-500" />
-                </span>
-                <span className="font-bold">{formatClp(calculations.deposit)}</span>
-              </div>
-            )}
+          {/* DESGLOSE TRANSPARENTE DE COSTOS: arriendo + comisión Spotly + IVA de la comisión */}
+          <div className="border-t border-slate-100 pt-4">
+            <TenantPriceBreakdown
+              rentClp={calculations.subtotal}
+              rentDetail={
+                <>
+                  {formatClp(calculations.basePrice)} × {calculations.unitLabel}
+                  {activeModality === 'por_hora' && (
+                    <> ({String(hourStart).padStart(2, '0')}:00 - {String(hourEnd).padStart(2, '0')}:00)</>
+                  )}
+                </>
+              }
+              feeClp={calculations.platformFee}
+              furnished={space.isFurnished}
+              depositClp={calculations.deposit}
+              totalClp={calculations.total}
+            />
             {activeModality === 'mensual' && calculations.deposit === 0 && (
-              <div className="text-xs text-emerald-700 font-semibold">Este propietario no exige garantía.</div>
+              <div className="mt-1 text-xs text-emerald-700 font-semibold">Este propietario no exige garantía.</div>
             )}
-
-            {/* TOTAL EN CLP A PAGAR */}
-            <div className="border-t border-slate-200 pt-3 flex items-baseline justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-900 block">Total a pagar</span>
-                <span className="text-xs text-slate-500">Precio final en pesos, impuestos incluidos. No hay cobros después.</span>
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-rose-600 tracking-tight">
-                <AnimatedNumber text={formatClp(calculations.total)} duration={900} />
-              </div>
-            </div>
           </div>
 
           {/* BOTÓN DE ACCIÓN PRINCIPAL / COMPROBACIÓN DE AUTENTICACIÓN */}

@@ -1492,7 +1492,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           title: 'Disputa resuelta por administración',
           message: `Tu reclamo sobre "${targetDispute.spaceTitle}" fue resuelto (${
             resolution === 'resolved_refund'
-              ? 'Reembolso del 100% autorizado: arriendo + garantía + cargo de servicio'
+              ? 'Reembolso del 100% autorizado: arriendo + garantía + comisión Spotly'
               : 'Caso cerrado con liberación de fondos al propietario'
           }). Dictamen: ${notes}`,
           type: resolution === 'resolved_refund' ? 'success' : 'info',

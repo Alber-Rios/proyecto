@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { OwnerPriceBreakdown } from '../PriceBreakdown.tsx';
 import { Download, Info, Percent, Wallet, ArrowDownToLine, Clock, CalendarClock } from 'lucide-react';
 import type { Reservation, Space, UserProfile } from '../../types.ts';
 import { formatClp, formatRut, getTodayIso } from '../../utils/formatters.ts';
@@ -161,9 +162,11 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
                 Comisión de Spotly: {pct(settings.ownerCommissionRate)}
               </p>
               <p className="text-slate-700">
-                Por ejemplo, en un arriendo de {formatClp(40000)} recibes {formatClp(Math.round(40000 * (1 - settings.ownerCommissionRate)))}. La
-                comisión queda fija al momento de cada reserva.
+                La comisión lleva IVA y se descuenta del arriendo. Queda fija al momento de cada reserva. Ejemplo:
               </p>
+              <div className="mt-2 max-w-sm rounded-xl bg-slate-50 px-3 py-2">
+                <OwnerPriceBreakdown rentClp={40000} commissionRate={settings.ownerCommissionRate} compact />
+              </div>
             </>
           )}
         </div>
@@ -237,7 +240,7 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
 
       <p className="flex items-start gap-2 text-sm text-slate-600">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
-        Por cada reserva recibes el arriendo menos la comisión de Spotly. El cargo de servicio del 5 % lo paga el arrendatario y los
+        Por cada reserva recibes el arriendo menos la comisión de Spotly. La comisión Spotly del 5 % (con IVA) lo paga el arrendatario y los
         descuentos los absorbe Spotly: ninguno se te resta.
       </p>
 
