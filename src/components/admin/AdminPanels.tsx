@@ -17,6 +17,16 @@ import { Download, Loader2, RefreshCw } from 'lucide-react';
 const cardClass = 'bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden';
 const inputClass = 'px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium bg-white';
 
+const REPORT_STATUS_LABEL: Record<string, string> = { open: 'Nuevo', reviewing: 'En revisión', resolved: 'Resuelto', dismissed: 'Desestimado' };
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  created: 'Iniciado',
+  authorized: 'Autorizado',
+  failed: 'Rechazado',
+  aborted: 'Anulado por el usuario',
+  refunded: 'Reembolsado',
+  partially_refunded: 'Reembolso parcial',
+};
+
 function downloadCsv(filename: string, rows: (string | number)[][]) {
   const csv = rows
     .map((row) => row.map((c) => (/[";\n\r]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : String(c))).join(';'))
@@ -216,7 +226,7 @@ export const ReportsPanel: React.FC = () => {
                   <span className="font-bold text-slate-900">
                     {report.targetType === 'space' ? 'Publicación' : 'Usuario'}: {report.targetLabel}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">{report.status}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">{REPORT_STATUS_LABEL[report.status] ?? report.status}</span>
                 </div>
                 <p className="text-slate-500">
                   {report.category} · {report.reporterEmail} · {new Date(report.createdAt).toLocaleString('es-CL')}
@@ -510,7 +520,7 @@ export const PaymentsPanel: React.FC = () => {
                 <td className="px-4 py-2 font-mono">{p.reservationId.slice(-8)}</td>
                 <td className="px-4 py-2 tabular-nums">{formatClp(p.amountClp)}</td>
                 <td className="px-4 py-2">
-                  {p.status}
+                  {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
                   {p.environment === 'integration' && <span className="block text-xs text-slate-500">integración</span>}
                 </td>
                 <td className="px-4 py-2 font-mono">
