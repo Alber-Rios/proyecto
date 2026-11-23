@@ -213,7 +213,7 @@ export const PlatformFinancePanel: React.FC = () => {
                     ['Cargo de servicio que paga el arrendatario (5 % sobre el arriendo)', t.tenantFeesClp, ''],
                     ['Comisión descontada a los propietarios', t.ownerCommissionsClp, ''],
                     ['Multas por cancelar con menos de 24 h', t.cancellationFeesClp, ''],
-                    ['Códigos de descuento (los paga Spotly)', -t.discountsClp, ''],
+                    ['Códigos de descuento (los paga Spotly)', t.discountsClp ? -t.discountsClp : 0, ''],
                   ].map(([label, value]) => (
                     <tr key={String(label)}>
                       <th scope="row" className="py-2 pr-3 text-left font-normal text-slate-700">{label}</th>
