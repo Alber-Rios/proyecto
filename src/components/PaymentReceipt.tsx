@@ -1,12 +1,11 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Sensitive } from './Sensitive.tsx';
 import { createPortal } from 'react-dom';
 import { Printer, X } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { LEGAL_ENTITY } from '../data/legalEntity.ts';
 import type { PaymentRecord, Reservation } from '../types.ts';
 import { formatRut } from '../utils/formatters.ts';
-import { getMyPayouts, getTaxDocuments, type TaxDocument } from '../lib/financeApi.ts';
+import { getMyPayouts, getTaxDocuments, getTaxStatus, type TaxDocument } from '../lib/financeApi.ts';
 
 // Comprobante con formato de boleta térmica (como las del comercio en Chile).
 // No es un DTE: la boleta electrónica real necesita folio y timbre del SII,
@@ -102,7 +101,9 @@ export const ReceiptPaper: React.FC<{
   documents?: TaxDocument[];
   /** Anticipo de IVA retenido en la liquidación (Ley 21.713). */
   ivaWithheldClp?: number;
-}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, kind = 'summary', documents = [], ivaWithheldClp = 0 }) => {
+  /** Giro del propietario en el SII (va en la factura como dato del receptor). */
+  recipientGiro?: string | null;
+}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, kind = 'summary', documents = [], ivaWithheldClp = 0, recipientGiro }) => {
   const isTenant = variant === 'tenant';
   const concept = isTenant ? 'cargo_servicio' : 'comision_propietario';
   // Documento de Spotly por su comisión: boleta (39) o, al propietario con inicio de
@@ -112,7 +113,7 @@ export const ReceiptPaper: React.FC<{
   const docName = isFactura ? 'FACTURA' : 'BOLETA';
   const creditNote = documents.find((d) => d.docType === 61 && d.concept === concept);
   const issuerName = placeholder(LEGAL_ENTITY.name) || 'SPOTLY';
-  const issuerRut = placeholder(LEGAL_ENTITY.rut);
+  const issuerRut = placeholder(LEGAL_ENTITY.rut) || 'POR DEFINIR';
   const issuerAddress = placeholder(LEGAL_ENTITY.address);
   const { qty, unit } = unitsLabel(r);
   const fee = r.platformFeeClp || 0;
@@ -140,7 +141,9 @@ export const ReceiptPaper: React.FC<{
   const comNet = netOf(commission);
   const comIva = commission - comNet;
 
-  // Datos de la reserva: cada uno ve su propio RUT; del otro, solo el nombre.
+  // Datos de la reserva: cada uno ve su propio RUT completo; del otro, solo el nombre.
+  const rawRut = (showBoleta ? boleta?.recipientRut : null) || (isTenant ? r.tenantRut : r.ownerRut) || '';
+  const myRut = rawRut ? formatRut(rawRut) : '';
   const reservationData = (
     <div className="mt-2 space-y-0.5 text-[11px]">
       <Line k="FECHA:" v={fmtDateTime(showBoleta ? boleta!.issuedAt : paidAt)} />
@@ -148,13 +151,14 @@ export const ReceiptPaper: React.FC<{
       {isTenant ? (
         <>
           <Line k="CLIENTE:" v={<span className="uppercase">{r.tenantName}</span>} />
-          {r.tenantRut && <Line k="RUT:" v={<Sensitive kind="rut" value={r.tenantRut} printFull />} />}
+          {myRut && <Line k="RUT:" v={myRut} />}
           {!showBoleta && <Line k="PROPIETARIO:" v={<span className="uppercase">{r.ownerName}</span>} />}
         </>
       ) : (
         <>
           <Line k={showBoleta ? 'CLIENTE:' : 'PROPIETARIO:'} v={<span className="uppercase">{r.ownerName}</span>} />
-          {r.ownerRut && <Line k="RUT:" v={<Sensitive kind="rut" value={r.ownerRut} printFull />} />}
+          {myRut && <Line k="RUT:" v={myRut} />}
+          {showBoleta && isFactura && recipientGiro && <Line k="GIRO:" v={<span className="block max-w-[12rem] text-right uppercase">{recipientGiro}</span>} />}
           {!showBoleta && <Line k="ARRENDATARIO:" v={<span className="uppercase">{r.tenantName}</span>} />}
         </>
       )}
@@ -294,7 +298,9 @@ export const ReceiptPaper: React.FC<{
         )}
         <p className="text-[10px] uppercase text-stone-600">
           {boleta
-            ? `La comisión tiene su ${docName.toLowerCase()} N° ${boleta.folio} (pestaña «${isFactura ? 'Factura' : 'Boleta'} Spotly»).`
+            ? isFactura
+              ? `La comisión tiene su factura N° ${boleta.folio} (pestaña «Factura Spotly»). Su IVA (${peso(comIva)}) lo recuperas como crédito fiscal en tu F29.`
+              : `La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»).`
             : 'El documento de la comisión se emite al liquidar.'}
         </p>
       </div>
@@ -320,7 +326,7 @@ export const ReceiptPaper: React.FC<{
 
       <header className="mt-3 text-center uppercase">
         <p className="text-[13.5px] font-bold">{issuerName}</p>
-        {issuerRut && <p>R.U.T. {issuerRut}</p>}
+        <p>R.U.T. {issuerRut}</p>
         <p>Giro: intermediación de arriendos</p>
         {issuerAddress && <p className="text-[11px]">{issuerAddress}</p>}
         {showBoleta && <p className="mt-1 text-[13px] font-bold">{isFactura ? 'Factura electrónica' : 'Boleta electrónica'}</p>}
@@ -360,6 +366,7 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
   const [documents, setDocuments] = useState<TaxDocument[]>([]);
   const [kind, setKind] = useState<Kind>('summary');
   const [ivaWithheld, setIvaWithheld] = useState(0);
+  const [giro, setGiro] = useState<string | null>(null);
   const myDoc = documents.find((d) => (d.docType === 39 || d.docType === 33) && d.concept === (variant === 'tenant' ? 'cargo_servicio' : 'comision_propietario'));
   const hasBoleta = Boolean(myDoc);
   useEffect(() => {
@@ -367,6 +374,10 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
     getTaxDocuments(reservation.id).then((d) => alive && setDocuments(d));
     if (variant === 'owner')
       getMyPayouts().then((ps) => alive && setIvaWithheld(ps.find((p) => p.reservationId === reservation.id)?.ivaWithheldClp || 0));
+    if (variant === 'owner' && reservation.ownerId)
+      getTaxStatus(reservation.ownerId)
+        .then((t) => alive && setGiro(t?.activityName ? `${t.activityCode ? `${t.activityCode} · ` : ''}${t.activityName}` : null))
+        .catch(() => {});
     return () => {
       alive = false;
     };
@@ -445,6 +456,7 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
           kind={hasBoleta ? kind : 'summary'}
           documents={documents}
           ivaWithheldClp={ivaWithheld}
+          recipientGiro={giro}
         />
       </div>
     </div>,
