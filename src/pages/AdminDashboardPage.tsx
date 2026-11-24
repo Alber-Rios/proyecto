@@ -4,7 +4,8 @@ import { getTodayIso } from '../utils/formatters.ts';
 import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
-import { adminSetTaxStatus, getTaxStatus, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
+import { adminSetTaxStatus, getTaxRoster, getTaxStatus, taxReviewDue, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
+import { downloadCsv } from '../utils/csv.ts';
 import { ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
 import { AuditPanel } from '../components/admin/AuditPanel.tsx';
 import { reservationLedger } from '../utils/ledger.ts';
@@ -195,10 +196,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
       alive = false;
     };
   }, [selectedUser?.id]);
-  const setTax = async (hasActivity: boolean) => {
+  // Nómina para el SII (Ley 21.713): situación de cada propietario, declaraciones de
+  // no obligado y anticipos de IVA retenidos.
+  const downloadTaxRoster = async () => {
+    try {
+      const rows = await getTaxRoster();
+      downloadCsv(`Nomina_tributaria_Spotly_${new Date().toISOString().slice(0, 10)}.csv`, [
+        ['Nombre', 'RUT', 'Correo', 'Inicio de actividades', 'Cumplimiento al día', 'Declaró no obligado', 'Última revisión', 'Revisión semestral pendiente', 'Espacios', 'Amoblados', 'Anticipo IVA retenido (CLP)'],
+        ...rows.map((t) => [
+          t.fullName, t.rut, t.email, t.hasActivity ? 'Sí' : 'No', t.upToDate ? 'Sí' : 'No', t.exemptDeclared ? 'Sí' : 'No',
+          t.checkedAt ? new Date(t.checkedAt).toLocaleDateString('es-CL') : '', t.reviewDue ? 'Sí' : 'No', t.spacesCount, t.furnishedCount, t.withheldClp,
+        ]),
+      ]);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'No se pudo generar la nómina.');
+    }
+  };
+  const setTax = async (hasActivity: boolean, upToDate = hasActivity) => {
     if (!selectedUser) return;
     setTaxBusy(true);
-    const r = await adminSetTaxStatus(selectedUser.id, hasActivity, hasActivity);
+    const r = await adminSetTaxStatus(selectedUser.id, hasActivity, upToDate);
     setTaxBusy(false);
     if (r.success && r.status) setSelectedTax(r.status);
     else window.alert(r.message || 'No se pudo guardar.');
@@ -363,6 +380,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 <span className="text-xs font-semibold text-slate-500 tabular-nums">
                   {filteredUsers.length} registros
                 </span>
+                <button
+                  type="button"
+                  onClick={downloadTaxRoster}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  title="Nómina de propietarios para el SII (Ley 21.713)"
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" /> Nómina SII
+                </button>
               </div>
 
               {profilesLoadError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">No se pudo consultar la lista de usuarios. Revisa la conexión a Supabase y la política de acceso a perfiles. {profilesLoadError}</div>}
@@ -700,42 +725,51 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                               <tr className="hover:bg-slate-50/60 align-top">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">Situación tributaria (SII)</td>
-                                <td className="py-2.5 px-4 text-slate-600">Inicio de actividades al día (para cobrar IVA en amoblados)</td>
+                                <td className="py-2.5 px-4 text-slate-600">Inicio de actividades y cumplimiento (Ley 21.713, revisión enero y julio)</td>
                                 <td className="py-2.5 px-4 text-slate-700">
                                   {!selectedTax ? (
                                     'Aún no consulta su situación'
-                                  ) : selectedTax.hasActivity ? (
-                                    <>
-                                      Giro {selectedTax.activityCode || '—'}
-                                      {selectedTax.activityStart ? ` · desde ${new Date(`${selectedTax.activityStart}T12:00:00`).toLocaleDateString('es-CL')}` : ''}
-                                      <span className="block text-xs text-slate-500">
-                                        {selectedTax.source === 'admin' ? 'Corregido por administración' : 'Consulta simulada'} ·{' '}
-                                        {new Date(selectedTax.checkedAt).toLocaleDateString('es-CL')}
-                                      </span>
-                                    </>
                                   ) : (
                                     <>
-                                      Sin inicio de actividades
+                                      {selectedTax.hasActivity
+                                        ? `Inicio de actividades · giro ${selectedTax.activityCode || '—'}${selectedTax.upToDate ? '' : ' · con incumplimientos'}`
+                                        : selectedTax.exemptDeclared
+                                          ? 'Declaró no estar obligado (solo sin amoblar)'
+                                          : 'Sin inicio de actividades'}
                                       <span className="block text-xs text-slate-500">
-                                        {selectedTax.source === 'admin' ? 'Corregido por administración' : 'Consulta simulada'}
+                                        {selectedTax.source === 'admin' ? 'Corregido por administración' : 'Consulta simulada'} · revisado el{' '}
+                                        {new Date(selectedTax.checkedAt).toLocaleDateString('es-CL')}
+                                        {taxReviewDue(selectedTax) ? ' · revisión semestral pendiente' : ''}
                                       </span>
                                     </>
                                   )}
                                   <span className="mt-1.5 flex flex-wrap gap-1.5">
-                                    <button type="button" disabled={taxBusy} onClick={() => setTax(true)} className="rounded-lg border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 cursor-pointer">
-                                      Marcar al día
+                                    <button type="button" disabled={taxBusy} onClick={() => setTax(true, true)} className="rounded-lg border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 cursor-pointer">
+                                      Al día
                                     </button>
-                                    <button type="button" disabled={taxBusy} onClick={() => setTax(false)} className="rounded-lg border border-rose-300 px-2 py-0.5 text-xs font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50 cursor-pointer">
-                                      Marcar sin inicio
+                                    <button type="button" disabled={taxBusy} onClick={() => setTax(true, false)} className="rounded-lg border border-amber-300 px-2 py-0.5 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-50 cursor-pointer">
+                                      Con incumplimiento
+                                    </button>
+                                    <button type="button" disabled={taxBusy} onClick={() => setTax(false, false)} className="rounded-lg border border-rose-300 px-2 py-0.5 text-xs font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50 cursor-pointer">
+                                      Sin inicio
                                     </button>
                                   </span>
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                                    !selectedTax ? 'bg-slate-100 text-slate-600' : taxStatusOk(selectedTax) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                                  }`}>
-                                    {!selectedTax ? 'Sin consultar' : taxStatusOk(selectedTax) ? 'Al día' : 'Sin inicio'}
-                                  </span>
+                                  {(() => {
+                                    const label = !selectedTax
+                                      ? ['Sin consultar', 'bg-slate-100 text-slate-600']
+                                      : taxStatusOk(selectedTax)
+                                        ? ['Al día', 'bg-emerald-50 text-emerald-700']
+                                        : selectedTax.hasActivity && taxReviewDue(selectedTax)
+                                          ? ['Revisión pendiente', 'bg-amber-50 text-amber-700']
+                                          : selectedTax.hasActivity
+                                            ? ['Incumplimiento', 'bg-rose-50 text-rose-700']
+                                            : selectedTax.exemptDeclared
+                                              ? ['Declaró no obligado', 'bg-slate-100 text-slate-700']
+                                              : ['Sin inicio', 'bg-rose-50 text-rose-700'];
+                                    return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${label[1]}`}>{label[0]}</span>;
+                                  })()}
                                 </td>
                               </tr>
                             </tbody>

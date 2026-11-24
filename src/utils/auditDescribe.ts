@@ -126,6 +126,10 @@ export function describeAudit(action: string, d: Details = {}): string {
         : 'Consultó su situación tributaria (simulada): sin inicio de actividades al día';
     case 'TAX_STATUS_SET_BY_ADMIN':
       return `Administración marcó la situación tributaria como ${d.hasActivity && d.upToDate ? 'al día' : 'sin inicio de actividades'}`;
+    case 'TAX_EXEMPTION_DECLARED':
+      return 'Declaró que su actividad no está sujeta a iniciar actividades (Ley 21.713)';
+    case 'TAX_IVA_WITHHELD':
+      return `Anticipo de IVA retenido en la liquidación: ${clp(d.withheldClp)} (${Math.round(Number(d.rate) * 100)} %, Ley 21.713)`;
     case 'PAYOUT_BATCH_PAID':
       return `Depósito del martes: ${clp(d.amountClp)} por ${d.count ?? '—'} arriendo${Number(d.count) === 1 ? '' : 's'}${d.transferReference ? ` · ref. ${d.transferReference}` : ''}`;
     case 'BANK_ACCOUNT_SAVED':

@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { LEGAL_ENTITY } from '../data/legalEntity.ts';
 import type { PaymentRecord, Reservation } from '../types.ts';
 import { formatRut } from '../utils/formatters.ts';
-import { getTaxDocuments, type TaxDocument } from '../lib/financeApi.ts';
+import { getMyPayouts, getTaxDocuments, type TaxDocument } from '../lib/financeApi.ts';
 
 // Comprobante con formato de boleta térmica (como las del comercio en Chile).
 // No es un DTE: la boleta electrónica real necesita folio y timbre del SII,
@@ -109,7 +109,9 @@ export const ReceiptPaper: React.FC<{
   kind?: Kind;
   /** Documentos tributarios simulados de la reserva. */
   documents?: TaxDocument[];
-}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, kind = 'summary', documents = [] }) => {
+  /** Anticipo de IVA retenido en la liquidación (Ley 21.713). */
+  ivaWithheldClp?: number;
+}> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, kind = 'summary', documents = [], ivaWithheldClp = 0 }) => {
   const isTenant = variant === 'tenant';
   const concept = isTenant ? 'cargo_servicio' : 'comision_propietario';
   const boleta = documents.find((d) => d.docType === 39 && d.concept === concept);
@@ -125,7 +127,7 @@ export const ReceiptPaper: React.FC<{
   const commissionPct = String(Math.round((r.ownerCommissionRate || 0) * 1000) / 10).replace('.', ',');
   const paidAt = payment?.transactionDate || r.paidAt || r.confirmedAt || r.createdAt;
   const refunded = r.refundAmountClp || payment?.refundedAmountClp || 0;
-  const ownerGets = r.subtotalClp - commission;
+  const ownerGets = r.subtotalClp - commission - ivaWithheldClp;
   const rentIva = r.rentIvaClp || 0;
   const rentNet = r.subtotalClp - rentIva;
   const unitNet = qty > 0 ? Math.round(rentNet / qty) : rentNet;
@@ -252,6 +254,14 @@ export const ReceiptPaper: React.FC<{
         <Line k="IVA ARRIENDO 19%" v={rentIva > 0 ? `+${peso(rentIva)}` : 'EXENTO'} />
         <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={`-${peso(netOf(commission))}`} />
         <Line k="IVA COMISIÓN 19%" v={`-${peso(commission - netOf(commission))}`} />
+        {ivaWithheldClp > 0 && (
+          <>
+            <Line k="ANTICIPO IVA RETENIDO" v={`-${peso(ivaWithheldClp)}`} />
+            <p className="pl-2 text-[10px] uppercase text-stone-600">
+              Ley 21.713: no acreditaste cumplimiento tributario este semestre. Spotly lo paga al SII y tú lo descuentas en tu F29.
+            </p>
+          </>
+        )}
         <Rule />
         <Line k={<span className="text-[15px]">A DEPOSITAR</span>} v={<span className="text-[15px]">{peso(ownerGets)}</span>} strong />
         <Line k="DEPÓSITO" v={r.status === 'completed' ? `MARTES ${nextTuesday(r.endDate)}` : 'MARTES TRAS EL ARRIENDO'} />
@@ -333,14 +343,17 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
   const furnished = Boolean(space?.isFurnished);
   const [documents, setDocuments] = useState<TaxDocument[]>([]);
   const [kind, setKind] = useState<Kind>('summary');
+  const [ivaWithheld, setIvaWithheld] = useState(0);
   const hasBoleta = documents.some((d) => d.docType === 39 && d.concept === (variant === 'tenant' ? 'cargo_servicio' : 'comision_propietario'));
   useEffect(() => {
     let alive = true;
     getTaxDocuments(reservation.id).then((d) => alive && setDocuments(d));
+    if (variant === 'owner')
+      getMyPayouts().then((ps) => alive && setIvaWithheld(ps.find((p) => p.reservationId === reservation.id)?.ivaWithheldClp || 0));
     return () => {
       alive = false;
     };
-  }, [reservation.id]);
+  }, [reservation.id, variant]);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -414,6 +427,7 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
           variant={variant}
           kind={hasBoleta ? kind : 'summary'}
           documents={documents}
+          ivaWithheldClp={ivaWithheld}
         />
       </div>
     </div>,

@@ -1368,10 +1368,13 @@ BEGIN
 
   -- Amoblado = el arriendo lleva IVA: solo puede cobrarlo quien tiene inicio de
   -- actividades al día en el SII (ver 7e). Los espacios ya amoblados no se tocan.
+  IF TG_OP = 'INSERT' AND NOT public.owner_can_publish(auth.uid()) THEN
+    RAISE EXCEPTION 'Antes de publicar debes revisar tu situación tributaria: inicio de actividades en el SII o declarar que no estás obligado (Ley 21.713).';
+  END IF;
   IF COALESCE(NEW.is_furnished, false)
      AND (TG_OP = 'INSERT' OR NOT COALESCE(OLD.is_furnished, false))
      AND NOT public.owner_tax_ok(CASE WHEN TG_OP = 'INSERT' THEN auth.uid() ELSE OLD.owner_id END) THEN
-    RAISE EXCEPTION 'Para publicar un espacio amoblado necesitas inicio de actividades al día en el SII. Revisa tu situación tributaria o publícalo sin amoblar.';
+    RAISE EXCEPTION 'Para publicar un espacio amoblado necesitas inicio de actividades y cumplimiento tributario al día en el SII. Revisa tu situación tributaria o publícalo sin amoblar.';
   END IF;
 
   -- Nombre y RUT del propietario salen del perfil, no del cliente (se copian
@@ -4237,28 +4240,38 @@ CREATE TRIGGER owner_payouts_tax_document
 
 
 -- ------------------------------------------------------------------------------
--- 7e. SITUACIÓN TRIBUTARIA DEL PROPIETARIO (SIMULADA)
+-- 7e. CUMPLIMIENTO TRIBUTARIO DE LOS PROPIETARIOS (Ley 21.713) — SIMULADO
 -- ------------------------------------------------------------------------------
--- Para cobrar IVA en un arriendo amoblado, el propietario debe tener inicio de
--- actividades en el SII y estar al día. En producción esto se consulta por RUT con
--- un servicio API (proveedor de facturación electrónica). Para el proyecto de título
--- la consulta es SIMULADA y determinista: si la suma de los dígitos del RUT (sin el
--- dígito verificador) es par, tiene inicio de actividades al día; si es impar, no.
--- El administrador puede corregir el resultado para demostrar ambos casos.
+-- Como plataforma digital de intermediación, Spotly debe (art. 68 Código Tributario,
+-- Res. Ex. SII N° 99 y N° 168 de 2025):
+--   1. Verificar que el oferente tenga INICIO DE ACTIVIDADES vigente antes de
+--      intermediar, o registrar su declaración de que no está obligado a iniciarlas.
+--   2. Verificar su CUMPLIMIENTO TRIBUTARIO al inicio de la relación y luego cada
+--      semestre (enero y julio).
+--   3. Si el oferente no acredita cumplimiento, aplicar un ANTICIPO DE IVA (hasta el
+--      19 % del neto) sobre sus operaciones gravadas y enterarlo al SII en el F29.
+--      (Si además interviene un operador de medios de pago, retiene solo él; aquí
+--      Spotly liquida al propietario, por eso lo aplica en la liquidación.)
+-- En producción la consulta se hace por RUT con la API del SII. Para el proyecto de
+-- título es SIMULADA y determinista: si la suma de los dígitos del RUT (sin el dígito
+-- verificador) es par, tiene inicio de actividades y cumplimiento al día; si es
+-- impar, no tiene inicio. El administrador puede corregir el resultado.
 CREATE TABLE IF NOT EXISTS public.tax_status (
   user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
   rut TEXT NOT NULL,
-  has_activity BOOLEAN NOT NULL,
-  up_to_date BOOLEAN NOT NULL,
+  has_activity BOOLEAN NOT NULL,          -- inicio de actividades vigente
+  up_to_date BOOLEAN NOT NULL,            -- certificado de cumplimiento tributario al día
   activity_start DATE,
   activity_code TEXT,
   activity_name TEXT,
+  exempt_declared BOOLEAN NOT NULL DEFAULT false,   -- declaró no estar obligado (solo sin amoblar)
+  exempt_declared_at TIMESTAMPTZ,
   source TEXT NOT NULL DEFAULT 'simulado' CHECK (source IN ('simulado', 'admin', 'api')),
   simulated BOOLEAN NOT NULL DEFAULT true,
   checked_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 COMMENT ON TABLE public.tax_status IS
-  'Inicio de actividades y situación tributaria del propietario (consulta SIMULADA al SII)';
+  'Inicio de actividades y cumplimiento tributario del propietario (consulta SIMULADA al SII, Ley 21.713)';
 
 ALTER TABLE public.tax_status ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Situación tributaria: propia o admin" ON public.tax_status;
@@ -4266,7 +4279,32 @@ CREATE POLICY "Situación tributaria: propia o admin" ON public.tax_status
   FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR public.is_admin());
 
--- ¿Puede este propietario cobrar IVA (publicar como amoblado)?
+-- Inicio del semestre de revisión vigente (1 de enero o 1 de julio, hora de Chile).
+CREATE OR REPLACE FUNCTION public.tax_semester_start(p_day DATE DEFAULT NULL)
+RETURNS DATE
+LANGUAGE sql
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT make_date(extract(year FROM d)::int, CASE WHEN extract(month FROM d) >= 7 THEN 7 ELSE 1 END, 1)
+  FROM (SELECT COALESCE(p_day, public.chile_today()) AS d) x;
+$$;
+
+-- ¿Acredita cumplimiento en el semestre vigente? (inicio + cumplimiento + revisado este semestre)
+CREATE OR REPLACE FUNCTION public.owner_tax_compliant(p_user UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE((
+    SELECT has_activity AND up_to_date
+       AND (checked_at AT TIME ZONE 'America/Santiago')::date >= public.tax_semester_start()
+    FROM public.tax_status WHERE user_id = p_user), false);
+$$;
+
+-- ¿Puede cobrar IVA (publicar como amoblado)?
 CREATE OR REPLACE FUNCTION public.owner_tax_ok(p_user UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -4274,7 +4312,18 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT COALESCE((SELECT has_activity AND up_to_date FROM public.tax_status WHERE user_id = p_user), false);
+  SELECT public.owner_tax_compliant(p_user);
+$$;
+
+-- ¿Puede publicar? Inicio de actividades vigente, o declaración de no obligado.
+CREATE OR REPLACE FUNCTION public.owner_can_publish(p_user UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE((SELECT has_activity OR exempt_declared FROM public.tax_status WHERE user_id = p_user), false);
 $$;
 
 -- Consulta (simulada) de la situación tributaria del usuario conectado, por su RUT.
@@ -4311,6 +4360,7 @@ BEGIN
           'simulado', true, now())
   ON CONFLICT (user_id) DO UPDATE SET
     rut = EXCLUDED.rut,
+    -- Una corrección del administrador se respeta; la revisión solo renueva la fecha.
     has_activity = CASE WHEN t.source = 'admin' THEN t.has_activity ELSE EXCLUDED.has_activity END,
     up_to_date = CASE WHEN t.source = 'admin' THEN t.up_to_date ELSE EXCLUDED.up_to_date END,
     activity_start = CASE WHEN t.source = 'admin' THEN t.activity_start ELSE EXCLUDED.activity_start END,
@@ -4322,6 +4372,32 @@ BEGIN
   PERFORM public.write_audit('TAX_STATUS_CHECKED', 'info', v_uid::text,
     jsonb_build_object('hasActivity', v_row.has_activity, 'upToDate', v_row.up_to_date,
                        'activityCode', v_row.activity_code, 'simulated', true));
+  RETURN v_row;
+END;
+$$;
+
+-- Declaración del propietario: su actividad no está sujeta a iniciar actividades
+-- (por ejemplo, arriendo ocasional de un inmueble sin amoblar). Queda registrada para
+-- informarla al SII. No sirve para espacios amoblados (esos llevan IVA).
+CREATE OR REPLACE FUNCTION public.declare_tax_exemption()
+RETURNS public.tax_status
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_rut TEXT;
+  v_row public.tax_status;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión'; END IF;
+  SELECT rut INTO v_rut FROM public.profiles WHERE id = v_uid;
+  IF v_rut IS NULL THEN RAISE EXCEPTION 'Tu perfil no tiene RUT'; END IF;
+  INSERT INTO public.tax_status AS t (user_id, rut, has_activity, up_to_date, exempt_declared, exempt_declared_at, source, checked_at)
+  VALUES (v_uid, v_rut, false, false, true, now(), 'simulado', now())
+  ON CONFLICT (user_id) DO UPDATE SET exempt_declared = true, exempt_declared_at = now()
+  RETURNING * INTO v_row;
+  PERFORM public.write_audit('TAX_EXEMPTION_DECLARED', 'info', v_uid::text, jsonb_build_object('rut', v_rut));
   RETURN v_row;
 END;
 $$;
@@ -4356,6 +4432,84 @@ BEGIN
   PERFORM public.write_audit('TAX_STATUS_SET_BY_ADMIN', 'warning', auth.uid()::text,
     jsonb_build_object('targetUserId', p_user, 'hasActivity', v_row.has_activity, 'upToDate', v_row.up_to_date));
   RETURN v_row;
+END;
+$$;
+
+-- Anticipo de IVA en la liquidación: si el propietario no acredita cumplimiento en el
+-- semestre vigente y el arriendo está afecto a IVA (amoblado), se retiene el anticipo
+-- (tasa en platform_settings, máximo 19 % del neto) y se descuenta del depósito.
+ALTER TABLE public.owner_payouts
+  ADD COLUMN IF NOT EXISTS iva_withheld_clp NUMERIC(12,0) NOT NULL DEFAULT 0 CHECK (iva_withheld_clp >= 0),
+  ADD COLUMN IF NOT EXISTS iva_withheld_rate NUMERIC(5,4);
+ALTER TABLE public.platform_settings
+  ADD COLUMN IF NOT EXISTS iva_withholding_rate NUMERIC(5,4) NOT NULL DEFAULT 0.19
+    CHECK (iva_withholding_rate >= 0 AND iva_withholding_rate <= 0.19);
+
+CREATE OR REPLACE FUNCTION public.owner_payouts_iva_withholding()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  r public.reservations;
+  v_rate NUMERIC;
+  v_net NUMERIC;
+BEGIN
+  SELECT * INTO r FROM public.reservations WHERE id = NEW.reservation_id;
+  IF NOT FOUND OR COALESCE(r.rent_iva_clp, 0) <= 0 OR public.owner_tax_compliant(NEW.owner_id) THEN
+    RETURN NEW;
+  END IF;
+  SELECT COALESCE(iva_withholding_rate, 0.19) INTO v_rate FROM public.platform_settings LIMIT 1;
+  v_rate := LEAST(COALESCE(v_rate, 0.19), 0.19);
+  v_net := r.subtotal_clp - r.rent_iva_clp;
+  NEW.iva_withheld_rate := v_rate;
+  NEW.iva_withheld_clp := LEAST(round(v_net * v_rate), NEW.amount_clp);
+  NEW.amount_clp := NEW.amount_clp - NEW.iva_withheld_clp;
+  PERFORM public.write_audit('TAX_IVA_WITHHELD', 'warning', NEW.owner_id::text,
+    jsonb_build_object('reservationId', NEW.reservation_id, 'withheldClp', NEW.iva_withheld_clp, 'rate', v_rate));
+  PERFORM public.notify_user(NEW.owner_id, 'Anticipo de IVA retenido',
+    format('No acreditaste cumplimiento tributario este semestre: de tu arriendo "%s" se retuvieron %s como anticipo de IVA (Ley 21.713). Puedes imputarlo en tu declaración de IVA.',
+      r.space_title, to_char(NEW.iva_withheld_clp, 'FM999G999G999')),
+    'warning', '/owner');
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS owner_payouts_iva_withholding ON public.owner_payouts;
+CREATE TRIGGER owner_payouts_iva_withholding
+  BEFORE INSERT ON public.owner_payouts
+  FOR EACH ROW EXECUTE FUNCTION public.owner_payouts_iva_withholding();
+
+-- Nómina para el SII: situación de cada propietario, declaraciones de no obligado y
+-- anticipos de IVA retenidos (para el F29 y los reportes semestrales).
+CREATE OR REPLACE FUNCTION public.admin_tax_roster(p_from DATE DEFAULT NULL, p_to DATE DEFAULT NULL)
+RETURNS TABLE (
+  user_id UUID, full_name TEXT, rut TEXT, email TEXT,
+  has_activity BOOLEAN, up_to_date BOOLEAN, exempt_declared BOOLEAN,
+  checked_at TIMESTAMPTZ, review_due BOOLEAN, spaces_count BIGINT, furnished_count BIGINT,
+  withheld_clp NUMERIC
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'Solo un administrador puede hacer esto'; END IF;
+  RETURN QUERY
+  SELECT p.id, p.full_name, p.rut, p.email,
+         COALESCE(t.has_activity, false), COALESCE(t.up_to_date, false), COALESCE(t.exempt_declared, false),
+         t.checked_at,
+         (t.checked_at IS NULL OR (t.checked_at AT TIME ZONE 'America/Santiago')::date < public.tax_semester_start()),
+         (SELECT count(*) FROM public.spaces s WHERE s.owner_id = p.id AND s.status <> 'deleted'),
+         (SELECT count(*) FROM public.spaces s WHERE s.owner_id = p.id AND s.status <> 'deleted' AND s.is_furnished),
+         COALESCE((SELECT sum(op.iva_withheld_clp) FROM public.owner_payouts op
+                   WHERE op.owner_id = p.id
+                     AND (p_from IS NULL OR op.created_at >= p_from)
+                     AND (p_to IS NULL OR op.created_at < p_to + 1)), 0)
+  FROM public.profiles p
+  LEFT JOIN public.tax_status t ON t.user_id = p.id
+  WHERE p.role = 'owner' OR EXISTS (SELECT 1 FROM public.spaces s WHERE s.owner_id = p.id)
+  ORDER BY p.full_name;
 END;
 $$;
 
@@ -4836,6 +4990,8 @@ GRANT EXECUTE ON FUNCTION public.admin_refund_transfers() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_mark_refund_transfer_paid(TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.request_refund_transfer(TEXT, TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.check_my_tax_status() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.declare_tax_exemption() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_tax_roster(DATE, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_tax_status(UUID, BOOLEAN, BOOLEAN) TO authenticated;
 
 -- ==============================================================================

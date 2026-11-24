@@ -1,5 +1,6 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
 import { IdentityNotice } from '../components/IdentityNotice.tsx';
+import { TaxReviewNotice } from '../components/TaxReviewNotice.tsx';
 import { Sensitive } from '../components/Sensitive.tsx';
 import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -683,6 +684,12 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
       >
       <div className="space-y-6">
       <IdentityNotice user={currentUser} onVerify={() => onNavigate('onboarding')} />
+      <TaxReviewNotice
+        userId={currentUser.id}
+        spacesCount={mySpaces.length}
+        furnishedCount={mySpaces.filter((sp) => sp.isFurnished && sp.status !== 'deleted').length}
+        onOpen={() => setActiveTab('finances')}
+      />
 
       {nextPendingRequest && (
         <div

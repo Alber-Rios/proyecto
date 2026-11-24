@@ -173,6 +173,8 @@ export interface OwnerPayout {
   grossClp: number;
   ownerCommissionClp: number;
   amountClp: number;
+  /** Anticipo de IVA retenido por no acreditar cumplimiento tributario (Ley 21.713). */
+  ivaWithheldClp: number;
   status: PayoutItem['status'];
   transferReference: string | null;
   paidAt: string | null;
@@ -185,7 +187,7 @@ export async function getMyPayouts(): Promise<OwnerPayout[]> {
   if (!isSupabaseConfigured()) return [];
   const { data, error } = await supabase
     .from('owner_payouts')
-    .select('id, reservation_id, gross_clp, owner_commission_clp, amount_clp, status, transfer_reference, paid_at, created_at, scheduled_for')
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(500);
   if (error) return [];
@@ -195,6 +197,7 @@ export async function getMyPayouts(): Promise<OwnerPayout[]> {
     grossClp: num(p.gross_clp),
     ownerCommissionClp: num(p.owner_commission_clp),
     amountClp: num(p.amount_clp),
+    ivaWithheldClp: num(p.iva_withheld_clp),
     status: p.status,
     transferReference: p.transfer_reference,
     paidAt: p.paid_at,
@@ -544,10 +547,28 @@ export interface TaxStatus {
   activityStart: string | null;
   activityCode: string | null;
   activityName: string | null;
+  /** Declaró que su actividad no está sujeta a iniciar actividades (solo sin amoblar). */
+  exemptDeclared: boolean;
+  exemptDeclaredAt: string | null;
   source: 'simulado' | 'admin' | 'api';
   simulated: boolean;
   checkedAt: string;
 }
+
+/** 1 de enero o 1 de julio del semestre vigente (fecha de Chile). */
+export function taxSemesterStart(now = new Date()): Date {
+  const cl = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  return new Date(cl.getFullYear(), cl.getMonth() >= 6 ? 6 : 0, 1);
+}
+/** Próxima revisión semestral obligatoria (1 de enero o 1 de julio). */
+export function nextTaxReview(now = new Date()): Date {
+  const start = taxSemesterStart(now);
+  return start.getMonth() === 0 ? new Date(start.getFullYear(), 6, 1) : new Date(start.getFullYear() + 1, 0, 1);
+}
+/** Falta revisar en este semestre (Ley 21.713: revisión en enero y julio). */
+export const taxReviewDue = (t: TaxStatus | null | undefined) => !t || new Date(t.checkedAt) < taxSemesterStart();
+/** Puede publicar: inicio de actividades vigente o declaración de no obligado. */
+export const taxCanPublish = (t: TaxStatus | null | undefined) => Boolean(t && (t.hasActivity || t.exemptDeclared));
 
 const mapTaxStatus = (r: any): TaxStatus => ({
   userId: r.user_id,
@@ -556,12 +577,15 @@ const mapTaxStatus = (r: any): TaxStatus => ({
   activityStart: r.activity_start || null,
   activityCode: r.activity_code || null,
   activityName: r.activity_name || null,
+  exemptDeclared: Boolean(r.exempt_declared),
+  exemptDeclaredAt: r.exempt_declared_at || null,
   source: r.source,
   simulated: Boolean(r.simulated),
   checkedAt: r.checked_at,
 });
 
-export const taxStatusOk = (t: TaxStatus | null | undefined) => Boolean(t && t.hasActivity && t.upToDate);
+/** Acredita cumplimiento este semestre: puede cobrar IVA y no se le retiene anticipo. */
+export const taxStatusOk = (t: TaxStatus | null | undefined) => Boolean(t && t.hasActivity && t.upToDate && !taxReviewDue(t));
 
 /** Situación guardada de un usuario (la propia, o cualquiera si es admin). null si nunca se consultó. */
 export async function getTaxStatus(userId: string): Promise<TaxStatus | null> {
@@ -591,4 +615,46 @@ export async function adminSetTaxStatus(userId: string, hasActivity: boolean, up
   if (error) return { success: false, message: error.message };
   const row = Array.isArray(data) ? data[0] : data;
   return { success: true, status: mapTaxStatus(row) };
+}
+
+export async function declareTaxExemption(): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
+  const { data, error } = await supabase.rpc('declare_tax_exemption');
+  if (error) return { success: false, message: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  return { success: true, status: mapTaxStatus(row) };
+}
+
+export interface TaxRosterRow {
+  userId: string;
+  fullName: string;
+  rut: string;
+  email: string;
+  hasActivity: boolean;
+  upToDate: boolean;
+  exemptDeclared: boolean;
+  checkedAt: string | null;
+  reviewDue: boolean;
+  spacesCount: number;
+  furnishedCount: number;
+  withheldClp: number;
+}
+
+/** Nómina para el SII (solo admin): situación de cada propietario y anticipos de IVA retenidos. */
+export async function getTaxRoster(from?: string, to?: string): Promise<TaxRosterRow[]> {
+  const { data, error } = await supabase.rpc('admin_tax_roster', { p_from: from || null, p_to: to || null });
+  if (error) throw new Error(error.message);
+  return (data || []).map((r: any) => ({
+    userId: r.user_id,
+    fullName: r.full_name,
+    rut: r.rut,
+    email: r.email,
+    hasActivity: Boolean(r.has_activity),
+    upToDate: Boolean(r.up_to_date),
+    exemptDeclared: Boolean(r.exempt_declared),
+    checkedAt: r.checked_at,
+    reviewDue: Boolean(r.review_due),
+    spacesCount: Number(r.spaces_count),
+    furnishedCount: Number(r.furnished_count),
+    withheldClp: Number(r.withheld_clp),
+  }));
 }

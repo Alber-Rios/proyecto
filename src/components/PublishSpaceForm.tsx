@@ -1,6 +1,6 @@
 import { communesOf, normalizeCommune } from '../data/chileCommunes.ts';
 import { OwnerPriceBreakdown, TenantPriceBreakdown } from './PriceBreakdown.tsx';
-import { DEFAULT_PLATFORM_SETTINGS, getTaxStatus, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
+import { DEFAULT_PLATFORM_SETTINGS, getTaxStatus, taxCanPublish, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
 import { TaxStatusCheck } from './TaxStatusCheck.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { platformFeeFor, rentIvaFor } from '../utils/pricing.ts';
@@ -195,6 +195,10 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
       alive = false;
     };
   }, [currentUser?.id]);
+  // Ley 21.713: para publicar, inicio de actividades o declaración de no obligado;
+  // para amoblado (cobra IVA), cumplimiento tributario al día. Editar no lo exige.
+  const isNew = !initial?.id;
+  const publishBlocked = isNew && !taxCanPublish(taxStatus);
   const furnishedBlocked = isFurnished && !wasFurnished && !taxStatusOk(taxStatus);
   const avaluo = initial?.avaluoFiscalClp ? String(initial.avaluoFiscalClp) : '';
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities || []);
@@ -272,8 +276,12 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
       setError(problem);
       return;
     }
+    if (publishBlocked && !isFurnished) {
+      setError('Antes de publicar revisa tu situación tributaria: necesitas inicio de actividades en el SII o declarar que no estás obligado.');
+      return;
+    }
     if (furnishedBlocked) {
-      setError('Para publicar como amoblado necesitas inicio de actividades al día en el SII. Revisa tu situación tributaria o desmarca «amoblado».');
+      setError('Para publicar como amoblado necesitas inicio de actividades y cumplimiento tributario al día en el SII. Revisa tu situación tributaria o desmarca «amoblado».');
       return;
     }
 
@@ -778,12 +786,14 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   arriendo, y emites tu boleta o factura. Spotly solo emite la de su comisión.
                 </li>
               </ul>
-              {isFurnished && (
-                <div className="mt-3 pl-8">
-                  <TaxStatusCheck status={taxStatus} loading={taxLoading} onChange={setTaxStatus} />
-                </div>
-              )}
             </div>
+
+            {(isNew || (isFurnished && !wasFurnished)) && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-slate-800">Tu situación tributaria</p>
+                <TaxStatusCheck status={taxStatus} loading={taxLoading} furnished={isFurnished} onChange={setTaxStatus} />
+              </div>
+            )}
 
             <div className="rounded-2xl border border-slate-200">
               <button
