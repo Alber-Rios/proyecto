@@ -157,11 +157,11 @@ export function describeAudit(action: string, d: Details = {}): string {
     case 'ROLE_CHANGED':
       return `Rol ${label(ROLE, d.from)} → ${label(ROLE, d.to)}`;
     case 'ADMIN_USER_SUSPENDED':
-      return 'Administración suspendió una cuenta';
+      return `Administración suspendió una cuenta${d.reason ? `: ${d.reason}` : ''}`;
     case 'ADMIN_USER_REACTIVATED':
-      return 'Administración reactivó una cuenta';
+      return `Administración reactivó una cuenta${d.reason ? `: ${d.reason}` : ''}`;
     case 'ADMIN_USER_ANONYMIZED':
-      return 'Administración anonimizó una cuenta';
+      return d.reason ? `Administración eliminó una cuenta: ${d.reason}` : 'Se anonimizó una cuenta a solicitud del titular';
     case 'PLATFORM_SETTINGS_CHANGED':
       return 'Se cambiaron las comisiones de la plataforma';
     case 'AUDIT_CHAIN_VERIFIED':

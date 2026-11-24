@@ -321,7 +321,9 @@ async function login(ctx: Ctx) {
     await audit(ctx, 'LOGIN_BLOCKED_SUSPENDED', 'security', data.user.id);
     return res.status(403).json({
       success: false,
-      message: `Tu cuenta está suspendida por administración${profile.suspended_reason ? ` (motivo: ${profile.suspended_reason})` : ''}. Escríbenos desde Ayuda y soporte.`,
+      message: /^Cuenta (eliminada|anonimizada)/.test(profile.suspended_reason || '')
+        ? `${profile.suspended_reason}.`
+        : `Tu cuenta está suspendida por administración${profile.suspended_reason ? ` (motivo: ${profile.suspended_reason})` : ''}. Escríbenos desde Ayuda y soporte.`,
     });
   }
 

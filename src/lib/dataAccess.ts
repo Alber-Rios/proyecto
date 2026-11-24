@@ -298,6 +298,12 @@ export async function updateReportInDb(id: string, status: UserReport['status'],
   return mapReportRow(data);
 }
 
+/** Solo admin: elimina la cuenta (anonimiza sus datos; reservas y pagos se conservan por ley). */
+export async function anonymizeUserInDb(userId: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_anonymize_user', { p_user_id: userId, p_reason: reason });
+  if (error) throw new Error(error.message);
+}
+
 export async function setUserSuspensionInDb(userId: string, suspend: boolean, reason: string): Promise<void> {
   const { error } = await supabase.rpc('admin_set_user_suspension', {
     p_user_id: userId,

@@ -2344,7 +2344,7 @@ $$;
 -- ---------- Derecho de supresión: anonimizar una cuenta ----------
 -- Las reservas, pagos y contratos se conservan por obligación legal y tributaria;
 -- se eliminan los datos personales del perfil y lo que no tiene valor legal.
-CREATE FUNCTION public.admin_anonymize_user(p_user_id UUID)
+CREATE FUNCTION public.admin_anonymize_user(p_user_id UUID, p_reason TEXT DEFAULT NULL)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2359,6 +2359,15 @@ BEGIN
   IF p_user_id = auth.uid() THEN
     RAISE EXCEPTION 'No puedes anonimizar tu propia cuenta';
   END IF;
+  IF public.is_admin() AND COALESCE(trim(p_reason), '') = '' THEN
+    RAISE EXCEPTION 'Indica el motivo de la eliminación';
+  END IF;
+  -- Con reservas en curso o próximas no se elimina: primero hay que cancelarlas o terminarlas.
+  IF EXISTS (SELECT 1 FROM public.reservations r
+             WHERE (r.tenant_id = p_user_id OR r.owner_id = p_user_id)
+               AND r.status IN ('pending', 'confirmed') AND r.end_date >= public.chile_today()) THEN
+    RAISE EXCEPTION 'Tiene reservas pendientes o próximas: cancélalas o espera que terminen antes de eliminar la cuenta';
+  END IF;
 
   v_prev := public.begin_trusted();
   UPDATE public.spaces SET status = 'paused' WHERE owner_id = p_user_id AND status <> 'paused';
@@ -2368,7 +2377,9 @@ BEGIN
       email = 'eliminado+' || replace(p_user_id::text, '-', '') || '@spotly.invalid',
       phone = NULL, avatar_url = NULL, birth_date = NULL, gender = 'prefiero_no_decir',
       kyc_data = '{}'::jsonb, commune = NULL, city = NULL,
-      is_suspended = true, suspended_reason = 'Cuenta anonimizada a solicitud del titular'
+      is_suspended = true,
+      suspended_reason = CASE WHEN NULLIF(trim(p_reason), '') IS NULL THEN 'Cuenta anonimizada a solicitud del titular'
+                              ELSE 'Cuenta eliminada por administración. Motivo: ' || left(trim(p_reason), 900) END
   WHERE id = p_user_id;
   DELETE FROM public.favorites WHERE user_id = p_user_id;
   DELETE FROM public.notifications WHERE user_id = p_user_id;
@@ -2376,7 +2387,7 @@ BEGIN
   PERFORM public.end_trusted(v_prev);
 
   PERFORM public.write_audit('ADMIN_USER_ANONYMIZED', 'critical', COALESCE(auth.uid()::text, 'system'),
-    jsonb_build_object('targetUserId', p_user_id));
+    jsonb_build_object('targetUserId', p_user_id, 'reason', p_reason));
 END;
 $$;
 
@@ -2717,7 +2728,8 @@ BEGIN
   PERFORM public.notify_user(p_user_id,
     CASE WHEN p_suspend THEN 'Cuenta suspendida' ELSE 'Cuenta reactivada' END,
     CASE WHEN p_suspend THEN 'Tu cuenta fue suspendida por administración. Motivo: ' || COALESCE(p_reason, 'no informado') || '. Escríbenos desde Ayuda y soporte.'
-         ELSE 'Tu cuenta fue reactivada. Ya puedes volver a operar en Spotly.' END,
+         ELSE 'Tu cuenta fue reactivada. Ya puedes volver a operar en Spotly.'
+              || COALESCE(' Mensaje de administración: ' || NULLIF(trim(p_reason), ''), '') END,
     CASE WHEN p_suspend THEN 'error' ELSE 'success' END, '/support');
 END;
 $$;
@@ -5102,7 +5114,7 @@ GRANT EXECUTE ON FUNCTION public.compute_discount(TEXT, NUMERIC) TO authenticate
 GRANT EXECUTE ON FUNCTION public.get_spaces_private_details() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_kpis(INTEGER) TO authenticated;                     -- valida is_admin()
 GRANT EXECUTE ON FUNCTION public.admin_set_user_suspension(UUID, BOOLEAN, TEXT) TO authenticated; -- valida is_admin()
-GRANT EXECUTE ON FUNCTION public.admin_anonymize_user(UUID) TO authenticated;              -- valida is_admin()
+GRANT EXECUTE ON FUNCTION public.admin_anonymize_user(UUID, TEXT) TO authenticated;              -- valida is_admin()
 GRANT EXECUTE ON FUNCTION public.expire_my_unanswered_requests() TO authenticated;      -- solo las del usuario
 GRANT EXECUTE ON FUNCTION public.period_range(DATE, DATE, INTEGER, INTEGER) TO anon, authenticated;
 -- Comisiones, liquidaciones, ganancias y auditoría (las admin_* validan is_admin()).

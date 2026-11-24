@@ -59,6 +59,7 @@ import {
   getPaymentsFromDb,
   insertReportToDb,
   setUserSuspensionInDb,
+  anonymizeUserInDb,
   getSpaceBlocksFromDb,
   insertSpaceBlockToDb,
   deleteSpaceBlockFromDb,
@@ -157,6 +158,8 @@ interface AppContextType {
   updateReservationStatus: (reservationId: string, status: ReservationStatus) => Promise<void>;
   // Admin actions
   adminSetUserSuspension: (userId: string, suspend: boolean, reason: string) => Promise<void>;
+  /** Elimina la cuenta con motivo (anonimiza; reservas y pagos se conservan). */
+  adminDeleteUser: (userId: string, reason: string) => Promise<void>;
   adminApproveKyc: (userId: string) => void;
   adminRejectKyc: (userId: string, reason: string) => void;
   adminToggleSpaceStatus: (spaceId: string, status: 'active' | 'paused' | 'pending_approval') => void;
@@ -1307,6 +1310,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const adminDeleteUser = async (userId: string, reason: string) => {
+    await anonymizeUserInDb(userId, reason);
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, fullName: 'Usuario eliminado', isSuspended: true, suspendedReason: `Cuenta eliminada por administración. Motivo: ${reason}` }
+          : u
+      )
+    );
+    setSpaces((prev) => prev.map((s) => (s.ownerId === userId ? { ...s, status: 'paused' } : s)));
+  };
+
   // Acciones exclusivas del Administrador
   const adminApproveKyc = (userId: string) => {
     setAllUsers((prev) =>
@@ -1805,6 +1820,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminApproveKyc,
         adminRejectKyc,
         adminSetUserSuspension,
+        adminDeleteUser,
         adminToggleSpaceStatus,
         reloadSpaces,
         adminResolveDispute,

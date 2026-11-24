@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Ban, Building2, CalendarX, ChevronLeft, ExternalLink, FileText, Flag, Search, Star, UserRound } from 'lucide-react';
+import { Ban, Building2, CalendarX, ChevronLeft, ExternalLink, FileText, Flag, Loader2, Search, ShieldOff, Star, Trash2, UserRound } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
 import { Sensitive } from '../Sensitive.tsx';
 import { getReportsFromDb, getReviewsByTenant, getReviewsForSpaces } from '../../lib/dataAccess.ts';
@@ -257,6 +257,8 @@ const UserDetail: React.FC<{
         </dl>
       </div>
 
+      <AccountActions user={user} />
+
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {/* Datos personales (enmascarados) */}
         <Card title="Datos personales" icon={<UserRound className="h-4 w-4 text-slate-500" aria-hidden="true" />}>
@@ -417,11 +419,155 @@ const UserDetail: React.FC<{
         </Card>
       )}
 
-      {user.isSuspended && (
-        <p className="flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-800">
-          <Ban className="h-4 w-4" aria-hidden="true" /> Esta cuenta está suspendida. Puedes reactivarla en Reportes y cuentas.
-        </p>
-      )}
     </div>
+  );
+};
+
+type Action = 'suspend' | 'reactivate' | 'delete';
+
+/** Cambiar el estado de la cuenta (suspender o reactivar) o eliminarla, siempre con un mensaje. */
+const AccountActions: React.FC<{ user: UserProfile }> = ({ user }) => {
+  const { currentUser, adminSetUserSuspension, adminDeleteUser } = useApp();
+  const [action, setAction] = useState<Action | null>(null);
+  const [message, setMessage] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const deleted = user.fullName === 'Usuario eliminado' || /^Cuenta (eliminada|anonimizada)/.test(user.suspendedReason || '');
+  const isSelf = currentUser?.id === user.id;
+  const isAdmin = user.role === 'admin';
+
+  const open = (a: Action) => {
+    setAction((cur) => (cur === a ? null : a));
+    setMessage('');
+    setConfirmDelete(false);
+    setError(null);
+    setDone(null);
+  };
+
+  const submit = async () => {
+    if (!action) return;
+    const text = message.trim();
+    if (action !== 'reactivate' && text.length < 5) return setError('Escribe el motivo (el usuario lo verá).');
+    if (action === 'delete' && !confirmDelete) return setError('Confirma que entiendes que no se puede deshacer.');
+    setBusy(true);
+    setError(null);
+    try {
+      if (action === 'delete') await adminDeleteUser(user.id, text);
+      else await adminSetUserSuspension(user.id, action === 'suspend', text);
+      setDone(action === 'delete' ? 'Cuenta eliminada.' : action === 'suspend' ? 'Cuenta suspendida y usuario avisado.' : 'Cuenta reactivada y usuario avisado.');
+      setAction(null);
+      setMessage('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo completar.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cfg: Record<Action, { title: string; label: string; help: string; button: string; tone: string }> = {
+    suspend: {
+      title: 'Suspender cuenta',
+      label: 'Motivo de la suspensión',
+      help: 'No podrá iniciar sesión, reservar ni publicar, y sus espacios activos se pausan. Recibe este mensaje y lo ve al intentar entrar.',
+      button: 'Suspender y avisar',
+      tone: 'border-amber-200 bg-amber-50',
+    },
+    reactivate: {
+      title: 'Reactivar cuenta',
+      label: 'Mensaje para el usuario (opcional)',
+      help: 'Podrá volver a operar. Sus espacios pausados siguen pausados hasta que los reactives.',
+      button: 'Reactivar y avisar',
+      tone: 'border-emerald-200 bg-emerald-50',
+    },
+    delete: {
+      title: 'Eliminar cuenta',
+      label: 'Motivo de la eliminación',
+      help: 'Se borran sus datos personales, tarjetas, favoritos y notificaciones, y sus espacios se pausan. Las reservas, pagos y contratos se conservan por obligación legal y tributaria. No se puede deshacer.',
+      button: 'Eliminar cuenta',
+      tone: 'border-rose-200 bg-rose-50',
+    },
+  };
+
+  return (
+    <Card title="Estado de la cuenta" icon={<ShieldOff className="h-4 w-4 text-slate-500" aria-hidden="true" />}>
+      <p className="text-sm text-slate-700">
+        {deleted ? (
+          <strong className="text-slate-900">Cuenta eliminada.</strong>
+        ) : user.isSuspended ? (
+          <>
+            <strong className="text-rose-700">Suspendida.</strong> Motivo: {user.suspendedReason || 'no informado'}
+          </>
+        ) : (
+          <>
+            <strong className="text-emerald-700">Activa.</strong> Puede iniciar sesión y operar normalmente.
+          </>
+        )}
+      </p>
+
+      {deleted ? null : isSelf || isAdmin ? (
+        <p className="mt-2 text-xs text-slate-500">{isSelf ? 'No puedes cambiar el estado de tu propia cuenta.' : 'Las cuentas de administración no se gestionan desde aquí.'}</p>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {user.isSuspended ? (
+            <button type="button" onClick={() => open('reactivate')} aria-expanded={action === 'reactivate'} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-300 px-3.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 cursor-pointer">
+              Reactivar cuenta
+            </button>
+          ) : (
+            <button type="button" onClick={() => open('suspend')} aria-expanded={action === 'suspend'} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-amber-300 px-3.5 text-sm font-semibold text-amber-800 hover:bg-amber-50 cursor-pointer">
+              <Ban className="h-4 w-4" aria-hidden="true" /> Suspender cuenta
+            </button>
+          )}
+          <button type="button" onClick={() => open('delete')} aria-expanded={action === 'delete'} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-rose-300 px-3.5 text-sm font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer">
+            <Trash2 className="h-4 w-4" aria-hidden="true" /> Eliminar cuenta
+          </button>
+        </div>
+      )}
+
+      {action && (
+        <div className={`mt-3 space-y-2 rounded-xl border p-3 ${cfg[action].tone}`}>
+          <p className="text-sm font-bold text-slate-900">{cfg[action].title}</p>
+          <p className="text-xs text-slate-700">{cfg[action].help}</p>
+          <label htmlFor="account-msg" className="block text-xs font-semibold text-slate-800">
+            {cfg[action].label}
+          </label>
+          <textarea
+            id="account-msg"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+            maxLength={900}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder={action === 'reactivate' ? 'Por ejemplo: revisamos tu caso y todo está en orden' : 'Por ejemplo: cancelaciones reiteradas sin motivo'}
+          />
+          {action === 'delete' && (
+            <label className="flex items-start gap-2 text-xs text-rose-900 cursor-pointer">
+              <input type="checkbox" checked={confirmDelete} onChange={(e) => setConfirmDelete(e.target.checked)} className="mt-0.5 h-4 w-4 accent-rose-600" />
+              Entiendo que la eliminación no se puede deshacer.
+            </label>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={submit}
+              className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-50 cursor-pointer ${
+                action === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : action === 'suspend' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {cfg[action].button}
+            </button>
+            <button type="button" onClick={() => setAction(null)} className="min-h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p role="alert" className="mt-2 text-sm font-semibold text-rose-700">{error}</p>}
+      {done && <p role="status" className="mt-2 text-sm font-semibold text-emerald-700">{done}</p>}
+    </Card>
   );
 };
