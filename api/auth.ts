@@ -325,8 +325,11 @@ async function login(ctx: Ctx) {
     });
   }
 
-  await admin.rpc('reset_login_attempts', { p_email: email, p_ip: ip });
-  await audit(ctx, 'USER_LOGGED_IN', 'security', data.user.id, { method: 'password', remember });
+  // En paralelo: son independientes y cada viaje a la base suma espera al iniciar sesión.
+  await Promise.all([
+    admin.rpc('reset_login_attempts', { p_email: email, p_ip: ip }),
+    audit(ctx, 'USER_LOGGED_IN', 'security', data.user.id, { method: 'password', remember }),
+  ]);
   setSessionCookies(res, data.session, remember);
   return res.status(200).json({ success: true, session: publicSession(data.session) });
 }
@@ -361,10 +364,15 @@ async function logout(ctx: Ctx) {
     accessToken = data.session?.access_token || '';
   }
   if (accessToken) {
-    const { data: u } = await admin.auth.getUser(accessToken);
-    if (u?.user) await audit(ctx, 'USER_LOGGED_OUT', 'info', u.user.id);
-    // Revoca el refresh token en Supabase: la cookie deja de servir aunque alguien la copie.
-    await admin.auth.admin.signOut(accessToken, 'local').catch(() => undefined);
+    // Auditoría y revocación en paralelo. La revocación invalida el refresh token en
+    // Supabase: la cookie deja de servir aunque alguien la copie.
+    await Promise.all([
+      admin.auth
+        .getUser(accessToken)
+        .then(({ data: u }) => (u?.user ? audit(ctx, 'USER_LOGGED_OUT', 'info', u.user.id) : undefined))
+        .catch(() => undefined),
+      admin.auth.admin.signOut(accessToken, 'local').catch(() => undefined),
+    ]);
   }
   clearSessionCookies(res);
   return res.status(200).json({ success: true });

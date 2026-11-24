@@ -252,6 +252,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const userId = currentUser.id;
     let active = true;
 
+    // Cada cuenta ve distintos espacios (los propios aunque no estén publicados):
+    // al cambiar de cuenta se vuelve a pedir el catálogo.
+    getSpacesFromDb().then((items) => {
+      if (active) setSpaces(items);
+    });
     getNotificationsFromDb(userId).then((items) => {
       if (active) setNotifications(items);
     });
@@ -285,6 +290,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         (payload) => {
           const item = mapNotificationRow(payload.new);
           setNotifications((prev) => (prev.some((n) => n.id === item.id) ? prev : [item, ...prev]));
+          // Respaldo del tiempo real: un aviso casi siempre trae un cambio (espacio aprobado,
+          // reserva nueva, pago), así que se recargan esos datos aunque no llegue la señal.
+          Promise.all([getSpacesFromDb(), getSpacePrivateDetails(), getReservationsFromDb(), getPaymentsFromDb()])
+            .then(([sp, det, res, pay]) => {
+              if (!active) return;
+              setSpaces(sp);
+              setSpacePrivateDetails(det);
+              setReservations(res);
+              setPayments(pay);
+            })
+            .catch(() => undefined);
         }
       )
       .subscribe();
@@ -377,7 +393,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     const onSignal = (signal: ChangeSignal) => refresh(signal.table);
 
-    const unsubscribers = [subscribeToChanges('catalog', onSignal, refreshAll), onVisibleAgain(refreshAll)];
+    const unsubscribers = [subscribeToChanges('catalog', onSignal, refreshAll), onVisibleAgain(refreshAll, 5000)];
     if (userId) unsubscribers.push(subscribeToChanges(`user:${userId}`, onSignal, refreshAll));
     if (isAdminUser) unsubscribers.push(subscribeToChanges('admin', onSignal, refreshAll));
 
@@ -521,12 +537,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const user = profileRowToUser(profile);
     setCurrentUser(user);
     if (user.role === 'admin') {
-      try {
-        setAllUsers(await getProfilesFromDb());
-        setProfilesLoadError(null);
-      } catch (profileLoadErr) {
-        setProfilesLoadError(profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.');
-      }
+      // En segundo plano: el panel entra de inmediato y la lista de usuarios llega después.
+      getProfilesFromDb()
+        .then((users) => {
+          setAllUsers(users);
+          setProfilesLoadError(null);
+        })
+        .catch((profileLoadErr) =>
+          setProfilesLoadError(profileLoadErr instanceof Error ? profileLoadErr.message : 'No se pudieron cargar los perfiles.')
+        );
     }
     return user;
   };
@@ -559,15 +578,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Cierre de sesión: el servidor revoca el token en Supabase y borra la cookie.
   const logout = async () => {
-    try {
-      await authRequest('logout', {}, true);
-    } catch (err) {
+    // Se pide al servidor antes de borrar el token local (lo necesita para revocarlo),
+    // pero la pantalla no espera la respuesta.
+    const serverLogout = authRequest('logout', {}, true).catch((err) => {
       console.warn('No se pudo cerrar la sesión en el servidor:', err);
-    }
+    });
     setAuthSession(null);
     supabase.realtime.setAuth(null);
     setCurrentUser(null);
     setAllUsers([]);
+    void serverLogout;
   };
 
   // Registro: el servidor crea la cuenta SIN activarla y envía un código al correo.

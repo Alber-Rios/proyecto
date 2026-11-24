@@ -46,7 +46,15 @@ export async function authRequest<T = any>(action: string, body: unknown = {}, w
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), action === 'refresh' ? 12_000 : 25_000);
     try {
-      response = await fetch(authUrl(action), { method: 'POST', credentials: 'include', headers, body: JSON.stringify(body), signal: ctrl.signal });
+      response = await fetch(authUrl(action), {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+        // El cierre de sesión sigue aunque la página cambie o se cierre.
+        keepalive: action === 'logout',
+      });
     } finally {
       clearTimeout(timer);
     }

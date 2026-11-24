@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Sensitive } from '../Sensitive.tsx';
-import { OwnerPriceBreakdown } from '../PriceBreakdown.tsx';
 import { Download, Info, Percent, Wallet, ArrowDownToLine, Clock, CalendarClock } from 'lucide-react';
 import type { Reservation, Space, UserProfile } from '../../types.ts';
 import { formatClp, formatRut, getTodayIso } from '../../utils/formatters.ts';
@@ -170,29 +168,6 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
 
   return (
     <div className="space-y-6">
-      {/* Comisión vigente */}
-      <div
-        role="note"
-        className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
-      >
-        <Percent className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" aria-hidden="true" />
-        <div className="min-w-0 text-sm">
-          {(
-            <>
-              <p className="font-semibold text-slate-950">
-                Comisión de Spotly: {pct(settings.ownerCommissionRate)}
-              </p>
-              <p className="text-slate-700">
-                La comisión lleva IVA y se descuenta del arriendo. Queda fija al momento de cada reserva. Ejemplo:
-              </p>
-              <div className="mt-2 max-w-sm rounded-xl bg-slate-50 px-3 py-2">
-                <OwnerPriceBreakdown rentNetClp={40000} commissionRate={settings.ownerCommissionRate} compact />
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
       {/* Próximo depósito (cada martes) */}
       {(() => {
         const next = nextTuesdayIso(todayIso);
@@ -246,7 +221,7 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
           { icon: <Wallet className="h-4 w-4" />, label: 'Ganancia neta', value: totals.net, hint: `${earning.length} ${earning.length === 1 ? 'reserva' : 'reservas'}` },
           { icon: <ArrowDownToLine className="h-4 w-4" />, label: 'Ya transferido', value: totals.paid, hint: 'A tu cuenta' },
           { icon: <Clock className="h-4 w-4" />, label: 'Por recibir', value: totals.pending + totals.inProgress, hint: 'Liquidaciones y arriendos en curso' },
-          { icon: <Percent className="h-4 w-4" />, label: 'Comisión Spotly', value: totals.commission, hint: totals.gross ? `${pct(totals.commission / totals.gross)} de lo arrendado` : 'Sin reservas aún' },
+          { icon: <Percent className="h-4 w-4" />, label: 'Comisión Spotly', value: totals.commission, hint: totals.gross ? `${pct(settings.ownerCommissionRate)} + IVA de cada arriendo` : 'Sin reservas aún' },
         ].map((t) => (
           <div key={t.label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
             <dt className="flex items-center gap-1.5 text-sm text-slate-600">
@@ -261,8 +236,8 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
 
       <p className="flex items-start gap-2 text-sm text-slate-600">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
-        Por cada reserva recibes el arriendo menos la comisión de Spotly. La comisión Spotly del 5 % (con IVA) lo paga el arrendatario y los
-        descuentos los absorbe Spotly: ninguno se te resta.
+        Por cada arriendo te depositamos el arriendo (más su IVA si es amoblado) menos la comisión de Spotly del{' '}
+        {pct(settings.ownerCommissionRate)} más IVA.
       </p>
 
       <OwnerRevenueReport reservations={reservations} />
@@ -309,12 +284,15 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
                         <span className="block font-semibold text-slate-900">{r.spaceTitle}</span>
                         <span className="text-slate-600">{r.tenantName}</span>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-900">{formatClp(l.ownerGrossClp)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                      <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-slate-900">
+                        {formatClp(l.ownerGrossClp)}
+                        {(r.rentIvaClp || 0) > 0 && <span className="block text-xs text-slate-500">incluye IVA {formatClp(r.rentIvaClp || 0)}</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-slate-700">
                         {l.ownerCommissionClp ? `− ${formatClp(l.ownerCommissionClp)}` : formatClp(0)}
                         <span className="block text-xs text-slate-500">{commissionLabel(r)}</span>
                       </td>
-                      <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-950">{formatClp(l.ownerNetClp)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-bold tabular-nums text-slate-950">{formatClp(l.ownerNetClp)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${toneClass[st.tone]}`}>{st.label}</span>
                         {st.detail && <span className="mt-0.5 block text-xs text-slate-500">{st.detail}</span>}
@@ -359,15 +337,11 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
           <h3 id="owner-tax" className="text-base font-bold text-slate-900">Impuestos</h3>
           <TaxStatusCheck status={tax} loading={taxLoading} furnished={furnishedCount > 0} onChange={setTax} />
           <ul className="space-y-1.5 text-sm leading-relaxed text-slate-700">
+            {furnishedCount > 0 && <li>El IVA de tus arriendos amoblados te lo depositamos y lo declaras tú en tu F29.</li>}
             <li>
-              {furnishedCount > 0
-                ? `Tienes ${furnishedCount === 1 ? '1 espacio amoblado' : `${furnishedCount} espacios amoblados`}: al arriendo se le suma 19 % de IVA, se te deposita junto con el arriendo y tú lo declaras.`
-                : 'Tus espacios sin amoblar están exentos de IVA.'}
-            </li>
-            <li>Spotly emite boleta solo por su comisión (10 % + IVA).</li>
-            <li>
-              Por ley, Spotly revisa tu situación en el SII cada enero y julio. Si no acreditas cumplimiento, de tus arriendos amoblados se retiene un
-              anticipo de IVA (hasta 19 % del neto) que puedes descontar en tu declaración.
+              {tax?.hasActivity
+                ? 'Por la comisión recibes factura: su IVA lo recuperas en tu F29.'
+                : 'Por la comisión recibes boleta. Con inicio de actividades recibirías factura y podrías recuperar su IVA.'}
             </li>
           </ul>
           {withheldTotal > 0 && (
@@ -376,10 +350,6 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
               declaración mensual de IVA (F29).
             </p>
           )}
-          <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-            <span className="block font-semibold text-slate-900">Tus datos de emisión</span>
-            {currentUser.fullName} · RUT <Sensitive kind="rut" value={currentUser.rut} />
-          </div>
         </section>
       </div>
     </div>
