@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PasswordInput } from '../components/PasswordInput.tsx';
 import { AuthLayout } from '../components/AuthLayout.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { useGuestOnly } from '../hooks/useGuestOnly.ts';
@@ -312,8 +313,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   <label htmlFor="reg-password" className="block text-sm font-medium text-stone-700 mb-1.5">
                     Contraseña
                   </label>
-                  <input id="reg-password"
-                    type="password"
+                  <PasswordInput id="reg-password"
                     name="new-password"
                     required
                     autoComplete="new-password"
@@ -329,8 +329,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   <label htmlFor="reg-password2" className="block text-sm font-medium text-stone-700 mb-1.5">
                     Confirmar contraseña
                   </label>
-                  <input id="reg-password2"
-                    type="password"
+                  <PasswordInput id="reg-password2"
                     name="confirm-password"
                     required
                     autoComplete="new-password"

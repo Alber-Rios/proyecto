@@ -181,7 +181,7 @@ export const WeeklyPayoutsPanel: React.FC<{ onChanged?: () => void }> = ({ onCha
                           {o.ownerName}
                           {o.overdue && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">incluye atrasado</span>}
                         </p>
-                        <p className="text-xs text-slate-500">{o.ownerEmail}</p>
+                        <p className="text-xs text-slate-500"><Sensitive kind="email" value={o.ownerEmail} /></p>
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold tabular-nums text-slate-950">{formatClp(o.totalClp)}</p>

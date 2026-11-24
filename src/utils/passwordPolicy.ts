@@ -33,8 +33,8 @@ export function checkPassword(password: string, personal: { email?: string; name
     { id: 'lower', label: 'Una letra minúscula', ok: /[a-zñáéíóú]/.test(p) },
     { id: 'upper', label: 'Una letra mayúscula', ok: /[A-ZÑÁÉÍÓÚ]/.test(p) },
     { id: 'digit', label: 'Un número', ok: /\d/.test(p) },
-    { id: 'personal', label: 'No incluye tu nombre, correo ni RUT', ok: !pieces.some((x) => lower.includes(x)) },
-    { id: 'common', label: 'No es una contraseña común', ok: !COMMON.has(lower) && !COMMON.has(p) },
+    { id: 'personal', label: 'No incluye tu nombre, correo ni RUT', ok: p.length > 0 && !pieces.some((x) => lower.includes(x)) },
+    { id: 'common', label: 'No es una contraseña común', ok: p.length > 0 && !COMMON.has(lower) && !COMMON.has(p) },
   ];
 }
 

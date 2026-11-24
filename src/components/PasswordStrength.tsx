@@ -16,8 +16,13 @@ export const PasswordStrength: React.FC<{
   personal?: Parameters<typeof checkPassword>[1];
   id?: string;
 }> = ({ password, personal, id }) => {
-  const checks = checkPassword(password, personal);
-  const score = passwordScore(password, personal);
+  const all = checkPassword(password, personal);
+  // En la lista solo van los requisitos que se construyen (largo, letras, número).
+  // «Sin datos personales» y «no común» solo aparecen como aviso si fallan.
+  const checks = all.filter((c) => c.id !== 'personal' && c.id !== 'common');
+  const warnings = password ? all.filter((c) => (c.id === 'personal' || c.id === 'common') && !c.ok) : [];
+  // Una contraseña común o con datos personales nunca se muestra como segura.
+  const score = warnings.length ? Math.min(passwordScore(password, personal), 1) : passwordScore(password, personal);
   const level = LEVELS[score];
   return (
     <div id={id} className="mt-2 space-y-2" aria-live="polite">
@@ -38,6 +43,12 @@ export const PasswordStrength: React.FC<{
           </li>
         ))}
       </ul>
+      {warnings.map((w) => (
+        <p key={w.id} role="alert" className="flex items-center gap-1.5 text-xs font-semibold text-rose-700">
+          <X className="w-3 h-3 shrink-0" aria-hidden="true" />
+          {w.id === 'personal' ? 'No uses tu nombre, correo ni RUT en la contraseña.' : 'Esa contraseña es muy común. Elige otra.'}
+        </p>
+      ))}
     </div>
   );
 };

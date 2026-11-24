@@ -584,7 +584,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                   </div>
 
                   {(() => {
-                    const registeredRut = formatRut(selectedUser.rut);
                     const certFilename =
                       selectedUser.kycData?.criminalRecordDocCode ||
                       `Certificado_Antecedentes_${selectedUser.rut.replace(/\D/g, '')}.pdf`;
@@ -615,7 +614,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                               <tr className="hover:bg-slate-50/60">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">RUN / RUT chileno</td>
-                                <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{registeredRut}</td>
+                                <td className="py-2.5 px-4 font-mono font-bold text-slate-900"><Sensitive kind="rut" value={selectedUser.rut} /></td>
                                 <td className="py-2.5 px-4 text-amber-700">Pendiente de lectura del documento</td>
                                 <td className="py-2.5 px-4 text-right">
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">Pendiente</span>
@@ -625,7 +624,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               <tr className="hover:bg-slate-50/60">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">N° serie documento</td>
                                 <td className="py-2.5 px-4 text-slate-500">Cédula adjunta</td>
-                                <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{selectedUser.kycData?.documentSerialNumber || 'Pendiente de revisión'}</td>
+                                <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{selectedUser.kycData?.documentSerialNumber ? <Sensitive kind="serial" value={selectedUser.kycData.documentSerialNumber} /> : 'Pendiente de revisión'}</td>
                                 <td className="py-2.5 px-4 text-right">
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">Pendiente</span>
                                 </td>
@@ -645,8 +644,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                               <tr className="hover:bg-slate-50/60">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">Certificado antecedentes</td>
                                 <td className="py-2.5 px-4 text-slate-600">Fines especiales (Ley 19.628)</td>
-                                <td className="py-2.5 px-4 font-mono text-slate-800 truncate max-w-[200px]">
-                                  {certFilename}
+                                <td className="py-2.5 px-4 font-mono text-slate-800 truncate max-w-[200px]" title="Nombre del archivo (los números se ocultan)">
+                                  {certFilename.replace(/\d(?=\d{2})/g, '•')}
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
                                   {selectedUser.kycData?.criminalRecordSubmitted ? (
@@ -669,11 +668,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                     : 'Arrendatario'}
                                 </td>
                                 <td className="py-2.5 px-4 text-slate-700">
-                                  {selectedUser.commune || 'Providencia'}, {selectedUser.city || 'Santiago'}
+                                  {selectedUser.commune ? `${selectedUser.commune}${selectedUser.city ? `, ${selectedUser.city}` : ''}` : 'Comuna no informada'}
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
-                                    Verificado
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
+                                    Declarado
                                   </span>
                                 </td>
                               </tr>
@@ -735,11 +734,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             }
                             className={`aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 group relative ${frontImg ? 'cursor-pointer' : ''}`}
                           >
-                            {frontImg ? <img
+                            {frontImg ? <><img
                               src={frontImg}
                               alt="Cédula Anverso"
-                              className="w-full h-full object-cover group-hover:scale-105 transition"
-                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Documento no disponible</div>}
+                              className="w-full h-full scale-110 object-cover blur-xl"
+                            /><span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-900/25 text-xs font-semibold text-white"><Eye className="h-4 w-4" aria-hidden="true" /> Ver imagen</span></> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Documento no disponible</div>}
                           </div>
                         </div>
 
@@ -772,11 +771,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             }
                             className={`aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 group relative ${backImg ? 'cursor-pointer' : ''}`}
                           >
-                            {backImg ? <img
+                            {backImg ? <><img
                               src={backImg}
                               alt="Cédula Reverso"
-                              className="w-full h-full object-cover group-hover:scale-105 transition"
-                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Documento no disponible</div>}
+                              className="w-full h-full scale-110 object-cover blur-xl"
+                            /><span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-900/25 text-xs font-semibold text-white"><Eye className="h-4 w-4" aria-hidden="true" /> Ver imagen</span></> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Documento no disponible</div>}
                           </div>
                         </div>
 
@@ -809,11 +808,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             }
                             className={`aspect-16/10 rounded-lg overflow-hidden bg-slate-900 border border-slate-200 group relative ${faceImg ? 'cursor-pointer' : ''}`}
                           >
-                            {faceImg ? <img
+                            {faceImg ? <><img
                               src={faceImg}
                               alt="Selfie Biométrica"
-                              className="w-full h-full object-cover group-hover:scale-105 transition"
-                            /> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Imagen no disponible</div>}
+                              className="w-full h-full scale-110 object-cover blur-xl"
+                            /><span className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-900/25 text-xs font-semibold text-white"><Eye className="h-4 w-4" aria-hidden="true" /> Ver imagen</span></> : <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Imagen no disponible</div>}
                           </div>
                         </div>
                       </div>
@@ -862,8 +861,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         </div>
                         <div>
                           <div className="text-xs font-bold text-slate-900">
-                            {selectedUser.kycData?.criminalRecordDocCode ||
-                              `Certificado_Antecedentes_${selectedUser.rut.replace(/\D/g, '')}.pdf`}
+                            {(selectedUser.kycData?.criminalRecordDocCode ||
+                              `Certificado_Antecedentes_${selectedUser.rut.replace(/\D/g, '')}.pdf`).replace(/\d(?=\d{2})/g, '•')}
                           </div>
                           <div className="text-xs text-slate-500">
                             Servicio de registro civil e identificación · república de Chile
@@ -1402,8 +1401,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                 </span>
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold truncate">
-                    {pdfModalUser.kycData?.criminalRecordDocCode ||
-                      `Certificado_Antecedentes_${pdfModalUser.rut.replace(/\D/g, '')}.pdf`}
+                    {(pdfModalUser.kycData?.criminalRecordDocCode ||
+                      `Certificado_Antecedentes_${pdfModalUser.rut.replace(/\D/g, '')}.pdf`).replace(/\d(?=\d{2})/g, '•')}
                   </h3>
                   <p className="text-xs text-slate-500 truncate">
                     Expediente KYC · {pdfModalUser.fullName} (RUT <Sensitive kind="rut" value={pdfModalUser.rut} />)

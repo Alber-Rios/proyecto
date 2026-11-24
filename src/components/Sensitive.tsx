@@ -9,6 +9,7 @@ const LABEL: Record<SensitiveKind, string> = {
   email: 'correo',
   phone: 'teléfono',
   account: 'número de cuenta',
+  serial: 'número de documento',
 };
 
 // Se vuelve a ocultar solo, por si la persona deja la pantalla abierta.

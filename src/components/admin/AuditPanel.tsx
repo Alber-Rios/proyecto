@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { maskText } from '../../utils/mask.ts';
 import { Sensitive } from '../Sensitive.tsx';
 import { ShieldCheck, ShieldAlert, Download, RefreshCw, Search, X, ChevronLeft, ChevronRight, Loader2, Link2 } from 'lucide-react';
 import {
@@ -360,6 +361,7 @@ export const AuditPanel: React.FC = () => {
 const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: (q: string) => void }> = ({ entry, onClose, onFilter }) => {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [showRaw, setShowRaw] = useState(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -407,7 +409,7 @@ const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: 
                 {rows.map((r) => (
                   <React.Fragment key={r.key}>
                     <dt className="text-slate-600">{r.label}</dt>
-                    <dd className="break-all text-slate-900">{r.value}</dd>
+                    <dd className="break-all text-slate-900">{typeof r.value === 'string' ? maskText(r.value) : r.value}</dd>
                   </React.Fragment>
                 ))}
               </dl>
@@ -438,7 +440,14 @@ const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: 
 
           <details>
             <summary className="cursor-pointer font-semibold text-slate-800">Ver JSON original</summary>
-            <pre className="mt-2 overflow-x-auto rounded-xl bg-slate-900 p-3 text-xs text-slate-100">{JSON.stringify(entry.details, null, 2)}</pre>
+            <div className="mt-2 flex justify-end">
+              <button type="button" onClick={() => setShowRaw((v) => !v)} aria-pressed={showRaw} className="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer">
+                {showRaw ? 'Ocultar datos personales' : 'Mostrar datos personales'}
+              </button>
+            </div>
+            <pre className="mt-1 overflow-x-auto rounded-xl bg-slate-900 p-3 text-xs text-slate-100">
+              {showRaw ? JSON.stringify(entry.details, null, 2) : maskText(JSON.stringify(entry.details, null, 2))}
+            </pre>
           </details>
         </div>
       </div>

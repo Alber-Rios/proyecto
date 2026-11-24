@@ -20,3 +20,15 @@ describe('enmascarado de datos personales', () => {
     expect(maskAccountNumber('000123456789')).toBe('•••• 6789');
   });
 });
+
+import { maskText } from './mask.ts';
+describe('maskText', () => {
+  it('oculta correos, RUT y celulares dentro de un texto', () => {
+    const t = maskText('{"email":"diego@spotly.cl","rut":"19.876.543-0","tel":"+56912345678","otro":"12345678-9"}');
+    expect(t).toContain('di•••@spotly.cl');
+    expect(t).toContain('19.•••.•••-0');
+    expect(t).toContain('+56 9 •••• 5678');
+    expect(t).toContain('12.•••.•••-9');
+    expect(t).not.toContain('876');
+  });
+});

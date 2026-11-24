@@ -45,7 +45,13 @@ export function maskAccountNumber(raw?: string | null): string {
   return n.length <= 4 ? n : `${DOT.repeat(4)} ${n.slice(-4)}`;
 }
 
-export type SensitiveKind = 'rut' | 'email' | 'phone' | 'account';
+/** Número de serie de la cédula → ••••••789 */
+export function maskSerial(raw?: string | null): string {
+  const n = (raw || '').trim();
+  return n.length <= 3 ? n : `${DOT.repeat(n.length - 3)}${n.slice(-3)}`;
+}
+
+export type SensitiveKind = 'rut' | 'email' | 'phone' | 'account' | 'serial';
 
 export function maskValue(kind: SensitiveKind, value?: string | null): string {
   switch (kind) {
@@ -57,9 +63,19 @@ export function maskValue(kind: SensitiveKind, value?: string | null): string {
       return maskPhone(value);
     case 'account':
       return maskAccountNumber(value);
+    case 'serial':
+      return maskSerial(value);
   }
 }
 
 export function plainValue(kind: SensitiveKind, value?: string | null): string {
   return kind === 'rut' ? formatRut(value || '') : (value || '').trim();
+}
+
+/** Enmascara correos, RUT y celulares dentro de un texto libre (por ejemplo, el detalle de un registro). */
+export function maskText(text: string): string {
+  return text
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => maskEmail(m))
+    .replace(/\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b/g, (m) => maskRut(m))
+    .replace(/\+?56\s?9\s?\d{4}\s?\d{4}/g, (m) => maskPhone(m));
 }

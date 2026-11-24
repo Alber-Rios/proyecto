@@ -137,3 +137,10 @@ button:not(:disabled):active { scale: 0.97; }
   body.receipt-open .receipt-paper { box-shadow: none !important; -webkit-mask: none; mask: none; max-width: 80mm; }
   @page { margin: 8mm; }
 }
+
+/* El ojo propio de Edge en las contraseñas desaparece al salir del campo y se
+   duplicaba con el botón de Spotly: se oculta y queda solo el de Spotly. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}

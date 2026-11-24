@@ -230,7 +230,7 @@ export const ReportsPanel: React.FC = () => {
                   <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">{REPORT_STATUS_LABEL[report.status] ?? report.status}</span>
                 </div>
                 <p className="text-slate-500">
-                  {report.category} · {report.reporterEmail} · {new Date(report.createdAt).toLocaleString('es-CL')}
+                  {report.category} · <Sensitive kind="email" value={report.reporterEmail} /> · {new Date(report.createdAt).toLocaleString('es-CL')}
                 </p>
                 <p className="text-slate-700">{report.description}</p>
                 {report.status === 'open' || report.status === 'reviewing' ? (
