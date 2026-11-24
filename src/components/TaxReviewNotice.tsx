@@ -3,7 +3,7 @@ import { Landmark } from 'lucide-react';
 import { getTaxStatus, taxCanPublish, taxReviewDue, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
 
 // Aviso en el panel del propietario cuando falta algo tributario (Ley 21.713):
-// no ha revisado su situación, toca la revisión semestral (enero/julio) o tiene
+// no ha subido su carpeta tributaria, venció (se pide cada 90 días) o tiene
 // espacios amoblados sin cumplimiento al día (se retiene anticipo de IVA).
 export const TaxReviewNotice: React.FC<{ userId: string; furnishedCount: number; spacesCount: number; onOpen: () => void }> = ({
   userId,
@@ -28,10 +28,10 @@ export const TaxReviewNotice: React.FC<{ userId: string; furnishedCount: number;
   else if (tax.reviewStatus === 'rejected') text = `Rechazamos tu carpeta tributaria${tax.reviewNote ? ` (${tax.reviewNote})` : ''}. Súbela de nuevo.`;
   else if (furnishedCount > 0 && !taxStatusOk(tax))
     text = taxReviewDue(tax)
-      ? 'Toca tu revisión tributaria semestral: sube tu carpeta tributaria actualizada. Mientras tanto, de tus arriendos amoblados se retiene un anticipo de IVA.'
+      ? 'Tu carpeta tributaria venció (se pide cada 90 días): sube una actualizada. Mientras tanto, de tus arriendos amoblados se retiene un anticipo de IVA.'
       : 'No acreditas cumplimiento tributario: de tus arriendos amoblados se retiene un anticipo de IVA.';
   else if (!taxCanPublish(tax)) text = 'Sube tu carpeta tributaria para seguir publicando espacios.';
-  else if (tax.hasActivity && taxReviewDue(tax)) text = 'Toca tu revisión tributaria semestral: sube tu carpeta tributaria actualizada.';
+  else if (tax.hasActivity && taxReviewDue(tax)) text = 'Tu carpeta tributaria venció (se pide cada 90 días): sube una actualizada.';
   if (!text) return null;
 
   return (

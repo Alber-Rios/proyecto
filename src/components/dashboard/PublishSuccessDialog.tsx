@@ -13,7 +13,7 @@ interface Props {
 }
 
 const STEPS = [
-  { icon: Eye, title: 'Lo revisamos', text: 'Administración comprueba fotos, precio y datos del lugar.' },
+  { icon: Eye, title: 'Lo revisamos', text: 'Administración comprueba fotos, precio, datos del lugar y tu carpeta tributaria.' },
   { icon: Bell, title: 'Te avisamos', text: 'Recibes una notificación cuando quede aprobado o si falta algo.' },
   { icon: Search, title: 'Aparece en Spotly', text: 'Ya aprobado, cualquiera puede encontrarlo y reservarlo.' },
 ];

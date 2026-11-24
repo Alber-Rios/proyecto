@@ -1369,12 +1369,16 @@ BEGIN
 
   -- Amoblado = el arriendo lleva IVA: solo puede cobrarlo quien tiene inicio de
   -- actividades al día en el SII (ver 7e). Los espacios ya amoblados no se tocan.
+  -- Con la carpeta tributaria recién subida (por revisar) se puede publicar: el espacio
+  -- queda en revisión y el administrador revisa ambos antes de aprobarlo.
   IF TG_OP = 'INSERT' AND NOT public.owner_can_publish(auth.uid()) THEN
-    RAISE EXCEPTION 'Antes de publicar debes revisar tu situación tributaria: inicio de actividades en el SII o declarar que no estás obligado (Ley 21.713).';
+    RAISE EXCEPTION 'Antes de publicar sube tu carpeta tributaria del SII o declara que no estás obligado a iniciar actividades (Ley 21.713).';
   END IF;
   IF COALESCE(NEW.is_furnished, false)
      AND (TG_OP = 'INSERT' OR NOT COALESCE(OLD.is_furnished, false))
-     AND NOT public.owner_tax_ok(CASE WHEN TG_OP = 'INSERT' THEN auth.uid() ELSE OLD.owner_id END) THEN
+     AND NOT public.owner_tax_ok(CASE WHEN TG_OP = 'INSERT' THEN auth.uid() ELSE OLD.owner_id END)
+     AND NOT (NEW.status = 'pending_approval'
+              AND public.owner_tax_pending(CASE WHEN TG_OP = 'INSERT' THEN auth.uid() ELSE OLD.owner_id END)) THEN
     RAISE EXCEPTION 'Para publicar un espacio amoblado necesitas inicio de actividades y cumplimiento tributario al día en el SII. Revisa tu situación tributaria o publícalo sin amoblar.';
   END IF;
 
@@ -4306,7 +4310,20 @@ AS $$
   FROM (SELECT COALESCE(p_day, public.chile_today()) AS d) x;
 $$;
 
--- ¿Acredita cumplimiento en el semestre vigente? (inicio + cumplimiento + revisado este semestre)
+-- La carpeta tributaria vale 90 días desde que se sube (sin carpeta, desde la última
+-- revisión del administrador). Después hay que subirla de nuevo.
+CREATE OR REPLACE FUNCTION public.tax_certificate_valid_until(p_user UUID)
+RETURNS TIMESTAMPTZ
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE(certificate_uploaded_at, checked_at) + interval '90 days'
+  FROM public.tax_status WHERE user_id = p_user;
+$$;
+
+-- ¿Acredita cumplimiento? Inicio de actividades + al día + carpeta de los últimos 90 días.
 CREATE OR REPLACE FUNCTION public.owner_tax_compliant(p_user UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -4316,7 +4333,20 @@ SET search_path = public, pg_temp
 AS $$
   SELECT COALESCE((
     SELECT has_activity AND up_to_date
-       AND (checked_at AT TIME ZONE 'America/Santiago')::date >= public.tax_semester_start()
+       AND COALESCE(certificate_uploaded_at, checked_at) + interval '90 days' > now()
+    FROM public.tax_status WHERE user_id = p_user), false);
+$$;
+
+-- ¿Subió su carpeta (vigente) y falta que un administrador la revise?
+CREATE OR REPLACE FUNCTION public.owner_tax_pending(p_user UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE((
+    SELECT review_status = 'pending' AND certificate_uploaded_at + interval '90 days' > now()
     FROM public.tax_status WHERE user_id = p_user), false);
 $$;
 
@@ -4339,7 +4369,8 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT COALESCE((SELECT has_activity OR exempt_declared FROM public.tax_status WHERE user_id = p_user), false);
+  SELECT COALESCE((SELECT has_activity OR exempt_declared FROM public.tax_status WHERE user_id = p_user), false)
+      OR public.owner_tax_pending(p_user);
 $$;
 
 -- Consulta (simulada) de la situación tributaria del usuario conectado, por su RUT.
@@ -4484,6 +4515,45 @@ BEGIN
 END;
 $$;
 
+-- Revisión de un espacio nuevo por el administrador: aprueba (lo publica) o rechaza con
+-- motivo (queda pausado). Si el propietario tiene su carpeta tributaria por revisar,
+-- p_tax_ok registra el resultado en el mismo paso. Le avisa al propietario.
+CREATE OR REPLACE FUNCTION public.admin_review_space(p_space_id TEXT, p_approve BOOLEAN, p_note TEXT DEFAULT NULL, p_tax_ok BOOLEAN DEFAULT NULL)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  s RECORD;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'Solo un administrador puede hacer esto'; END IF;
+  SELECT id, owner_id, title, is_furnished, status INTO s FROM public.spaces WHERE id = p_space_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Espacio no encontrado'; END IF;
+
+  IF p_tax_ok IS NOT NULL AND public.owner_tax_pending(s.owner_id) THEN
+    PERFORM public.admin_set_tax_status(s.owner_id, p_tax_ok, p_tax_ok);
+  END IF;
+
+  IF p_approve THEN
+    IF s.is_furnished AND NOT public.owner_tax_compliant(s.owner_id) THEN
+      RAISE EXCEPTION 'Este espacio es amoblado y el propietario no acredita inicio de actividades al día. Revisa su carpeta tributaria o edita el espacio como sin amoblar.';
+    END IF;
+    UPDATE public.spaces SET status = 'active', is_verified = true WHERE id = s.id;
+    PERFORM public.notify_user(s.owner_id, 'Tu espacio fue aprobado',
+      '«' || s.title || '» ya está publicado en Spotly.', 'success', '/owner');
+  ELSE
+    IF COALESCE(btrim(p_note), '') = '' THEN RAISE EXCEPTION 'Indica el motivo del rechazo'; END IF;
+    UPDATE public.spaces SET status = 'paused', is_verified = false WHERE id = s.id;
+    PERFORM public.notify_user(s.owner_id, 'Tu espacio necesita cambios',
+      '«' || s.title || '» no fue aprobado. Motivo: ' || left(btrim(p_note), 400) || '. Edítalo y vuelve a enviarlo.', 'warning', '/owner');
+  END IF;
+  PERFORM public.write_audit(CASE WHEN p_approve THEN 'ADMIN_SPACE_APPROVED' ELSE 'ADMIN_SPACE_REJECTED' END, 'security', auth.uid()::text,
+    jsonb_build_object('spaceId', s.id, 'title', s.title, 'note', p_note, 'taxOk', p_tax_ok));
+  RETURN CASE WHEN p_approve THEN 'active' ELSE 'paused' END;
+END;
+$$;
+
 -- Anticipo de IVA en la liquidación: si el propietario no acredita cumplimiento en el
 -- semestre vigente y el arriendo está afecto a IVA (amoblado), se retiene el anticipo
 -- (tasa en platform_settings, máximo 19 % del neto) y se descuenta del depósito.
@@ -4530,7 +4600,7 @@ CREATE TRIGGER owner_payouts_iva_withholding
   FOR EACH ROW EXECUTE FUNCTION public.owner_payouts_iva_withholding();
 
 -- Nómina para el SII: situación de cada propietario, declaraciones de no obligado y
--- anticipos de IVA retenidos (para el F29 y los reportes semestrales).
+-- anticipos de IVA retenidos (para el F29). review_due = carpeta de más de 90 días.
 CREATE OR REPLACE FUNCTION public.admin_tax_roster(p_from DATE DEFAULT NULL, p_to DATE DEFAULT NULL)
 RETURNS TABLE (
   user_id UUID, full_name TEXT, rut TEXT, email TEXT,
@@ -4548,7 +4618,7 @@ BEGIN
   SELECT p.id, p.full_name, p.rut, p.email,
          COALESCE(t.has_activity, false), COALESCE(t.up_to_date, false), COALESCE(t.exempt_declared, false),
          t.checked_at,
-         (t.checked_at IS NULL OR (t.checked_at AT TIME ZONE 'America/Santiago')::date < public.tax_semester_start()),
+         (t.user_id IS NULL OR COALESCE(t.certificate_uploaded_at, t.checked_at) + interval '90 days' <= now()),
          COALESCE(t.review_status, 'none'),
          (SELECT count(*) FROM public.spaces s WHERE s.owner_id = p.id AND s.status <> 'deleted'),
          (SELECT count(*) FROM public.spaces s WHERE s.owner_id = p.id AND s.status <> 'deleted' AND s.is_furnished),
@@ -5054,6 +5124,8 @@ GRANT EXECUTE ON FUNCTION public.admin_reject_tax_certificate(UUID, TEXT) TO aut
 GRANT EXECUTE ON FUNCTION public.declare_tax_exemption() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_tax_roster(DATE, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_tax_status(UUID, BOOLEAN, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_review_space(TEXT, BOOLEAN, TEXT, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.tax_certificate_valid_until(UUID) TO authenticated;
 
 -- ==============================================================================
 -- 11. TIEMPO REAL

@@ -1,6 +1,6 @@
 import { communesOf, normalizeCommune } from '../data/chileCommunes.ts';
 import { OwnerPriceBreakdown, TenantPriceBreakdown } from './PriceBreakdown.tsx';
-import { DEFAULT_PLATFORM_SETTINGS, getTaxStatus, taxCanPublish, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
+import { DEFAULT_PLATFORM_SETTINGS, getTaxStatus, taxCanPublish, taxPending, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
 import { TaxStatusCheck } from './TaxStatusCheck.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { platformFeeFor, rentIvaFor } from '../utils/pricing.ts';
@@ -33,6 +33,8 @@ interface PublishSpaceFormProps {
   editingSpace: Space | null;
   onCancel: () => void;
   onSubmit: (data: SpaceFormData) => void;
+  /** Lo abre un administrador para corregir el espacio: no aplica la revisión tributaria. */
+  asAdmin?: boolean;
 }
 
 const REGIONS = [
@@ -136,7 +138,7 @@ const inputClass =
   'w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-hidden bg-white';
 const labelClass = 'block text-xs font-bold text-slate-700 mb-1';
 
-export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace, onCancel, onSubmit }) => {
+export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace, onCancel, onSubmit, asAdmin = false }) => {
   const initial = editingSpace;
   const initialModalities = initial ? getSpaceAvailableModalities(initial) : ['por_hora', 'por_dia'];
   const schedule = parseSchedule(initial?.openingHours);
@@ -198,8 +200,12 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
   // Ley 21.713: para publicar, inicio de actividades o declaración de no obligado;
   // para amoblado (cobra IVA), cumplimiento tributario al día. Editar no lo exige.
   const isNew = !initial?.id;
-  const publishBlocked = isNew && !taxCanPublish(taxStatus);
-  const furnishedBlocked = isFurnished && !wasFurnished && !taxStatusOk(taxStatus);
+  // Con la carpeta recién subida (por revisar) se puede publicar: el espacio queda en
+  // revisión y el administrador revisa ambos antes de aprobarlo.
+  const inReview = isNew || initial?.status === 'pending_approval';
+  const publishBlocked = !asAdmin && isNew && !taxCanPublish(taxStatus);
+  const furnishedBlocked =
+    !asAdmin && isFurnished && !wasFurnished && !taxStatusOk(taxStatus) && !(inReview && taxPending(taxStatus));
   const avaluo = initial?.avaluoFiscalClp ? String(initial.avaluoFiscalClp) : '';
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities || []);
   const [rules, setRules] = useState<string[]>(initial?.rules || []);
@@ -277,11 +283,11 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
       return;
     }
     if (publishBlocked && !isFurnished) {
-      setError('Antes de publicar revisa tu situación tributaria: necesitas inicio de actividades en el SII o declarar que no estás obligado.');
+      setError('Antes de publicar sube tu carpeta tributaria del SII (más arriba) o declara que no estás obligado a iniciar actividades.');
       return;
     }
     if (furnishedBlocked) {
-      setError('Para publicar como amoblado necesitas inicio de actividades y cumplimiento tributario al día en el SII. Revisa tu situación tributaria o desmarca «amoblado».');
+      setError('Para publicar como amoblado sube tu carpeta tributaria del SII (más arriba) o desmarca «amoblado».');
       return;
     }
 
@@ -778,7 +784,7 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
               </p>
             </div>
 
-            {(isNew || (isFurnished && !wasFurnished)) && (
+            {!asAdmin && (isNew || (isFurnished && !wasFurnished)) && (
               <div className="space-y-1.5">
                 <p className="text-xs font-bold text-slate-800">Tu situación tributaria</p>
                 <TaxStatusCheck status={taxStatus} loading={taxLoading} furnished={isFurnished} onChange={setTaxStatus} />

@@ -285,7 +285,7 @@ export const ReceiptPaper: React.FC<{
             <Rule />
             <Line k="ANTICIPO IVA RETENIDO" v={`-${peso(ivaWithheldClp)}`} strong />
             <p className="pl-2 text-[10px] uppercase text-stone-600">
-              Ley 21.713: no acreditaste cumplimiento tributario este semestre. Lo descuentas en tu F29.
+              Ley 21.713: no acreditaste cumplimiento tributario vigente. Lo descuentas en tu F29.
             </p>
           </>
         )}

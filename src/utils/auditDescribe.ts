@@ -122,6 +122,10 @@ export function describeAudit(action: string, d: Details = {}): string {
       return `${Number(d.docType) === 61 ? 'Nota de crédito' : Number(d.docType) === 33 ? 'Factura' : 'Boleta'} simulada N° ${d.folio} por ${d.concept === 'comision_propietario' ? 'la comisión del propietario' : 'la comisión del arrendatario'}: ${clp(d.totalClp)}`;
     case 'TAX_STATUS_CHECKED':
       return 'Consultó su situación tributaria';
+    case 'ADMIN_SPACE_APPROVED':
+      return `Administración aprobó y publicó el espacio «${d.title ?? ''}»${d.taxOk ? ' (con su carpeta tributaria al día)' : ''}`;
+    case 'ADMIN_SPACE_REJECTED':
+      return `Administración rechazó el espacio «${d.title ?? ''}»${d.note ? `: ${d.note}` : ''}`;
     case 'TAX_CERTIFICATE_SUBMITTED':
       return 'Subió su carpeta tributaria del SII para revisión';
     case 'TAX_CERTIFICATE_REJECTED':

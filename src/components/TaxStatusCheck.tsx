@@ -4,7 +4,7 @@ import {
   SII_TAX_FOLDER_URL,
   declareTaxExemption,
   getTaxCertificateUrl,
-  nextTaxReview,
+  taxValidUntil,
   submitTaxCertificate,
   taxReviewDue,
   taxStatusOk,
@@ -20,7 +20,7 @@ const fmtDate = (d: string | Date | null) =>
  * El propietario sube su carpeta tributaria electrónica del SII y un administrador la
  * revisa. Para publicar: inicio de actividades, o declarar que no está obligado
  * (solo sin amoblar). Para amoblado (cobra IVA): inicio de actividades y cumplimiento
- * al día. Se vuelve a revisar cada semestre (enero y julio).
+ * al día. La carpeta se pide de nuevo cada 90 días.
  */
 export const TaxStatusCheck: React.FC<{
   status: TaxStatus | null;
@@ -124,7 +124,7 @@ export const TaxStatusCheck: React.FC<{
               </p>
             )}
             <p className="opacity-80">
-              Revisado por Spotly el {fmtDate(status.checkedAt)}. Próxima revisión: {fmtDate(nextTaxReview())}.
+              Revisado por Spotly el {fmtDate(status.checkedAt)}. Vale hasta el {fmtDate(taxValidUntil(status))}; ahí te pediremos una nueva.
             </p>
           </div>
         </div>
@@ -135,8 +135,7 @@ export const TaxStatusCheck: React.FC<{
           <Clock className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" aria-hidden="true" />
           <p>
             <strong className="font-semibold">Recibimos tu carpeta tributaria{status.certificateUploadedAt ? ` el ${fmtDate(status.certificateUploadedAt)}` : ''}.</strong>{' '}
-            Un administrador la revisa en menos de 48 horas y te avisamos.
-            {furnished && !status.hasActivity ? ' Hasta entonces no puedes publicar amoblado.' : ''}
+            Ya puedes publicar: tu espacio queda en revisión y el administrador revisa ambos antes de aprobarlo (menos de 48 horas).
           </p>
         </div>
       )}
@@ -154,8 +153,8 @@ export const TaxStatusCheck: React.FC<{
         <div className="flex items-start gap-2">
           <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
           <p>
-            <strong className="font-semibold">Toca tu revisión semestral.</strong> Cada enero y julio revisamos de nuevo tu situación: sube tu
-            carpeta tributaria actualizada. Mientras tanto, de tus arriendos amoblados se retiene un anticipo de IVA.
+            <strong className="font-semibold">Tu carpeta tributaria venció.</strong> La pedimos cada 90 días: sube una actualizada. Mientras
+            tanto, de tus arriendos amoblados se retiene un anticipo de IVA.
           </p>
         </div>
       )}

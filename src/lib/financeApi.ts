@@ -564,20 +564,19 @@ export interface TaxStatus {
   reviewedAt: string | null;
 }
 
-/** 1 de enero o 1 de julio del semestre vigente (fecha de Chile). */
-export function taxSemesterStart(now = new Date()): Date {
-  const cl = new Date(now.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
-  return new Date(cl.getFullYear(), cl.getMonth() >= 6 ? 6 : 0, 1);
+/** La carpeta tributaria se pide cada 90 días. */
+export const TAX_VALID_DAYS = 90;
+/** Hasta cuándo vale la carpeta: 90 días desde que se subió (sin carpeta, desde la última revisión). */
+export function taxValidUntil(t: TaxStatus): Date {
+  const from = new Date(t.certificateUploadedAt || t.checkedAt);
+  return new Date(from.getTime() + TAX_VALID_DAYS * 86_400_000);
 }
-/** Próxima revisión semestral obligatoria (1 de enero o 1 de julio). */
-export function nextTaxReview(now = new Date()): Date {
-  const start = taxSemesterStart(now);
-  return start.getMonth() === 0 ? new Date(start.getFullYear(), 6, 1) : new Date(start.getFullYear() + 1, 0, 1);
-}
-/** Falta revisar en este semestre (Ley 21.713: revisión en enero y julio). */
-export const taxReviewDue = (t: TaxStatus | null | undefined) => !t || new Date(t.checkedAt) < taxSemesterStart();
+/** La carpeta venció (o nunca se subió): hay que subirla de nuevo. */
+export const taxReviewDue = (t: TaxStatus | null | undefined, now = new Date()) => !t || taxValidUntil(t) <= now;
+/** Subió su carpeta (vigente) y falta que un administrador la revise. */
+export const taxPending = (t: TaxStatus | null | undefined) => Boolean(t && t.reviewStatus === 'pending' && t.certificateUploadedAt && !taxReviewDue(t));
 /** Puede publicar: inicio de actividades vigente o declaración de no obligado. */
-export const taxCanPublish = (t: TaxStatus | null | undefined) => Boolean(t && (t.hasActivity || t.exemptDeclared));
+export const taxCanPublish = (t: TaxStatus | null | undefined) => Boolean(t && (t.hasActivity || t.exemptDeclared || taxPending(t)));
 
 const mapTaxStatus = (r: any): TaxStatus => ({
   userId: r.user_id,
@@ -598,7 +597,7 @@ const mapTaxStatus = (r: any): TaxStatus => ({
   reviewedAt: r.reviewed_at || null,
 });
 
-/** Acredita cumplimiento este semestre: puede cobrar IVA y no se le retiene anticipo. */
+/** Acredita cumplimiento (carpeta de los últimos 90 días): puede cobrar IVA y no se le retiene anticipo. */
 export const taxStatusOk = (t: TaxStatus | null | undefined) => Boolean(t && t.hasActivity && t.upToDate && !taxReviewDue(t));
 
 /** Situación guardada de un usuario (la propia, o cualquiera si es admin). null si nunca se consultó. */
@@ -639,6 +638,13 @@ export async function submitTaxCertificate(userId: string, file: File): Promise<
 export async function getTaxCertificateUrl(path: string): Promise<string | null> {
   const { data, error } = await supabase.storage.from(TAX_BUCKET).createSignedUrl(path, 600);
   return error ? null : data.signedUrl;
+}
+
+/** Solo admin: aprueba un espacio nuevo (lo publica) o lo rechaza con motivo. Si el propietario
+ * tiene su carpeta tributaria por revisar, taxOk registra el resultado en el mismo paso. */
+export async function adminReviewSpace(spaceId: string, approve: boolean, note?: string, taxOk?: boolean): Promise<{ success: boolean; message?: string }> {
+  const { error } = await supabase.rpc('admin_review_space', { p_space_id: spaceId, p_approve: approve, p_note: note || null, p_tax_ok: taxOk ?? null });
+  return error ? { success: false, message: error.message } : { success: true };
 }
 
 /** Solo admin: rechaza el archivo (ilegible, de otra persona…) con el motivo. */

@@ -160,6 +160,8 @@ interface AppContextType {
   adminApproveKyc: (userId: string) => void;
   adminRejectKyc: (userId: string, reason: string) => void;
   adminToggleSpaceStatus: (spaceId: string, status: 'active' | 'paused' | 'pending_approval') => void;
+  /** Vuelve a pedir los espacios a la base (tras una acción hecha por RPC). */
+  reloadSpaces: () => Promise<void>;
   adminResolveDispute: (disputeId: string, resolution: 'resolved_refund' | 'resolved_owner', notes: string) => void;
   createDispute: (
     reservationId: string,
@@ -1447,6 +1449,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const reloadSpaces = async () => {
+    if (!isSupabaseConfigured()) return;
+    try {
+      setSpaces(await getSpacesFromDb());
+    } catch (err) {
+      console.warn('No se pudieron recargar los espacios:', err);
+    }
+  };
+
   const adminToggleSpaceStatus = (spaceId: string, status: 'active' | 'paused' | 'pending_approval') => {
     setSpaces((prev) =>
       prev.map((s) => (s.id === spaceId ? { ...s, status, isVerified: status === 'active' } : s))
@@ -1795,6 +1806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminRejectKyc,
         adminSetUserSuspension,
         adminToggleSpaceStatus,
+        reloadSpaces,
         adminResolveDispute,
         createDispute,
         addAuditRecord,

@@ -3,6 +3,8 @@ import { Sensitive } from '../components/Sensitive.tsx';
 import { getTodayIso } from '../utils/formatters.ts';
 import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { PublishSpaceForm } from '../components/PublishSpaceForm.tsx';
 import { createKycReviewUrl } from '../lib/storage.ts';
 import { SII_THIRD_PARTY_URL, adminRejectTaxCertificate, adminSetTaxStatus, getTaxCertificateUrl, getTaxRoster, getTaxStatus, taxReviewDue, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
 import { downloadCsv } from '../utils/csv.ts';
@@ -80,6 +82,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     adminApproveKyc,
     adminRejectKyc,
     adminToggleSpaceStatus,
+    reloadSpaces,
+    updateSpace,
     adminResolveDispute,
     switchUser,
   } = useApp();
@@ -103,6 +107,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
   const [spaceSearch, setSpaceSearch] = useState('');
   const [detailSpaceId, setDetailSpaceId] = useState<string | null>(null);
   const detailSpace = detailSpaceId ? spaces.find((s) => s.id === detailSpaceId) ?? null : null;
+  // El administrador puede corregir un espacio antes de aprobarlo.
+  const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null);
+  const editingSpace = editingSpaceId ? spaces.find((s) => s.id === editingSpaceId) ?? null : null;
   const [spaceStatusFilter, setSpaceStatusFilter] = useState<'all' | 'active' | 'paused' | 'pending_approval'>('all');
 
   // Filtros de Disputas
@@ -203,7 +210,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     try {
       const rows = await getTaxRoster();
       downloadCsv(`Nomina_tributaria_Spotly_${new Date().toISOString().slice(0, 10)}.csv`, [
-        ['Nombre', 'RUT', 'Correo', 'Inicio de actividades', 'Cumplimiento al día', 'Declaró no obligado', 'Carpeta tributaria', 'Última revisión', 'Revisión semestral pendiente', 'Espacios', 'Amoblados', 'Anticipo IVA retenido (CLP)'],
+        ['Nombre', 'RUT', 'Correo', 'Inicio de actividades', 'Cumplimiento al día', 'Declaró no obligado', 'Carpeta tributaria', 'Última revisión', 'Carpeta vencida (90 días)', 'Espacios', 'Amoblados', 'Anticipo IVA retenido (CLP)'],
         ...rows.map((t) => [
           t.fullName, t.rut, t.email, t.hasActivity ? 'Sí' : 'No', t.upToDate ? 'Sí' : 'No', t.exemptDeclared ? 'Sí' : 'No',
           ({ none: 'No subida', pending: 'Por revisar', reviewed: 'Revisada', rejected: 'Rechazada' } as const)[t.certificateStatus],
@@ -254,7 +261,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
   // Lista filtrada de espacios
   const filteredSpaces = useMemo(() => {
-    return spaces
+    return [...spaces]
+      // Los que esperan aprobación van primero.
+      .sort((a, b) => Number(b.status === 'pending_approval') - Number(a.status === 'pending_approval'))
       .filter((s) => {
         if (spaceStatusFilter === 'all') return true;
         return s.status === spaceStatusFilter;
@@ -743,7 +752,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
 
                               <tr className="hover:bg-slate-50/60 align-top">
                                 <td className="py-2.5 px-4 font-semibold text-slate-700">Situación tributaria (SII)</td>
-                                <td className="py-2.5 px-4 text-slate-600">Inicio de actividades y cumplimiento (Ley 21.713, revisión enero y julio)</td>
+                                <td className="py-2.5 px-4 text-slate-600">Inicio de actividades y cumplimiento (Ley 21.713, carpeta cada 90 días)</td>
                                 <td className="py-2.5 px-4 text-slate-700">
                                   {!selectedTax ? (
                                     'Aún no sube su carpeta tributaria'
@@ -761,7 +770,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                       <span className="block text-xs text-slate-500">
                                         {selectedTax.certificateUploadedAt ? `Carpeta subida el ${new Date(selectedTax.certificateUploadedAt).toLocaleDateString('es-CL')}` : 'Sin carpeta tributaria'}
                                         {selectedTax.reviewedAt ? ` · revisada el ${new Date(selectedTax.reviewedAt).toLocaleDateString('es-CL')}` : ''}
-                                        {selectedTax.hasActivity && taxReviewDue(selectedTax) ? ' · revisión semestral pendiente' : ''}
+                                        {selectedTax.hasActivity && taxReviewDue(selectedTax) ? ' · carpeta vencida (90 días)' : ''}
                                       </span>
                                     </>
                                   )}
@@ -1083,7 +1092,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
             <div>
               <h2 className="sr-only">Catálogo y moderación de espacios</h2>
               <p className="text-xs text-slate-500">
-                Activa o pausa inmuebles publicados por propietarios en Chile.
+                Aprueba los espacios nuevos (con la carpeta tributaria del propietario), edítalos, actívalos o páusalos.
               </p>
             </div>
 
@@ -1102,6 +1111,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
                 {[
                   { id: 'all', label: 'Todos' },
+                  { id: 'pending_approval', label: `Por aprobar (${spaces.filter((x) => x.status === 'pending_approval').length})` },
                   { id: 'active', label: 'Activos' },
                   { id: 'paused', label: 'Pausados' },
                 ].map((f) => (
@@ -1156,10 +1166,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                               sp.status === 'active'
                                 ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-slate-100 text-slate-600'
+                                : sp.status === 'pending_approval'
+                                  ? 'bg-amber-50 text-amber-800'
+                                  : 'bg-slate-100 text-slate-600'
                             }`}
                           >
-                            {sp.status === 'active' ? 'Activo' : 'Pausado'}
+                            {sp.status === 'active' ? 'Activo' : sp.status === 'pending_approval' ? 'Por aprobar' : 'Pausado'}
                           </span>
                         </div>
                         <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
@@ -1183,8 +1195,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         onClick={() => setDetailSpaceId(sp.id)}
                         className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center gap-1.5"
                       >
-                        <Eye className="w-3.5 h-3.5" /> Ver detalle
+                        <Eye className="w-3.5 h-3.5" /> {sp.status === 'pending_approval' ? 'Revisar y aprobar' : 'Ver detalle'}
                       </button>
+                      {sp.status !== 'pending_approval' && (
                       <button
                         onClick={() =>
                           adminToggleSpaceStatus(
@@ -1200,6 +1213,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       >
                         {sp.status === 'active' ? 'Pausar espacio' : 'Activar espacio'}
                       </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1487,8 +1501,41 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           reservations={reservations}
           onClose={() => setDetailSpaceId(null)}
           onToggleStatus={(id, status) => adminToggleSpaceStatus(id, status)}
+          onEdit={(sp) => setEditingSpaceId(sp.id)}
+          onReviewed={() => void reloadSpaces()}
         />
       )}
+      {editingSpace &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`Editar ${editingSpace.title}`}>
+            <div className="mx-auto max-w-3xl rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-3 rounded-t-3xl bg-slate-900 px-5 py-4 text-white">
+                <div>
+                  <p className="text-xs font-bold text-indigo-200">Edición por administración</p>
+                  <h2 className="text-lg font-bold">{editingSpace.title}</h2>
+                  <p className="text-xs text-slate-400">Corrige lo necesario; el propietario verá los cambios. Después puedes aprobarlo.</p>
+                </div>
+                <button type="button" onClick={() => setEditingSpaceId(null)} className="rounded-xl bg-white/10 p-1.5 hover:bg-white/20 cursor-pointer" aria-label="Cerrar">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-5">
+                <PublishSpaceForm
+                  key={editingSpace.id}
+                  editingSpace={editingSpace}
+                  asAdmin
+                  onCancel={() => setEditingSpaceId(null)}
+                  onSubmit={(data) => {
+                    const { status: _status, isVerified: _verified, ...changes } = data;
+                    updateSpace(editingSpace.id, changes);
+                    setEditingSpaceId(null);
+                  }}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Modal de Vista Ampliada de Imagen (Cédula / Biometría) */}
       {previewImage && (
