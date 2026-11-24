@@ -45,6 +45,14 @@ const monthLabel = (key: string) => {
 };
 const pct = (rate: number) => `${Math.round(rate * 1000) / 10} %`.replace('.', ',');
 const ivaOf = (gross: number) => Math.round((gross * 19) / 119);
+const MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+// El F29 de un mes se declara y paga hasta el 20 del mes siguiente (pago electrónico).
+const f29Due = (key: string) => {
+  const [y, m] = key.split('-').map(Number);
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return `20 de ${MONTHS_LONG[nm - 1]} de ${ny}`;
+};
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Por aprobar',
@@ -282,6 +290,9 @@ export const PlatformFinancePanel: React.FC = () => {
             </section>
           </div>
 
+          {/* IVA de Spotly por mes (F29): solo el IVA de sus propias comisiones */}
+          <SpotlyF29 monthly={report!.monthly} />
+
           {/* Mes a mes */}
           <section aria-labelledby="fin-chart" className={`${card} p-5`}>
             <h3 id="fin-chart" className="text-base font-bold text-slate-900">Ganancia de Spotly por mes</h3>
@@ -438,5 +449,89 @@ export const PlatformFinancePanel: React.FC = () => {
       )}
       {loading && !report && <p className="text-sm text-slate-600">Cargando reporte…</p>}
     </div>
+  );
+};
+
+/**
+ * Declaración mensual de IVA de Spotly (Formulario 29). Spotly declara y paga el 19 %
+ * de lo que cobra él mismo: la comisión del arrendatario (5 %) y la del propietario (10 %).
+ * El IVA del arriendo amoblado no va aquí: lo declara cada propietario.
+ */
+const SpotlyF29: React.FC<{ monthly: FinanceReport['monthly'] }> = ({ monthly }) => {
+  const rows = [...monthly]
+    .filter((m) => m.tenantFeesClp > 0 || m.ownerCommissionsClp > 0)
+    .sort((a, b) => b.month.localeCompare(a.month))
+    .map((m) => {
+      const tIva = ivaOf(m.tenantFeesClp);
+      const oIva = ivaOf(m.ownerCommissionsClp);
+      return {
+        month: m.month,
+        tNet: m.tenantFeesClp - tIva,
+        tIva,
+        oNet: m.ownerCommissionsClp - oIva,
+        oIva,
+        total: tIva + oIva,
+      };
+    });
+  const download = () =>
+    downloadCsv('IVA_Spotly_F29.csv', [
+      ['Período', 'Comisión arrendatario 5% (neto)', 'IVA 19%', 'Comisión propietario 10% (neto)', 'IVA 19%', 'IVA a pagar (F29)', 'Vence'],
+      ...rows.map((r) => [r.month, r.tNet, r.tIva, r.oNet, r.oIva, r.total, f29Due(r.month)]),
+    ]);
+  return (
+    <section aria-labelledby="fin-f29" className={`${card} p-5`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 id="fin-f29" className="text-base font-bold text-slate-900">IVA de Spotly · Declaración mensual (F29)</h3>
+          <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-slate-600">
+            Cada mes, hasta el día 20 (con pago electrónico), Spotly declara y paga el 19 % de IVA de sus propias comisiones: el 5 % que cobra al
+            arrendatario y el 10 % que cobra al propietario. El IVA de los arriendos amoblados lo declara cada propietario.
+          </p>
+        </div>
+        {rows.length > 0 && (
+          <button
+            type="button"
+            onClick={download}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50 cursor-pointer"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" /> Descargar CSV
+          </button>
+        )}
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">No hay comisiones cobradas en este período.</p>
+      ) : (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <caption className="sr-only">IVA mensual de las comisiones de Spotly</caption>
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                <th scope="col" className="py-2 pr-3 font-semibold">Mes</th>
+                <th scope="col" className="py-2 pr-3 text-right font-semibold">Comisión 5 %</th>
+                <th scope="col" className="py-2 pr-3 text-right font-semibold">IVA</th>
+                <th scope="col" className="py-2 pr-3 text-right font-semibold">Comisión 10 %</th>
+                <th scope="col" className="py-2 pr-3 text-right font-semibold">IVA</th>
+                <th scope="col" className="py-2 pr-3 text-right font-semibold text-slate-900">IVA a pagar</th>
+                <th scope="col" className="py-2 font-semibold">Vence</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 tabular-nums">
+              {rows.map((r) => (
+                <tr key={r.month}>
+                  <th scope="row" className="py-2 pr-3 text-left font-medium text-slate-800">{monthLabel(r.month)}</th>
+                  <td className="py-2 pr-3 text-right text-slate-700">{formatClp(r.tNet)}</td>
+                  <td className="py-2 pr-3 text-right text-slate-700">{formatClp(r.tIva)}</td>
+                  <td className="py-2 pr-3 text-right text-slate-700">{formatClp(r.oNet)}</td>
+                  <td className="py-2 pr-3 text-right text-slate-700">{formatClp(r.oIva)}</td>
+                  <td className="py-2 pr-3 text-right font-bold text-slate-950">{formatClp(r.total)}</td>
+                  <td className="py-2 text-xs text-slate-600">{f29Due(r.month)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-3 text-xs text-slate-500">Estimación desde las reservas pagadas; tu contador confirma la cifra final del F29.</p>
+    </section>
   );
 };
