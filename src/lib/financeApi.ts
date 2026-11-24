@@ -261,7 +261,7 @@ export async function saveMyBankAccount(userId: string, b: BankAccount): Promise
   const { data, error } = await supabase.from('bank_accounts').upsert(row, { onConflict: 'user_id' }).select('*').single();
   if (error) {
     if (/bank_accounts/i.test(error.message) && /does not exist|schema cache/i.test(error.message))
-      throw new Error('Tu base de Supabase todavía no tiene la tabla de cuentas bancarias. Copia el supabase/reset-and-setup.sql más reciente del repositorio y ejecútalo en el SQL Editor.');
+      throw new Error('No pudimos guardar tu cuenta por ahora. Inténtalo más tarde.');
     if (/row-level security|permission denied/i.test(error.message)) throw new Error('No tienes permiso para guardar esta cuenta. Cierra sesión, vuelve a entrar e inténtalo de nuevo.');
     throw new Error(error.message);
   }
@@ -599,12 +599,12 @@ export async function getTaxStatus(userId: string): Promise<TaxStatus | null> {
 export async function checkMyTaxStatus(): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
   const { data, error } = await supabase.rpc('check_my_tax_status');
   if (error) {
-    const missing = /check_my_tax_status|schema cache|does not exist/i.test(error.message);
+    // PGRST202: la función no existe en la base (falta ejecutar reset-and-setup.sql).
+    const missing = error.code === 'PGRST202' || /could not find the function/i.test(error.message);
+    if (missing) console.warn('[Spotly] Falta check_my_tax_status en Supabase: ejecuta supabase/reset-and-setup.sql.', error);
     return {
       success: false,
-      message: missing
-        ? 'Tu base de Supabase todavía no tiene la consulta tributaria. Vuelve a ejecutar reset-and-setup.sql.'
-        : error.message,
+      message: missing ? 'La consulta al SII no está disponible por ahora. Inténtalo más tarde.' : error.message,
     };
   }
   const row = Array.isArray(data) ? data[0] : data;

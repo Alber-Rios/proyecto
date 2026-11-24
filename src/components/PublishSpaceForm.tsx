@@ -584,11 +584,9 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 </div>
               </ModalityRow>
               <div className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2">
-                <p className="text-xs font-bold text-slate-800">Cómo se arma el precio</p>
+                <p className="text-xs font-bold text-slate-800">Así queda el precio</p>
                 <p className="text-xs text-slate-600">
-                  El precio que escribes es <strong>sin IVA</strong>. El arrendatario paga <strong>arriendo + IVA del arriendo (solo si es amoblado o
-                  equipado) + comisión de Spotly del 5 % + IVA de la comisión</strong>. A ti se te descuenta <strong>la comisión de Spotly del 10 % + su
-                  IVA</strong>, y recibes el IVA del arriendo para declararlo. Los arriendos por hora y por día no llevan garantía.
+                  Escribe el precio <strong>sin IVA</strong>.{isFurnished ? ' Como es amoblado, se le suma el 19 % de IVA.' : ''}
                 </p>
                 {(() => {
                   const sample = [
@@ -606,8 +604,8 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                         <TenantPriceBreakdown rentNetClp={sample.price} rentIvaClp={rentIva} feeClp={fee} furnished={isFurnished} totalClp={sample.price + rentIva + fee} totalHint=" " compact />
                       </div>
                       <div className="rounded-xl bg-slate-50 px-3 py-2">
-                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Recibes tú ({sample.unit})</p>
-                        <OwnerPriceBreakdown rentNetClp={sample.price} rentIvaClp={rentIva} commissionRate={DEFAULT_PLATFORM_SETTINGS.ownerCommissionRate} compact />
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">Te depositamos ({sample.unit})</p>
+                        <OwnerPriceBreakdown rentNetClp={sample.price} rentIvaClp={rentIva} commissionRate={DEFAULT_PLATFORM_SETTINGS.ownerCommissionRate} totalLabel="Total a depositar" compact />
                       </div>
                     </div>
                   );
@@ -774,18 +772,10 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                 <span className="text-xs font-bold text-slate-800">¿Tu espacio es amoblado o equipado?</span>
               </label>
               <p id="ps-furnished-help" className="mt-1.5 pl-8 text-xs text-slate-600">
-                Por ejemplo, una oficina con escritorios o una cocina con equipos.
+                Por ejemplo, una oficina con escritorios o una cocina con equipos. Si lo marcas, al arriendo se le suma el{' '}
+                <strong className="text-slate-800">19 % de IVA</strong> ({formatClp(20000)} pasa a {formatClp(23800)}). Ese IVA te lo depositamos
+                con el arriendo y tú lo declaras al SII.
               </p>
-              <ul className="mt-2 space-y-1 pl-8 text-xs text-slate-600">
-                <li>
-                  <strong className="text-slate-800">Lleva IVA:</strong> al precio se le suma el 19 % de IVA y lo paga el arrendatario. Por ejemplo,
-                  un arriendo de {formatClp(20000)} queda en {formatClp(23800)} más la comisión de Spotly.
-                </li>
-                <li>
-                  <strong className="text-slate-800">Lo recibes tú y lo declaras tú:</strong> el IVA del arriendo se te deposita junto con el
-                  arriendo, y emites tu boleta o factura. Spotly solo emite la de su comisión.
-                </li>
-              </ul>
             </div>
 
             {(isNew || (isFurnished && !wasFurnished)) && (
