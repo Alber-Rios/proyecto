@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import { createPortal } from 'react-dom';
 import { Printer, X } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
@@ -146,13 +147,13 @@ export const ReceiptPaper: React.FC<{
       {isTenant ? (
         <>
           <Line k="CLIENTE:" v={<span className="uppercase">{r.tenantName}</span>} />
-          {r.tenantRut && <Line k="RUT:" v={formatRut(r.tenantRut)} />}
+          {r.tenantRut && <Line k="RUT:" v={<Sensitive kind="rut" value={r.tenantRut} printFull />} />}
           {!showBoleta && <Line k="PROPIETARIO:" v={<span className="uppercase">{r.ownerName}</span>} />}
         </>
       ) : (
         <>
           <Line k={showBoleta ? 'CLIENTE:' : 'PROPIETARIO:'} v={<span className="uppercase">{r.ownerName}</span>} />
-          {r.ownerRut && <Line k="RUT:" v={formatRut(r.ownerRut)} />}
+          {r.ownerRut && <Line k="RUT:" v={<Sensitive kind="rut" value={r.ownerRut} printFull />} />}
           {!showBoleta && <Line k="ARRENDATARIO:" v={<span className="uppercase">{r.tenantName}</span>} />}
         </>
       )}

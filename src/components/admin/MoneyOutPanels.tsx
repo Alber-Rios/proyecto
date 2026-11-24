@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Sensitive } from '../Sensitive.tsx';
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, Copy, Landmark, Loader2, Undo2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { formatClp, formatRut, getTodayIso } from '../../utils/formatters.ts';
@@ -56,10 +57,10 @@ const BankBox: React.FC<{ bank: BankAccount | null; amount: number }> = ({ bank,
   return (
     <div className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-700">
       <span className="leading-relaxed">
-        <span className="font-semibold text-slate-900">{bank.holderName}</span> · RUT {formatRut(bank.holderRut)}
+        <span className="font-semibold text-slate-900">{bank.holderName}</span> · RUT <Sensitive kind="rut" value={bank.holderRut} />
         <br />
-        {bank.bank} · {accountTypeLabel(bank.accountType)} <span className="font-mono">{bank.accountNumber}</span>
-        {bank.email ? <> · {bank.email}</> : null}
+        {bank.bank} · {accountTypeLabel(bank.accountType)} <Sensitive kind="account" value={bank.accountNumber} className="font-mono" />
+        {bank.email ? <> · <Sensitive kind="email" value={bank.email} /></> : null}
       </span>
       <button
         type="button"

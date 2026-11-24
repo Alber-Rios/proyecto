@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Sensitive } from '../Sensitive.tsx';
 import { OwnerPriceBreakdown } from '../PriceBreakdown.tsx';
 import { Download, Info, Percent, Wallet, ArrowDownToLine, Clock, CalendarClock } from 'lucide-react';
 import type { Reservation, Space, UserProfile } from '../../types.ts';
@@ -347,7 +348,7 @@ export const OwnerEarningsPanel: React.FC<Props> = ({ reservations, spaces, curr
           <p className="text-sm text-slate-700">Spotly emite boleta solo por su comisión.</p>
           <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
             <span className="block font-semibold text-slate-900">Tus datos de emisión</span>
-            {currentUser.fullName} · RUT {formatRut(currentUser.rut)}
+            {currentUser.fullName} · RUT <Sensitive kind="rut" value={currentUser.rut} />
           </div>
           <p className="text-xs text-slate-500">Consulta con tu contador o en el SII si tu arriendo está afecto.</p>
         </section>

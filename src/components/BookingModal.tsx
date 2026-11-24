@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import { useNavigate } from 'react-router-dom';
 import { Space, DigitalContract, VisitRequest } from '../types.ts';
 import { calculateBookingAmounts, splitIva } from '../utils/pricing.ts';
@@ -900,7 +901,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   ) : (
                     <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                      <span>Identidad verificada exitosamente ({currentUser.fullName} - RUT {formatRut(currentUser.rut)})</span>
+                      <span>Identidad verificada exitosamente ({currentUser.fullName} - RUT <Sensitive kind="rut" value={currentUser.rut} />)</span>
                     </div>
                   )}
 

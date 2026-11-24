@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   Briefcase,
@@ -154,7 +155,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ open, currentView, onClose, 
                 <span className="block truncate text-sm font-bold text-slate-950">{currentUser.fullName}</span>
                 <span className="block truncate text-xs text-slate-600">
                   {roleLabel}
-                  {currentUser.rut ? ` · RUT ${formatRut(currentUser.rut)}` : ''}
+                  {currentUser.rut ? <> · RUT <Sensitive kind="rut" value={currentUser.rut} noReveal /></> : ''}
                 </span>
               </span>
               <button type="button" onClick={onClose} aria-label="Cerrar menú" className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 sm:hidden cursor-pointer">

@@ -1,4 +1,5 @@
 import { useAutoCarousel } from '../hooks/useAutoCarousel.ts';
+import { Sensitive } from '../components/Sensitive.tsx';
 import { parseOpeningHours } from '../utils/schedule.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -643,7 +644,7 @@ export const SpaceDetailPage: React.FC<SpaceDetailPageProps> = ({
                   )}
                 </div>
                 {space.ownerRut && (
-                  <p className="text-xs text-slate-500 mt-0.5">RUT: {formatRut(space.ownerRut)}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">RUT: <Sensitive kind="rut" value={space.ownerRut} /></p>
                 )}
               </div>
             </div>

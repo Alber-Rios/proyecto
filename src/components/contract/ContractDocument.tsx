@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { Sensitive } from '../Sensitive.tsx';
 import { Lock, Minus, Plus, RotateCcw } from 'lucide-react';
 import { BrandLogo } from '../BrandLogo.tsx';
 import { parseClause } from '../../utils/contractClauses.ts';
@@ -168,11 +169,11 @@ export const ContractDocument: React.FC<ContractDocumentProps> = ({
             <dl className="mt-[0.75em] grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-2">
               <SummaryItem term="Arrendador (propietario)">
                 <span className="font-semibold text-slate-950">{owner.name}</span>
-                <span className="block text-[0.9375em]">RUT {owner.rut}</span>
+                <span className="block text-[0.9375em]">RUT {/\d/.test(owner.rut) ? <Sensitive kind="rut" value={owner.rut} printFull /> : owner.rut}</span>
               </SummaryItem>
               <SummaryItem term="Arrendatario">
                 <span className="font-semibold text-slate-950">{tenant.name}</span>
-                <span className="block text-[0.9375em]">RUT {tenant.rut}</span>
+                <span className="block text-[0.9375em]">RUT {/\d/.test(tenant.rut) ? <Sensitive kind="rut" value={tenant.rut} printFull /> : tenant.rut}</span>
               </SummaryItem>
               <SummaryItem term="Espacio arrendado">
                 <span className="font-semibold text-slate-950">{spaceTitle}</span>

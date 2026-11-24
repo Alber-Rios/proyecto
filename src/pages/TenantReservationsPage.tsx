@@ -1,4 +1,5 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
+import { Sensitive } from '../components/Sensitive.tsx';
 import { TenantPriceBreakdown } from '../components/PriceBreakdown.tsx';
 import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -708,7 +709,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
                   <span className="text-slate-500 block font-semibold">Arrendatario</span>
                   <span className="font-bold text-slate-900 text-sm">{selectedBookingDetail.tenantName}</span>
                   <span className="block font-mono text-slate-600">
-                    RUT: {formatRut(selectedBookingDetail.tenantRut)}
+                    RUT: <Sensitive kind="rut" value={selectedBookingDetail.tenantRut} />
                   </span>
                 </div>
                 <div>

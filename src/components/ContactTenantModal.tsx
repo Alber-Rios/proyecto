@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import { MessageSquare, X } from 'lucide-react';
 
 export interface ContactTenant {
@@ -43,8 +44,8 @@ export const ContactTenantModal: React.FC<ContactTenantModalProps> = ({ tenant, 
       <div className="space-y-3 text-xs">
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
           <div className="font-bold text-slate-900">{tenant.name}</div>
-          <div className="text-slate-600">Correo: {tenant.email || 'Sin correo'}</div>
-          <div className="text-slate-600">Teléfono: {tenant.phone || 'Sin teléfono'}</div>
+          <div className="text-slate-600">Correo: {tenant.email ? <Sensitive kind="email" value={tenant.email} /> : 'Sin correo'}</div>
+          <div className="text-slate-600">Teléfono: {tenant.phone ? <Sensitive kind="phone" value={tenant.phone} /> : 'Sin teléfono'}</div>
         </div>
 
         <p className="text-slate-500 leading-relaxed">

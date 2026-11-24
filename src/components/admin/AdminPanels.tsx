@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Sensitive } from '../Sensitive.tsx';
 import { useApp } from '../../context/AppContext.tsx';
 import { AuditLog, DiscountCode, KpiSnapshot, PaymentRecord, UserReport } from '../../types.ts';
 import { getAuditLogsFromDb } from '../../lib/supabase.ts';
@@ -139,7 +140,7 @@ export const AuditLogPanel: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-slate-700">
-                    {log.userEmail}
+                    <Sensitive kind="email" value={log.userEmail} noReveal />
                     <span className="block text-xs text-slate-500">{log.userRole}</span>
                   </td>
                   <td className="px-4 py-2 font-mono text-xs text-slate-600">{log.ip}</td>
@@ -290,7 +291,7 @@ export const ReportsPanel: React.FC = () => {
               <div className="min-w-0">
                 <p className="font-bold text-slate-900 truncate">{u.fullName}</p>
                 <p className="text-slate-500 truncate">
-                  {u.email} · {u.role === 'owner' ? 'Propietario' : 'Arrendatario'}
+                  <Sensitive kind="email" value={u.email} noReveal /> · {u.role === 'owner' ? 'Propietario' : 'Arrendatario'}
                   {u.isSuspended && <span className="text-rose-600 font-bold"> · Suspendida</span>}
                 </p>
               </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import {
   ShieldCheck,
@@ -97,7 +98,7 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
               <div>
                 <div className="text-sm font-bold text-slate-900">{currentUser.fullName}</div>
                 <div className="text-xs text-slate-500">
-                  RUT: {formatRut(currentUser.rut)} • {currentUser.email}
+                  RUT: <Sensitive kind="rut" value={currentUser.rut} /> • <Sensitive kind="email" value={currentUser.email} />
                 </div>
               </div>
             </div>

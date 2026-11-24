@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Sensitive } from '../components/Sensitive.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatRut } from '../utils/formatters.ts';
 import { DocumentScanner } from '../components/DocumentScanner.tsx';
@@ -194,7 +195,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">RUT:</span>
-              <span className="font-bold text-slate-900">{formatRut(currentUser.rut)}</span>
+              <span className="font-bold text-slate-900"><Sensitive kind="rut" value={currentUser.rut} /></span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Estado:</span>
@@ -821,7 +822,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">RUT oficial:</span>
-                    <span className="font-bold text-slate-900">{formatRut(currentUser.rut)}</span>
+                    <span className="font-bold text-slate-900"><Sensitive kind="rut" value={currentUser.rut} /></span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Estado actual:</span>
@@ -896,7 +897,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate, onOp
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">RUT oficial:</span>
-                    <span className="font-bold text-slate-900">{formatRut(currentUser.rut)}</span>
+                    <span className="font-bold text-slate-900"><Sensitive kind="rut" value={currentUser.rut} /></span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Cédula de identidad:</span>

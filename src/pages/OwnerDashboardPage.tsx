@@ -1,4 +1,5 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
+import { Sensitive } from '../components/Sensitive.tsx';
 import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -1095,7 +1096,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
 
                         <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
                           <span>Cliente: <strong className="text-slate-900">{res.tenantName}</strong></span>
-                          <span>RUT: <strong className="text-slate-900">{formatRut(res.tenantRut)}</strong></span>
+                          <span>RUT: <strong className="text-slate-900"><Sensitive kind="rut" value={res.tenantRut} /></strong></span>
                           <span>
                             Fechas: <strong>{res.startDate}</strong> al <strong>{res.endDate}</strong> ({res.durationUnits ? `${res.durationUnits} hrs` : `${res.totalDays} días`})
                           </span>
@@ -1521,7 +1522,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                         <div className="min-w-0 flex-1">
                           <h4 className="text-xs font-bold text-slate-900 truncate">{res.tenantName}</h4>
                           <p className="text-xs text-slate-500 truncate">
-                            RUT: {formatRut(res.tenantRut)} • {res.tenantEmail}
+                            RUT: <Sensitive kind="rut" value={res.tenantRut} /> • <Sensitive kind="email" value={res.tenantEmail} />
                           </p>
                         </div>
                       </div>
@@ -1655,7 +1656,7 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
                           onClick={() =>
                             setContactModalTenant({
                               name: visit.tenantName,
-                              phone: visit.tenantPhone || '+56 9 8765 4321',
+                              phone: visit.tenantPhone || '',
                               email: visit.tenantEmail,
                               spaceTitle: visit.spaceTitle,
                             })
@@ -1738,8 +1739,8 @@ alert('Esta reserva no tiene un contrato firmado registrado. Los contratos se ge
 
                         <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
                           <span>Visitante: <strong className="text-slate-800">{visit.tenantName}</strong></span>
-                          <span>Email: <strong className="text-slate-800">{visit.tenantEmail}</strong></span>
-                          <span>Teléfono: <strong className="text-slate-800">{visit.tenantPhone}</strong></span>
+                          <span>Email: <strong className="text-slate-800"><Sensitive kind="email" value={visit.tenantEmail} /></strong></span>
+                          <span>Teléfono: <strong className="text-slate-800"><Sensitive kind="phone" value={visit.tenantPhone} /></strong></span>
                         </div>
 
                         <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">

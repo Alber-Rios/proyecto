@@ -446,7 +446,7 @@ async function verify(ctx: Ctx) {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const code = String(req.body?.code || '').replace(/\s+/g, '');
   if (!EMAIL_RE.test(email) || !/^[0-9A-Za-z]{6,10}$/.test(code)) {
-    return res.status(400).json({ success: false, message: 'Ingresa el código de 6 dígitos que te enviamos.' });
+    return res.status(400).json({ success: false, message: 'Ingresa el código que te enviamos por correo.' });
   }
   const key = `otp:${email}`;
   const locked = await isLocked(ctx, key);

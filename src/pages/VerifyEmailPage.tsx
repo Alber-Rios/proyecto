@@ -5,7 +5,11 @@ import { useApp } from '../context/AppContext.tsx';
 import { useGuestOnly } from '../hooks/useGuestOnly.ts';
 import { AuthAlert, AuthCard, inputClass, primaryButton } from '../components/AuthCard.tsx';
 
-const CODE_LENGTH = 6;
+// Largo del código: debe coincidir con "Email OTP Length" de Supabase
+// (Authentication → Providers → Email). Por defecto 8; se puede cambiar con
+// VITE_EMAIL_OTP_LENGTH. Igual se acepta cualquier código de 6 a 10 dígitos.
+const CODE_LENGTH = Math.min(Math.max(Number(import.meta.env.VITE_EMAIL_OTP_LENGTH) || 8, 6), 10);
+const MIN_CODE = 6;
 const RESEND_SECONDS = 60;
 
 const maskEmail = (email: string) => {
@@ -15,7 +19,7 @@ const maskEmail = (email: string) => {
   return `${visible}${'•'.repeat(Math.max(user.length - visible.length, 1))}@${domain}`;
 };
 
-// Paso final del registro: el usuario escribe el código de 6 dígitos que llegó a su
+// Paso final del registro: el usuario escribe el código que llegó a su
 // correo. Hasta entonces la cuenta no está activa ni puede iniciar sesión.
 export const VerifyEmailPage: React.FC = () => {
   const { verifyEmail, resendVerificationCode } = useApp();
@@ -91,7 +95,7 @@ export const VerifyEmailPage: React.FC = () => {
 
   const submit = async (code: string) => {
     if (loading) return;
-    if (code.length !== CODE_LENGTH) {
+    if (code.length < MIN_CODE) {
       setError(`Ingresa los ${CODE_LENGTH} dígitos del código.`);
       return;
     }
@@ -118,6 +122,12 @@ export const VerifyEmailPage: React.FC = () => {
     if (clean.length > 1) {
       // Pegar el código completo
       const next = clean.slice(0, CODE_LENGTH).split('');
+      // Código pegado más corto que las casillas (proyecto con otro largo): se envía igual.
+      if (next.length >= MIN_CODE && next.length < CODE_LENGTH && clean.length === next.length) {
+        setDigits([...next, ...Array(CODE_LENGTH - next.length).fill('')]);
+        void submit(next.join(''));
+        return;
+      }
       const filled = [...next, ...Array(CODE_LENGTH - next.length).fill('')];
       setDigits(filled);
       inputs.current[Math.min(next.length, CODE_LENGTH - 1)]?.focus();
@@ -184,7 +194,7 @@ export const VerifyEmailPage: React.FC = () => {
         >
           <fieldset disabled={loading || verified}>
             <legend className="sr-only">Código de verificación</legend>
-            <div className="flex justify-center gap-2 sm:gap-3">
+            <div className="flex justify-center gap-1.5 sm:gap-2.5">
               {digits.map((d, i) => (
                 <input
                   key={i}
@@ -201,7 +211,7 @@ export const VerifyEmailPage: React.FC = () => {
                   maxLength={i === 0 ? CODE_LENGTH : 1}
                   aria-label={`Dígito ${i + 1} de ${CODE_LENGTH}`}
                   autoFocus={i === 0}
-                  className="w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold text-slate-900 bg-white border-2 border-stone-300 rounded-xl focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 transition"
+                  className="w-8 h-11 min-[400px]:w-10 min-[400px]:h-14 sm:w-12 sm:h-16 text-center text-lg min-[400px]:text-xl sm:text-2xl font-bold text-slate-900 bg-white border-2 border-stone-300 rounded-xl focus:border-rose-500 focus:outline-hidden focus:ring-4 focus:ring-rose-500/15 transition"
                 />
               ))}
             </div>
@@ -223,7 +233,7 @@ export const VerifyEmailPage: React.FC = () => {
           </div>
 
           <p className="text-xs text-slate-500 text-center leading-relaxed">
-            El código vence en 15 minutos. ¿No llegó? Revisa la carpeta de spam o promociones. Si no lo validas, la cuenta se elimina a las 24 horas.
+            El código vence en pocos minutos (el correo indica el plazo). ¿No llegó? Revisa la carpeta de spam o promociones. Si no lo validas, la cuenta se elimina a las 24 horas.
           </p>
         </form>
       )}

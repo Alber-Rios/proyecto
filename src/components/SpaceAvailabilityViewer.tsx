@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -1014,7 +1015,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                               </div>
                               <div className="font-bold text-slate-900 break-words">{booking.tenantName}</div>
                               {booking.tenantRut && (
-                                <div className="text-slate-600">RUT: <strong>{formatRut(booking.tenantRut)}</strong></div>
+                                <div className="text-slate-600">RUT: <strong><Sensitive kind="rut" value={booking.tenantRut} /></strong></div>
                               )}
                             </div>
                             <div className="space-y-1 min-w-0">
@@ -1684,7 +1685,7 @@ export const SpaceAvailabilityViewer: React.FC<SpaceAvailabilityViewerProps> = (
                     </span>
                   </div>
                   <div className="text-xs text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                    <div>RUT: <strong>{formatRut(dayDetailsForSelectedDate.primaryReservation.tenantRut)}</strong></div>
+                    <div>RUT: <strong><Sensitive kind="rut" value={dayDetailsForSelectedDate.primaryReservation.tenantRut} /></strong></div>
                     <div>Email: <strong>{dayDetailsForSelectedDate.primaryReservation.tenantEmail || 'Sin correo'}</strong></div>
                     <div>Teléfono: <strong>{getTenantPhone(dayDetailsForSelectedDate.primaryReservation)}</strong></div>
                     <div>Uso: <em>"{dayDetailsForSelectedDate.primaryReservation.intendedUse || 'No indicado'}"</em></div>

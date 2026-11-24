@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Sensitive } from '../Sensitive.tsx';
 import { ShieldCheck, ShieldAlert, Download, RefreshCw, Search, X, ChevronLeft, ChevronRight, Loader2, Link2 } from 'lucide-react';
 import {
   searchAudit,
@@ -271,7 +272,7 @@ export const AuditPanel: React.FC = () => {
                   <span className="text-xs text-slate-500">{CATEGORY_LABEL[r.category]}</span>
                 </span>
                 <span className="w-full min-w-0 truncate text-xs text-slate-600">
-                  {r.userEmail}
+                  <Sensitive kind="email" value={r.userEmail} noReveal />
                   {r.userRole ? ` · ${r.userRole}` : ''}
                   {r.ip ? ` · ${r.ip}` : ''}
                 </span>
@@ -311,7 +312,7 @@ export const AuditPanel: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="block break-all text-slate-800">{r.userEmail}</span>
+                    <span className="block break-all text-slate-800"><Sensitive kind="email" value={r.userEmail} noReveal /></span>
                     <span className="text-xs text-slate-500">{r.userRole}</span>
                   </td>
                   <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{r.ip || '—'}</td>
@@ -390,7 +391,7 @@ const AuditDetail: React.FC<{ entry: AuditEntry; onClose: () => void; onFilter: 
             <dt className="text-slate-600">Severidad</dt>
             <dd><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${severityClass[entry.severity]}`}>{SEVERITY_LABEL[entry.severity]}</span></dd>
             <dt className="text-slate-600">Usuario</dt>
-            <dd className="break-all text-slate-900">{entry.userEmail} <span className="text-slate-500">({entry.userRole})</span></dd>
+            <dd className="break-all text-slate-900"><Sensitive kind="email" value={entry.userEmail} /> <span className="text-slate-500">({entry.userRole})</span></dd>
             <dt className="text-slate-600">ID de usuario</dt>
             <dd className="break-all font-mono text-xs text-slate-800">{entry.userId}</dd>
             <dt className="text-slate-600">IP</dt>

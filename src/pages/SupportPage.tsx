@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Sensitive } from '../components/Sensitive.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { formatClp, formatRut } from '../utils/formatters.ts';
 import {
@@ -409,7 +410,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ onNavigate, onOpenAuth
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                       <span>
-                        Anfitrión: <strong className="text-slate-700">{d.ownerName}</strong> ({formatRut(d.ownerRut)})
+                        Anfitrión: <strong className="text-slate-700">{d.ownerName}</strong> (<Sensitive kind="rut" value={d.ownerRut} />)
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />

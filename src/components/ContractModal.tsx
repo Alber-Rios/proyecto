@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import { verifyContractIntegrity, ContractIntegrityResult, isSha256Hex } from '../utils/contractHash.ts';
 import { DigitalContract } from '../types.ts';
 import { formatRut } from '../utils/formatters.ts';
@@ -148,7 +149,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
                   </p>
                 )}
                 <p className="mt-[0.5em] font-bold text-slate-950">{contract.tenantName}</p>
-                <p className="text-[0.9375em] text-slate-800">RUT {formatRut(contract.tenantRut)}</p>
+                <p className="text-[0.9375em] text-slate-800">RUT <Sensitive kind="rut" value={contract.tenantRut} printFull /></p>
                 <p className="mt-[0.35em] text-[0.875em] text-slate-700">
                   Firmó el {signedAt} desde la IP {contract.signerIp || contract.tenantSignature.ip}
                 </p>
@@ -160,7 +161,7 @@ export const ContractModal: React.FC<ContractModalProps> = ({ contract, isOpen, 
                   Concurre mediante el Acuerdo de Adhesión de Anfitriones aceptado en Spotly
                 </p>
                 <p className="mt-[0.5em] font-bold text-slate-950">{contract.ownerName}</p>
-                <p className="text-[0.9375em] text-slate-800">RUT {formatRut(contract.ownerRut) || 'no informado'}</p>
+                <p className="text-[0.9375em] text-slate-800">RUT {contract.ownerRut ? <Sensitive kind="rut" value={contract.ownerRut} printFull /> : 'no informado'}</p>
               </div>
             </section>
 

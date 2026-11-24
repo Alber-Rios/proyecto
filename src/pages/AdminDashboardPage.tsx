@@ -1,4 +1,5 @@
 import { AdminOverview } from '../components/dashboard/AdminOverview.tsx';
+import { Sensitive } from '../components/Sensitive.tsx';
 import { getTodayIso } from '../utils/formatters.ts';
 import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -411,7 +412,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             {u.fullName}
                           </div>
                           <div className="text-xs text-slate-500 font-mono truncate">
-                            RUT {formatRut(u.rut)}
+                            RUT <Sensitive kind="rut" value={u.rut} noReveal />
                           </div>
                           <div className="flex items-center gap-1.5 mt-1">
                             <span
@@ -492,7 +493,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {selectedUser.email} · Tel: {selectedUser.phone}
+                        <Sensitive kind="email" value={selectedUser.email} /> · Tel: <Sensitive kind="phone" value={selectedUser.phone} />
                       </p>
                     </div>
                   </div>
@@ -909,7 +910,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             RUN / RUT
                           </span>
                           <span className="font-mono font-bold text-indigo-900">
-                            {formatRut(selectedUser.rut)}
+                            <Sensitive kind="rut" value={selectedUser.rut} />
                           </span>
                         </div>
                         <div>
@@ -1031,7 +1032,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                             {sp.commune}
                           </span>
                           <span>
-                            Propietario: <strong className="text-slate-700">{sp.ownerName}</strong> ({formatRut(sp.ownerRut)})
+                            Propietario: <strong className="text-slate-700">{sp.ownerName}</strong> (<Sensitive kind="rut" value={sp.ownerRut} noReveal />)
                           </span>
                           <span className="font-bold text-slate-900">
                             {formatClp(rate.amount)} {rate.unitLabel}
@@ -1251,14 +1252,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         <span className="text-slate-500 block">Arrendatario</span>
                         <strong className="text-slate-800">{d.tenantName}</strong>
                         <span className="block text-xs text-slate-500 font-mono">
-                          RUT {formatRut(d.tenantRut)}
+                          RUT <Sensitive kind="rut" value={d.tenantRut} />
                         </span>
                       </div>
                       <div>
                         <span className="text-slate-500 block">Propietario</span>
                         <strong className="text-slate-800">{d.ownerName}</strong>
                         <span className="block text-xs text-slate-500 font-mono">
-                          RUT {formatRut(d.ownerRut)}
+                          RUT <Sensitive kind="rut" value={d.ownerRut} />
                         </span>
                       </div>
                       <div>
@@ -1405,7 +1406,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                       `Certificado_Antecedentes_${pdfModalUser.rut.replace(/\D/g, '')}.pdf`}
                   </h3>
                   <p className="text-xs text-slate-500 truncate">
-                    Expediente KYC · {pdfModalUser.fullName} (RUT {formatRut(pdfModalUser.rut)})
+                    Expediente KYC · {pdfModalUser.fullName} (RUT <Sensitive kind="rut" value={pdfModalUser.rut} />)
                   </p>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Sensitive } from '../Sensitive.tsx';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -248,7 +249,7 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
             <div className="rounded-2xl border border-slate-200 p-4">
               <h3 className="text-sm font-bold text-slate-900 mb-2">Propietario</h3>
               <p className="text-sm font-semibold text-slate-800">{space.ownerName}</p>
-              <p className="text-xs text-slate-500">RUT {space.ownerRut ? formatRut(space.ownerRut) : '—'}</p>
+              <p className="text-xs text-slate-500">RUT {space.ownerRut ? <Sensitive kind="rut" value={space.ownerRut} /> : '—'}</p>
               <p
                 className={`mt-2 inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
                   space.ownerVerified ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'

@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
+import { Sensitive } from './Sensitive.tsx';
 import { Landmark, Loader2, Pencil, ShieldCheck } from 'lucide-react';
 import {
   BANK_ACCOUNT_TYPES,
@@ -138,7 +139,7 @@ export const BankAccountCard: React.FC<Props> = ({ userId, defaultName, defaultR
           </div>
           <div>
             <dt className="text-xs text-slate-500">RUT</dt>
-            <dd className="font-semibold tabular-nums text-slate-900">{formatRut(account.holderRut)}</dd>
+            <dd className="font-semibold tabular-nums text-slate-900"><Sensitive kind="rut" value={account.holderRut} /></dd>
           </div>
           <div>
             <dt className="text-xs text-slate-500">Banco</dt>

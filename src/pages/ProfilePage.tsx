@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Sensitive, SensitiveInput } from '../components/Sensitive.tsx';
 import { useApp } from '../context/AppContext.tsx';
 import { UserGender } from '../types.ts';
 import { formatRut, formatRutInput, validateRut, capitalizeInitial, getNameInitial } from '../utils/formatters.ts';
@@ -189,7 +190,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
 
               <p className="text-xs text-slate-500 font-mono">
-                RUT: <strong className="text-slate-800">{formatRut(currentUser.rut)}</strong> • {currentUser.email}
+                RUT: <strong className="text-slate-800"><Sensitive kind="rut" value={currentUser.rut} /></strong> • <Sensitive kind="email" value={currentUser.email} />
               </p>
 
               <div className="flex items-center gap-2 pt-1 flex-wrap">
@@ -384,10 +385,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   RUT Chileno (con guión)
                 </label>
-                <input
+                <SensitiveInput
+                  kind="rut"
                   type="text"
                   value={rut}
-                  onChange={(e) => setRut(formatRutInput(e.target.value))}
+                  onChange={(v) => setRut(formatRutInput(v))}
                   maxLength={12}
                   placeholder="12.345.678-9"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
@@ -399,10 +401,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Correo electrónico
                 </label>
-                <input
+                <SensitiveInput
+                  kind="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={setEmail}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
                   required
                 />
@@ -412,10 +415,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Teléfono móvil (+56 9 ...)
                 </label>
-                <input
+                <SensitiveInput
+                  kind="phone"
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={setPhone}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium"
                 />
               </div>
