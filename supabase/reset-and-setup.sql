@@ -4105,21 +4105,24 @@ $$;
 -- ==============================================================================
 -- Spotly aún no es emisor electrónico ante el SII. Para demostrar el flujo se
 -- emiten documentos SIMULADOS, sin valor tributario, con la misma estructura
--- que un DTE real: tipo (39 boleta, 61 nota de crédito), folio correlativo por
+-- que un DTE real: tipo (33 factura, 39 boleta, 61 nota de crédito), folio correlativo por
 -- tipo, montos neto/IVA/total y un "timbre" (TED) que el comprobante dibuja
 -- como código PDF417. Al conectar un proveedor real (OpenFactura, Bsale,
 -- LibreDTE) se reemplaza la emisión y simulated pasa a false.
---   * Boleta 39 al arrendatario por el cargo de servicio (al quedar pagada).
---   * Boleta 39 al propietario por la comisión (al generarse su liquidación).
+--   * Boleta 39 al arrendatario por la comisión Spotly 5 % + IVA (al quedar pagada).
+--   * Al propietario por la comisión 10 % + IVA (al generarse su liquidación):
+--     FACTURA 33 si tiene inicio de actividades (recupera el IVA como crédito
+--     fiscal); BOLETA 39 si no lo tiene.
 --   * Nota de crédito 61 si el cargo de servicio se devuelve completo.
-DROP SEQUENCE IF EXISTS public.tax_folio_39, public.tax_folio_61;
+DROP SEQUENCE IF EXISTS public.tax_folio_33, public.tax_folio_39, public.tax_folio_61;
+CREATE SEQUENCE public.tax_folio_33 START 1;
 CREATE SEQUENCE public.tax_folio_39 START 1;
 CREATE SEQUENCE public.tax_folio_61 START 1;
 
 CREATE TABLE IF NOT EXISTS public.tax_documents (
   id TEXT PRIMARY KEY DEFAULT public.generate_id('dte'),
   reservation_id TEXT NOT NULL REFERENCES public.reservations(id) ON DELETE RESTRICT,
-  doc_type SMALLINT NOT NULL CHECK (doc_type IN (39, 61)),
+  doc_type SMALLINT NOT NULL CHECK (doc_type IN (33, 39, 61)),  -- 33 factura, 39 boleta, 61 nota de crédito
   concept TEXT NOT NULL CHECK (concept IN ('cargo_servicio', 'comision_propietario')),
   folio BIGINT NOT NULL,
   recipient_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -4167,7 +4170,7 @@ BEGIN
              WHERE reservation_id = p_reservation_id AND doc_type = p_type AND concept = p_concept) THEN
     RETURN;
   END IF;
-  v_folio := CASE p_type WHEN 61 THEN nextval('public.tax_folio_61') ELSE nextval('public.tax_folio_39') END;
+  v_folio := CASE p_type WHEN 61 THEN nextval('public.tax_folio_61') WHEN 33 THEN nextval('public.tax_folio_33') ELSE nextval('public.tax_folio_39') END;
   -- Estructura del TED del SII (DD = datos del documento). FRMT no es una firma real.
   v_ted := format(
     '<TED version="1.0"><DD><RE>SPOTLY-DEMO</RE><TD>%s</TD><F>%s</F><FE>%s</FE><RR>%s</RR><RSR>%s</RSR><MNT>%s</MNT><IT1>%s</IT1></DD><FRMT algoritmo="NINGUNO">SIMULADO-SIN-VALOR-TRIBUTARIO</FRMT></TED>',
@@ -4227,8 +4230,12 @@ DECLARE
 BEGIN
   SELECT * INTO r FROM public.reservations WHERE id = NEW.reservation_id;
   IF FOUND AND coalesce(r.owner_commission_clp, 0) > 0 THEN
-    PERFORM public.issue_simulated_document(r.id, 39::smallint, 'comision_propietario',
-      r.owner_id, r.owner_name, r.owner_rut, r.owner_commission_clp);
+    -- Con inicio de actividades recibe FACTURA (33): puede usar el IVA de la comisión
+    -- como crédito fiscal. Sin inicio de actividades, BOLETA (39).
+    PERFORM public.issue_simulated_document(r.id,
+      CASE WHEN EXISTS (SELECT 1 FROM public.tax_status t WHERE t.user_id = r.owner_id AND t.has_activity)
+           THEN 33 ELSE 39 END::smallint,
+      'comision_propietario', r.owner_id, r.owner_name, r.owner_rut, r.owner_commission_clp);
   END IF;
   RETURN NEW;
 END;

@@ -495,7 +495,8 @@ export async function verifyAuditChain(): Promise<ChainVerification> {
 export interface TaxDocument {
   id: string;
   reservationId: string;
-  docType: 39 | 61;
+  /** 33 factura, 39 boleta, 61 nota de crédito. */
+  docType: 33 | 39 | 61;
   concept: 'cargo_servicio' | 'comision_propietario';
   folio: number;
   recipientName: string | null;
@@ -520,7 +521,7 @@ export async function getTaxDocuments(reservationId: string): Promise<TaxDocumen
   return (data || []).map((r: any) => ({
     id: r.id,
     reservationId: r.reservation_id,
-    docType: Number(r.doc_type) as 39 | 61,
+    docType: Number(r.doc_type) as 33 | 39 | 61,
     concept: r.concept,
     folio: Number(r.folio),
     recipientName: r.recipient_name,

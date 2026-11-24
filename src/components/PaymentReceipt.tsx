@@ -114,7 +114,11 @@ export const ReceiptPaper: React.FC<{
 }> = ({ reservation: r, payment, furnished, avaluoFiscalClp, variant, kind = 'summary', documents = [], ivaWithheldClp = 0 }) => {
   const isTenant = variant === 'tenant';
   const concept = isTenant ? 'cargo_servicio' : 'comision_propietario';
-  const boleta = documents.find((d) => d.docType === 39 && d.concept === concept);
+  // Documento de Spotly por su comisión: boleta (39) o, al propietario con inicio de
+  // actividades, factura (33) para que use el IVA como crédito fiscal.
+  const boleta = documents.find((d) => (d.docType === 39 || d.docType === 33) && d.concept === concept);
+  const isFactura = boleta?.docType === 33;
+  const docName = isFactura ? 'FACTURA' : 'BOLETA';
   const creditNote = documents.find((d) => d.docType === 61 && d.concept === concept);
   const issuerName = placeholder(LEGAL_ENTITY.name) || 'SPOTLY';
   const issuerRut = placeholder(LEGAL_ENTITY.rut);
@@ -138,8 +142,12 @@ export const ReceiptPaper: React.FC<{
   const boletaNet = boleta?.netClp ?? netOf(boletaGross);
   const boletaIva = boleta?.ivaClp ?? boletaGross - boletaNet;
 
-  const title = showBoleta ? `BOLETA N° ${boleta!.folio}` : isTenant ? 'COMPROBANTE DE PAGO' : 'LIQUIDACIÓN';
-  const label = showBoleta ? 'Boleta electrónica de Spotly' : isTenant ? 'Comprobante de pago' : 'Liquidación para el propietario';
+  const title = showBoleta ? `${docName} N° ${boleta!.folio}` : isTenant ? 'COMPROBANTE DE PAGO' : 'LIQUIDACIÓN';
+  const label = showBoleta ? `${isFactura ? 'Factura' : 'Boleta'} electrónica de Spotly` : isTenant ? 'Comprobante de pago' : 'Liquidación para el propietario';
+  const feeNet = netOf(fee);
+  const feeIva = fee - feeNet;
+  const comNet = netOf(commission);
+  const comIva = commission - comNet;
 
   // Datos de la reserva: cada uno ve su propio RUT; del otro, solo el nombre.
   const reservationData = (
@@ -196,11 +204,16 @@ export const ReceiptPaper: React.FC<{
         <Line k="IVA 19%" v={peso(boletaIva)} />
         <Line k={<span className="text-[15px]">TOTAL</span>} v={<span className="text-[15px]">{peso(boletaGross)}</span>} strong />
         {!isTenant && <p className="text-[10px] uppercase text-stone-600">Se descontó de tu depósito. No pagas nada aparte.</p>}
+        {isFactura && (
+          <p className="text-[10px] uppercase text-stone-600">
+            Usa este IVA ({peso(boletaIva)}) como crédito fiscal en tu declaración mensual (F29).
+          </p>
+        )}
         {creditNote && (
           <>
             <Rule double />
             <p className="text-center text-[11px] font-bold">NOTA DE CRÉDITO N° {creditNote.folio}</p>
-            <Line k={`ANULA BOLETA N° ${creditNote.referencesFolio ?? boleta!.folio}`} v={`-${peso(creditNote.totalClp)}`} strong />
+            <Line k={`ANULA ${docName} N° ${creditNote.referencesFolio ?? boleta!.folio}`} v={`-${peso(creditNote.totalClp)}`} strong />
             <p className="text-[10px] uppercase text-stone-600">
               {isTenant ? 'Se te devolvió la comisión de Spotly completa.' : 'La comisión se anuló.'}
             </p>
@@ -212,17 +225,27 @@ export const ReceiptPaper: React.FC<{
     body = (
       <div className="space-y-1.5">
         {tableHead}
-        <div>
-          <p className="uppercase">Arriendo{furnished ? ' amoblado' : ''}</p>
-          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitNet)}</span>} v={peso(rentNet)} />
-        </div>
-        <Line k="IVA ARRIENDO 19%" v={rentIva > 0 ? peso(rentIva) : 'EXENTO'} />
-        <Line k="COMISIÓN SPOTLY 5%" v={peso(netOf(fee))} />
-        <Line k="IVA COMISIÓN 19%" v={peso(fee - netOf(fee))} />
-        {deposit > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(deposit)} />}
-        {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
+        <Section title="A) ARRIENDO · DEL PROPIETARIO" note={rentIva > 0 ? 'El IVA del arriendo lo declara el propietario' : 'Sin amoblar: exento de IVA'}>
+          <Line k={`${qty} ${unit} x ${peso(unitNet)}`} v={peso(rentNet)} />
+          <Line k="IVA 19%" v={rentIva > 0 ? peso(rentIva) : 'EXENTO'} />
+          <Line k="SUBTOTAL ARRIENDO" v={peso(rentNet + rentIva)} strong />
+        </Section>
         <Rule />
+        <Section title="B) SERVICIO SPOTLY" note={`El IVA de la comisión lo declara Spotly${boleta ? ` · ${docName.toLowerCase()} N° ${boleta.folio}` : ''}`}>
+          <Line k="COMISIÓN 5%" v={peso(feeNet)} />
+          <Line k="IVA 19%" v={peso(feeIva)} />
+          <Line k="SUBTOTAL SPOTLY" v={peso(fee)} strong />
+        </Section>
+        {(deposit > 0 || discount > 0) && (
+          <>
+            <Rule />
+            {deposit > 0 && <Line k="GARANTÍA (SE DEVUELVE)" v={peso(deposit)} />}
+            {discount > 0 && <Line k={`DESCUENTO ${r.discountCode || ''}`.trim()} v={`-${peso(discount)}`} />}
+          </>
+        )}
+        <Rule double />
         <Line k={<span className="text-[15px]">{refunded > 0 ? 'TOTAL PAGADO' : 'TOTAL'}</span>} v={<span className="text-[15px]">{peso(r.totalClp)}</span>} strong />
+        <Line k={<span className="text-stone-600">IVA INCLUIDO EN TU PAGO</span>} v={<span className="text-stone-600">{peso(rentIva + feeIva)}</span>} />
         {refunded > 0 && (
           <>
             <Line k={r.paymentStatus === 'refund_pending' ? 'DEVOLUCIÓN EN CURSO' : 'DEVUELTO'} v={`-${peso(refunded)}`} />
@@ -237,9 +260,8 @@ export const ReceiptPaper: React.FC<{
         {payment?.authorizationCode && <Line k="COD. AUTORIZACIÓN" v={payment.authorizationCode} />}
 
         <p className="pt-1 text-[10px] uppercase text-stone-600">
-          {boleta
-            ? `Total = arriendo + IVA del arriendo + comisión Spotly + IVA de la comisión. La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»). El arriendo lo cobra Spotly por cuenta del propietario.`
-            : 'Total = arriendo + IVA del arriendo + comisión Spotly + IVA de la comisión. El arriendo y su IVA los cobra Spotly por cuenta del propietario (mandato de cobro).'}
+          El arriendo (A) lo cobra Spotly por cuenta del propietario y se lo entrega. El servicio Spotly (B) es de Spotly
+          {boleta ? ` y tiene su ${docName.toLowerCase()} N° ${boleta.folio} (pestaña «${isFactura ? 'Factura' : 'Boleta'} Spotly»)` : ''}.
         </p>
       </div>
     );
@@ -247,39 +269,56 @@ export const ReceiptPaper: React.FC<{
     body = (
       <div className="space-y-1.5">
         {tableHead}
-        <div>
-          <p className="uppercase">Arriendo</p>
-          <Line k={<span className="pl-2 text-stone-600">{qty} {unit} x {peso(unitNet)}</span>} v={peso(rentNet)} />
-        </div>
-        <Line k="IVA ARRIENDO 19%" v={rentIva > 0 ? `+${peso(rentIva)}` : 'EXENTO'} />
-        <Line k={`COMISIÓN SPOTLY ${commissionPct}%`} v={`-${peso(netOf(commission))}`} />
-        <Line k="IVA COMISIÓN 19%" v={`-${peso(commission - netOf(commission))}`} />
+        <Section title="A) TU ARRIENDO · LO PAGÓ EL ARRENDATARIO" note={rentIva > 0 ? 'Amoblado: lleva IVA, lo declaras tú' : 'Sin amoblar: exento de IVA'}>
+          <Line k={`${qty} ${unit} x ${peso(unitNet)}`} v={peso(rentNet)} />
+          <Line k="IVA 19%" v={rentIva > 0 ? `+${peso(rentIva)}` : 'EXENTO'} />
+          <Line k="RECIBES POR TU ARRIENDO" v={peso(rentNet + rentIva)} strong />
+        </Section>
+        <Rule />
+        <Section title="B) SERVICIO SPOTLY · TE LO COBRAMOS" note={`El IVA de la comisión lo declara Spotly${boleta ? ` · ${docName.toLowerCase()} N° ${boleta.folio}` : ''}`}>
+          <Line k={`COMISIÓN ${commissionPct}%`} v={`-${peso(comNet)}`} />
+          <Line k="IVA 19%" v={`-${peso(comIva)}`} />
+          <Line k="SUBTOTAL SPOTLY" v={`-${peso(commission)}`} strong />
+        </Section>
         {ivaWithheldClp > 0 && (
           <>
-            <Line k="ANTICIPO IVA RETENIDO" v={`-${peso(ivaWithheldClp)}`} />
+            <Rule />
+            <Line k="ANTICIPO IVA RETENIDO" v={`-${peso(ivaWithheldClp)}`} strong />
             <p className="pl-2 text-[10px] uppercase text-stone-600">
               Ley 21.713: no acreditaste cumplimiento tributario este semestre. Spotly lo paga al SII y tú lo descuentas en tu F29.
             </p>
           </>
         )}
-        <Rule />
+        <Rule double />
         <Line k={<span className="text-[15px]">A DEPOSITAR</span>} v={<span className="text-[15px]">{peso(ownerGets)}</span>} strong />
         <Line k="DEPÓSITO" v={r.status === 'completed' ? `MARTES ${nextTuesday(r.endDate)}` : 'MARTES TRAS EL ARRIENDO'} />
         {deposit > 0 && <Line k="GARANTÍA EN CUSTODIA" v={peso(deposit)} />}
 
         <Rule double />
-        <p className="text-center text-[11px] font-bold">IVA DE TU ARRIENDO</p>
+        <p className="text-center text-[11px] font-bold">TU IVA DE ESTE ARRIENDO</p>
         {rentIva > 0 ? (
-          <Section title="LO DECLARAS TÚ" note="Espacio amoblado o equipado">
-            <Line k="ARRIENDO NETO" v={peso(rentNet)} />
-            <Line k="IVA 19% (INCLUIDO EN TU DEPÓSITO)" v={peso(rentIva)} />
-            <p className="text-[10px] uppercase text-stone-600">Declara y paga este IVA al SII. Confirma con tu contador.</p>
+          <Section title="PARA TU DECLARACIÓN (F29)" note="Referencia: confirma con tu contador">
+            <Line k="IVA QUE COBRASTE (DÉBITO)" v={peso(rentIva)} />
+            {boleta && !isFactura ? (
+              <p className="text-[10px] uppercase text-stone-600">Recibiste boleta (sin inicio de actividades): no puedes descontar el IVA de la comisión.</p>
+            ) : (
+              <Line k={isFactura ? 'IVA FACTURA SPOTLY (CRÉDITO)' : 'IVA COMISIÓN (CRÉDITO, CON FACTURA)'} v={`-${peso(comIva)}`} />
+            )}
+            {ivaWithheldClp > 0 && <Line k="ANTICIPO YA RETENIDO" v={`-${peso(ivaWithheldClp)}`} />}
+            <Line k="IVA A PAGAR AL SII" v={peso(Math.max(rentIva - (boleta && !isFactura ? 0 : comIva) - ivaWithheldClp, 0))} strong />
           </Section>
         ) : (
-          <p className="text-center text-[10.5px] uppercase text-stone-600">Sin amoblar: exento de IVA. No tienes nada que declarar por IVA.</p>
+          <p className="text-[10.5px] uppercase text-stone-600">
+            Sin amoblar: tu arriendo está exento y no declaras IVA por él.{' '}
+            {isFactura
+              ? `Con la factura de Spotly puedes registrar el IVA de la comisión (${peso(comIva)}) como crédito fiscal si tienes otras ventas con IVA.`
+              : `El IVA de la comisión (${peso(comIva)}) no es recuperable sin inicio de actividades.`}
+          </p>
         )}
         <p className="pt-1 text-[10px] uppercase text-stone-600">
-          {boleta ? `La comisión tiene su boleta N° ${boleta.folio} (pestaña «Boleta Spotly»).` : 'La boleta de la comisión se emite al liquidar.'}
+          {boleta
+            ? `La comisión tiene su ${docName.toLowerCase()} N° ${boleta.folio} (pestaña «${isFactura ? 'Factura' : 'Boleta'} Spotly»).`
+            : 'El documento de la comisión se emite al liquidar.'}
         </p>
       </div>
     );
@@ -307,7 +346,7 @@ export const ReceiptPaper: React.FC<{
         {issuerRut && <p>R.U.T. {issuerRut}</p>}
         <p>Giro: intermediación de arriendos</p>
         {issuerAddress && <p className="text-[11px]">{issuerAddress}</p>}
-        {showBoleta && <p className="mt-1 text-[13px] font-bold">Boleta electrónica</p>}
+        {showBoleta && <p className="mt-1 text-[13px] font-bold">{isFactura ? 'Factura electrónica' : 'Boleta electrónica'}</p>}
       </header>
 
       {reservationData}
@@ -318,13 +357,13 @@ export const ReceiptPaper: React.FC<{
           <Pdf417Stamp ted={boleta!.ted} />
           <p className="text-[10.5px] font-bold uppercase">Timbre electrónico S.I.I. (simulado)</p>
           <p className="text-[10px] uppercase text-stone-600">
-            Documento de demostración para proyecto de título. No es una boleta válida ante el SII.
+            Documento de demostración para proyecto de título. No es {isFactura ? 'una factura válida' : 'una boleta válida'} ante el SII.
           </p>
           <p className="text-[10px] text-stone-600">Emitida {fmtDateTime(boleta!.issuedAt)}</p>
         </div>
       ) : (
         <p className="mt-5 text-center text-[10.5px] uppercase text-stone-600">
-          {isTenant ? 'Comprobante de pago.' : 'Liquidación del arriendo.'} No es una boleta.
+          {isTenant ? 'Comprobante de pago.' : 'Liquidación del arriendo.'} No es una boleta ni una factura.
         </p>
       )}
       <p className="mt-2 text-center text-[11px]">Gracias por usar Spotly</p>
@@ -344,7 +383,8 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
   const [documents, setDocuments] = useState<TaxDocument[]>([]);
   const [kind, setKind] = useState<Kind>('summary');
   const [ivaWithheld, setIvaWithheld] = useState(0);
-  const hasBoleta = documents.some((d) => d.docType === 39 && d.concept === (variant === 'tenant' ? 'cargo_servicio' : 'comision_propietario'));
+  const myDoc = documents.find((d) => (d.docType === 39 || d.docType === 33) && d.concept === (variant === 'tenant' ? 'cargo_servicio' : 'comision_propietario'));
+  const hasBoleta = Boolean(myDoc);
   useEffect(() => {
     let alive = true;
     getTaxDocuments(reservation.id).then((d) => alive && setDocuments(d));
@@ -402,7 +442,7 @@ export const PaymentReceiptModal: React.FC<{ reservation: Reservation; variant: 
           <div role="tablist" aria-label="Documento" className="receipt-actions grid grid-cols-2 gap-1 rounded-xl bg-white/10 p-1">
             {([
               ['summary', variant === 'tenant' ? 'Comprobante de pago' : 'Liquidación'],
-              ['boleta', 'Boleta Spotly'],
+              ['boleta', myDoc?.docType === 33 ? 'Factura Spotly' : 'Boleta Spotly'],
             ] as const).map(([k, text]) => (
               <button
                 key={k}

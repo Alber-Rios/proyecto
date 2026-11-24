@@ -158,8 +158,11 @@ export const OwnerUpgradeModal: React.FC<OwnerUpgradeModalProps> = ({
               acceptFee,
               setAcceptFee,
               <>
-                Acepto la comisión de Spotly: <strong className="text-slate-900">{pct(fees.ownerCommissionRate)} del arriendo más IVA</strong>. Por ejemplo, en un arriendo de{' '}
-                {formatClp(exampleRent)} son {formatClp(exampleCommission)}. Se descuenta al liquidar y el resto se deposita los martes.
+                <strong className="text-slate-900">Acepto la comisión de Spotly del {pct(fees.ownerCommissionRate)} del arriendo más IVA.</strong>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  Ejemplo: en un arriendo de {formatClp(exampleRent)} son {formatClp(Math.round(exampleRent * fees.ownerCommissionRate))} + {formatClp(exampleCommission - Math.round(exampleRent * fees.ownerCommissionRate))} de IVA ={' '}
+                  {formatClp(exampleCommission)}. Se descuenta al liquidar; el resto se deposita los martes.
+                </span>
               </>,
             )}
             {check(
