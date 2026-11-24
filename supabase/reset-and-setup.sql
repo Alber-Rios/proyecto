@@ -32,9 +32,10 @@
 --     equipado) + comisión Spotly 5 % + IVA de la comisión. Al propietario se le
 --     descuenta la comisión de 10 % + su IVA (todas las modalidades, desde la
 --     primera reserva), fijada en cada reserva; liquidaciones los martes.
---   · Boletas y notas de crédito SIMULADAS (tax_documents) y situación tributaria
---     SIMULADA del propietario (tax_status): para publicar amoblado debe tener
---     inicio de actividades al día en el SII.
+--   · Boletas, facturas y notas de crédito SIMULADAS (tax_documents) y situación
+--     tributaria del propietario (tax_status): sube su carpeta tributaria del SII y
+--     un administrador la revisa; para publicar amoblado debe tener inicio de
+--     actividades y cumplimiento al día.
 --   · Cuentas bancarias, devoluciones por transferencia y avalúo fiscal privado.
 --   · Reportes de ganancias de Spotly (admin_finance_report) y auditoría
 --     encadenada con SHA-256 con búsqueda y verificación de integridad.
@@ -4259,10 +4260,11 @@ CREATE TRIGGER owner_payouts_tax_document
 --      19 % del neto) sobre sus operaciones gravadas y enterarlo al SII en el F29.
 --      (Si además interviene un operador de medios de pago, retiene solo él; aquí
 --      Spotly liquida al propietario, por eso lo aplica en la liquidación.)
--- En producción la consulta se hace por RUT con la API del SII. Para el proyecto de
--- título es SIMULADA y determinista: si la suma de los dígitos del RUT (sin el dígito
--- verificador) es par, tiene inicio de actividades y cumplimiento al día; si es
--- impar, no tiene inicio. El administrador puede corregir el resultado.
+-- El propietario sube su carpeta tributaria electrónica (PDF del SII, muestra el inicio
+-- de actividades y sus declaraciones de IVA). Un administrador la revisa, la contrasta
+-- con la consulta pública "Situación tributaria de terceros" del SII y registra el
+-- resultado. En producción se reemplaza por la información que el SII entrega a las
+-- plataformas registradas (Ley 21.713).
 CREATE TABLE IF NOT EXISTS public.tax_status (
   user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
   rut TEXT NOT NULL,
@@ -4273,12 +4275,19 @@ CREATE TABLE IF NOT EXISTS public.tax_status (
   activity_name TEXT,
   exempt_declared BOOLEAN NOT NULL DEFAULT false,   -- declaró no estar obligado (solo sin amoblar)
   exempt_declared_at TIMESTAMPTZ,
-  source TEXT NOT NULL DEFAULT 'simulado' CHECK (source IN ('simulado', 'admin', 'api')),
-  simulated BOOLEAN NOT NULL DEFAULT true,
-  checked_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  source TEXT NOT NULL DEFAULT 'propietario' CHECK (source IN ('propietario', 'admin', 'api')),
+  simulated BOOLEAN NOT NULL DEFAULT false,
+  checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),   -- última revisión de un administrador
+  -- Respaldo: carpeta tributaria del SII subida por el propietario (bucket tax-certificates).
+  certificate_path TEXT,
+  certificate_uploaded_at TIMESTAMPTZ,
+  review_status TEXT NOT NULL DEFAULT 'none' CHECK (review_status IN ('none', 'pending', 'reviewed', 'rejected')),
+  review_note TEXT,
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL
 );
 COMMENT ON TABLE public.tax_status IS
-  'Inicio de actividades y cumplimiento tributario del propietario (consulta SIMULADA al SII, Ley 21.713)';
+  'Inicio de actividades y cumplimiento tributario del propietario, revisado por un administrador con su carpeta tributaria del SII (Ley 21.713)';
 
 ALTER TABLE public.tax_status ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Situación tributaria: propia o admin" ON public.tax_status;
@@ -4334,7 +4343,10 @@ AS $$
 $$;
 
 -- Consulta (simulada) de la situación tributaria del usuario conectado, por su RUT.
-CREATE OR REPLACE FUNCTION public.check_my_tax_status()
+-- El propietario sube su carpeta tributaria (ya está en Storage: tax-certificates/{uid}/...)
+-- y queda pendiente de revisión. Mientras tanto se mantiene lo último que aprobó un
+-- administrador (si el semestre cambió, no acredita cumplimiento hasta la nueva revisión).
+CREATE OR REPLACE FUNCTION public.submit_tax_certificate(p_path TEXT)
 RETURNS public.tax_status
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -4343,42 +4355,36 @@ AS $$
 DECLARE
   v_uid UUID := auth.uid();
   v_rut TEXT;
-  v_body TEXT;
-  v_sum INT := 0;
-  v_ok BOOLEAN;
+  v_name TEXT;
   v_row public.tax_status;
-  i INT;
+  a RECORD;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión'; END IF;
-  SELECT rut INTO v_rut FROM public.profiles WHERE id = v_uid;
-  v_body := regexp_replace(COALESCE(v_rut, ''), '[^0-9kK]', '', 'g');
-  v_body := left(v_body, greatest(length(v_body) - 1, 0));
-  IF length(v_body) < 6 THEN RAISE EXCEPTION 'Tu perfil no tiene un RUT válido'; END IF;
-  FOR i IN 1..length(v_body) LOOP
-    v_sum := v_sum + substr(v_body, i, 1)::int;
-  END LOOP;
-  v_ok := v_sum % 2 = 0;
+  IF p_path IS NULL OR split_part(p_path, '/', 1) <> v_uid::text THEN
+    RAISE EXCEPTION 'Archivo no válido';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM storage.objects o WHERE o.bucket_id = 'tax-certificates' AND o.name = p_path) THEN
+    RAISE EXCEPTION 'No encontramos el archivo. Vuelve a subirlo.';
+  END IF;
+  SELECT rut, full_name INTO v_rut, v_name FROM public.profiles WHERE id = v_uid;
+  IF v_rut IS NULL THEN RAISE EXCEPTION 'Tu perfil no tiene RUT'; END IF;
 
-  INSERT INTO public.tax_status AS t (user_id, rut, has_activity, up_to_date, activity_start, activity_code, activity_name, source, simulated, checked_at)
-  VALUES (v_uid, v_rut, v_ok, v_ok,
-          CASE WHEN v_ok THEN date '2021-03-01' + (v_sum * 37) END,
-          CASE WHEN v_ok THEN '681012' END,
-          CASE WHEN v_ok THEN 'Alquiler de bienes inmuebles amoblados o con equipos y maquinarias' END,
-          'simulado', true, now())
+  INSERT INTO public.tax_status AS t (user_id, rut, has_activity, up_to_date, source, simulated, checked_at,
+                                      certificate_path, certificate_uploaded_at, review_status)
+  VALUES (v_uid, v_rut, false, false, 'propietario', false, now(), p_path, now(), 'pending')
   ON CONFLICT (user_id) DO UPDATE SET
     rut = EXCLUDED.rut,
-    -- Una corrección del administrador se respeta; la revisión solo renueva la fecha.
-    has_activity = CASE WHEN t.source = 'admin' THEN t.has_activity ELSE EXCLUDED.has_activity END,
-    up_to_date = CASE WHEN t.source = 'admin' THEN t.up_to_date ELSE EXCLUDED.up_to_date END,
-    activity_start = CASE WHEN t.source = 'admin' THEN t.activity_start ELSE EXCLUDED.activity_start END,
-    activity_code = CASE WHEN t.source = 'admin' THEN t.activity_code ELSE EXCLUDED.activity_code END,
-    activity_name = CASE WHEN t.source = 'admin' THEN t.activity_name ELSE EXCLUDED.activity_name END,
-    checked_at = now()
+    certificate_path = EXCLUDED.certificate_path,
+    certificate_uploaded_at = now(),
+    review_status = 'pending',
+    review_note = NULL
   RETURNING * INTO v_row;
 
-  PERFORM public.write_audit('TAX_STATUS_CHECKED', 'info', v_uid::text,
-    jsonb_build_object('hasActivity', v_row.has_activity, 'upToDate', v_row.up_to_date,
-                       'activityCode', v_row.activity_code, 'simulated', true));
+  PERFORM public.write_audit('TAX_CERTIFICATE_SUBMITTED', 'info', v_uid::text, jsonb_build_object('path', p_path));
+  FOR a IN SELECT id FROM public.profiles WHERE role = 'admin' LOOP
+    PERFORM public.notify_user(a.id, 'Carpeta tributaria por revisar',
+      COALESCE(v_name, 'Un propietario') || ' subió su carpeta tributaria del SII.', 'info', '/admin');
+  END LOOP;
   RETURN v_row;
 END;
 $$;
@@ -4401,7 +4407,7 @@ BEGIN
   SELECT rut INTO v_rut FROM public.profiles WHERE id = v_uid;
   IF v_rut IS NULL THEN RAISE EXCEPTION 'Tu perfil no tiene RUT'; END IF;
   INSERT INTO public.tax_status AS t (user_id, rut, has_activity, up_to_date, exempt_declared, exempt_declared_at, source, checked_at)
-  VALUES (v_uid, v_rut, false, false, true, now(), 'simulado', now())
+  VALUES (v_uid, v_rut, false, false, true, now(), 'propietario', now())
   ON CONFLICT (user_id) DO UPDATE SET exempt_declared = true, exempt_declared_at = now()
   RETURNING * INTO v_row;
   PERFORM public.write_audit('TAX_EXEMPTION_DECLARED', 'info', v_uid::text, jsonb_build_object('rut', v_rut));
@@ -4409,7 +4415,8 @@ BEGIN
 END;
 $$;
 
--- El administrador corrige el resultado (por ejemplo, tras revisar el certificado del SII).
+-- El administrador registra el resultado tras revisar la carpeta tributaria y la consulta
+-- pública del SII. Queda como revisión del semestre vigente.
 CREATE OR REPLACE FUNCTION public.admin_set_tax_status(p_user UUID, p_has_activity BOOLEAN, p_up_to_date BOOLEAN)
 RETURNS public.tax_status
 LANGUAGE plpgsql
@@ -4427,17 +4434,52 @@ BEGIN
   VALUES (p_user, v_rut, p_has_activity, p_has_activity AND p_up_to_date,
           CASE WHEN p_has_activity THEN '681012' END,
           CASE WHEN p_has_activity THEN 'Alquiler de bienes inmuebles amoblados o con equipos y maquinarias' END,
-          'admin', true, now())
+          'admin', false, now())
   ON CONFLICT (user_id) DO UPDATE SET
     has_activity = EXCLUDED.has_activity,
     up_to_date = EXCLUDED.up_to_date,
     activity_code = COALESCE(t.activity_code, EXCLUDED.activity_code),
     activity_name = COALESCE(t.activity_name, EXCLUDED.activity_name),
     source = 'admin',
-    checked_at = now()
+    simulated = false,
+    checked_at = now(),
+    review_status = CASE WHEN t.certificate_path IS NULL THEN t.review_status ELSE 'reviewed' END,
+    review_note = NULL,
+    reviewed_at = now(),
+    reviewed_by = auth.uid()
   RETURNING * INTO v_row;
   PERFORM public.write_audit('TAX_STATUS_SET_BY_ADMIN', 'warning', auth.uid()::text,
-    jsonb_build_object('targetUserId', p_user, 'hasActivity', v_row.has_activity, 'upToDate', v_row.up_to_date));
+    jsonb_build_object('targetUserId', p_user, 'hasActivity', v_row.has_activity, 'upToDate', v_row.up_to_date,
+                       'certificate', v_row.certificate_path));
+  PERFORM public.notify_user(p_user, 'Revisamos tu situación tributaria',
+    CASE WHEN v_row.has_activity AND v_row.up_to_date THEN 'Tu inicio de actividades y cumplimiento tributario están al día.'
+         WHEN v_row.has_activity THEN 'Tienes inicio de actividades, pero el SII informa incumplimientos. Revisa el detalle en Ganancias.'
+         ELSE 'Tu carpeta tributaria no muestra inicio de actividades. Revisa el detalle en Ganancias.' END,
+    'info', '/owner');
+  RETURN v_row;
+END;
+$$;
+
+-- El administrador rechaza el archivo (ilegible, de otra persona, vencido…) y le dice por qué.
+CREATE OR REPLACE FUNCTION public.admin_reject_tax_certificate(p_user UUID, p_note TEXT)
+RETURNS public.tax_status
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_row public.tax_status;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'Solo un administrador puede hacer esto'; END IF;
+  IF COALESCE(btrim(p_note), '') = '' THEN RAISE EXCEPTION 'Indica el motivo del rechazo'; END IF;
+  UPDATE public.tax_status SET review_status = 'rejected', review_note = left(btrim(p_note), 500),
+         reviewed_at = now(), reviewed_by = auth.uid()
+   WHERE user_id = p_user AND certificate_path IS NOT NULL
+  RETURNING * INTO v_row;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Este usuario no ha subido su carpeta tributaria'; END IF;
+  PERFORM public.write_audit('TAX_CERTIFICATE_REJECTED', 'warning', auth.uid()::text,
+    jsonb_build_object('targetUserId', p_user, 'note', v_row.review_note));
+  PERFORM public.notify_user(p_user, 'Tu carpeta tributaria fue rechazada', 'Motivo: ' || v_row.review_note || '. Súbela de nuevo desde Ganancias.', 'warning', '/owner');
   RETURN v_row;
 END;
 $$;
@@ -4493,7 +4535,7 @@ CREATE OR REPLACE FUNCTION public.admin_tax_roster(p_from DATE DEFAULT NULL, p_t
 RETURNS TABLE (
   user_id UUID, full_name TEXT, rut TEXT, email TEXT,
   has_activity BOOLEAN, up_to_date BOOLEAN, exempt_declared BOOLEAN,
-  checked_at TIMESTAMPTZ, review_due BOOLEAN, spaces_count BIGINT, furnished_count BIGINT,
+  checked_at TIMESTAMPTZ, review_due BOOLEAN, certificate_status TEXT, spaces_count BIGINT, furnished_count BIGINT,
   withheld_clp NUMERIC
 )
 LANGUAGE plpgsql
@@ -4507,6 +4549,7 @@ BEGIN
          COALESCE(t.has_activity, false), COALESCE(t.up_to_date, false), COALESCE(t.exempt_declared, false),
          t.checked_at,
          (t.checked_at IS NULL OR (t.checked_at AT TIME ZONE 'America/Santiago')::date < public.tax_semester_start()),
+         COALESCE(t.review_status, 'none'),
          (SELECT count(*) FROM public.spaces s WHERE s.owner_id = p.id AND s.status <> 'deleted'),
          (SELECT count(*) FROM public.spaces s WHERE s.owner_id = p.id AND s.status <> 'deleted' AND s.is_furnished),
          COALESCE((SELECT sum(op.iva_withheld_clp) FROM public.owner_payouts op
@@ -4789,7 +4832,8 @@ VALUES
   ('spaces',         'spaces',         true,  10485760, ARRAY['image/jpeg','image/png','image/webp','image/avif']),
   ('kyc-documents',  'kyc-documents',  false, 10485760, ARRAY['image/jpeg','image/png','application/pdf']),
   ('kyc-biometrics', 'kyc-biometrics', false, 10485760, ARRAY['image/jpeg','image/png','image/webp']),
-  ('contracts',      'contracts',      false, 10485760, ARRAY['application/pdf','image/png','text/plain'])
+  ('contracts',      'contracts',      false, 10485760, ARRAY['application/pdf','image/png','text/plain']),
+  ('tax-certificates', 'tax-certificates', false, 5242880, ARRAY['application/pdf','image/jpeg','image/png'])
 ON CONFLICT (id) DO UPDATE SET
   public = EXCLUDED.public,
   file_size_limit = EXCLUDED.file_size_limit,
@@ -4808,7 +4852,8 @@ BEGIN
     'Acceso a documentos KYC propios o admin', 'Subida de documentos KYC propios',
     'Actualización de documentos KYC propios',
     'Acceso a biometría propia o admin', 'Subida de biometría propia', 'Actualización de biometría propia',
-    'Acceso a contratos propios o admin', 'Subida de contratos por usuarios autenticados'
+    'Acceso a contratos propios o admin', 'Subida de contratos por usuarios autenticados',
+    'Carpeta tributaria propia o admin', 'Subida de carpeta tributaria propia'
   ] LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects', pol);
   END LOOP;
@@ -4852,6 +4897,14 @@ CREATE POLICY "Actualización de biometría propia"
   ON storage.objects FOR UPDATE TO authenticated
   USING (bucket_id = 'kyc-biometrics' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text)
   WITH CHECK (bucket_id = 'kyc-biometrics' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);
+
+-- ---------- tax-certificates (privado): {user_id}/... ----------
+CREATE POLICY "Carpeta tributaria propia o admin"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'tax-certificates' AND ((storage.foldername(name))[1] = (SELECT auth.uid())::text OR (SELECT public.is_admin())));
+CREATE POLICY "Subida de carpeta tributaria propia"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'tax-certificates' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);
 
 -- ---------- contracts (privado): {reservation_id}/... ----------
 CREATE POLICY "Acceso a contratos propios o admin"
@@ -4918,7 +4971,7 @@ GRANT SELECT ON public.payments TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.bank_accounts TO authenticated;   -- RLS: solo la propia (admin lee)
 GRANT SELECT ON public.refund_transfers TO authenticated;                        -- RLS: propias o admin
 GRANT SELECT ON public.tax_documents TO authenticated;                          -- RLS: destinatario o admin (simulados)
-GRANT SELECT ON public.tax_status TO authenticated;                             -- RLS: propia o admin (simulada)
+GRANT SELECT ON public.tax_status TO authenticated;                             -- RLS: propia o admin
 GRANT SELECT (id, user_id, status, card_type, card_last4, is_default, created_at)
   ON public.wallet_cards TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.favorites TO authenticated;
@@ -4996,7 +5049,8 @@ GRANT EXECUTE ON FUNCTION public.admin_pay_owner_week(UUID, DATE, TEXT) TO authe
 GRANT EXECUTE ON FUNCTION public.admin_refund_transfers() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_mark_refund_transfer_paid(TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.request_refund_transfer(TEXT, TEXT) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.check_my_tax_status() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.submit_tax_certificate(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_reject_tax_certificate(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.declare_tax_exemption() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_tax_roster(DATE, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_tax_status(UUID, BOOLEAN, BOOLEAN) TO authenticated;

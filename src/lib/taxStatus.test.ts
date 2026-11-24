@@ -3,7 +3,8 @@ import { nextTaxReview, taxCanPublish, taxReviewDue, taxSemesterStart, taxStatus
 
 const base: TaxStatus = {
   userId: 'u', hasActivity: true, upToDate: true, activityStart: null, activityCode: '681012', activityName: null,
-  exemptDeclared: false, exemptDeclaredAt: null, source: 'simulado', simulated: true, checkedAt: new Date().toISOString(),
+  exemptDeclared: false, exemptDeclaredAt: null, source: 'admin', simulated: false, checkedAt: new Date().toISOString(),
+  certificatePath: 'u/carpeta.pdf', certificateUploadedAt: null, reviewStatus: 'reviewed', reviewNote: null, reviewedAt: new Date().toISOString(),
 };
 
 describe('revisión tributaria semestral (Ley 21.713)', () => {

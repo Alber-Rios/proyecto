@@ -551,9 +551,17 @@ export interface TaxStatus {
   /** Declaró que su actividad no está sujeta a iniciar actividades (solo sin amoblar). */
   exemptDeclared: boolean;
   exemptDeclaredAt: string | null;
-  source: 'simulado' | 'admin' | 'api';
+  source: 'propietario' | 'admin' | 'api';
   simulated: boolean;
+  /** Última revisión de un administrador (o fecha del registro si nunca se revisó). */
   checkedAt: string;
+  /** Carpeta tributaria del SII subida por el propietario (ruta en el bucket tax-certificates). */
+  certificatePath: string | null;
+  certificateUploadedAt: string | null;
+  /** none: no ha subido nada · pending: por revisar · reviewed: revisada · rejected: archivo rechazado. */
+  reviewStatus: 'none' | 'pending' | 'reviewed' | 'rejected';
+  reviewNote: string | null;
+  reviewedAt: string | null;
 }
 
 /** 1 de enero o 1 de julio del semestre vigente (fecha de Chile). */
@@ -583,6 +591,11 @@ const mapTaxStatus = (r: any): TaxStatus => ({
   source: r.source,
   simulated: Boolean(r.simulated),
   checkedAt: r.checked_at,
+  certificatePath: r.certificate_path || null,
+  certificateUploadedAt: r.certificate_uploaded_at || null,
+  reviewStatus: (r.review_status as TaxStatus['reviewStatus']) || 'none',
+  reviewNote: r.review_note || null,
+  reviewedAt: r.reviewed_at || null,
 });
 
 /** Acredita cumplimiento este semestre: puede cobrar IVA y no se le retiene anticipo. */
@@ -596,20 +609,50 @@ export async function getTaxStatus(userId: string): Promise<TaxStatus | null> {
   return mapTaxStatus(data);
 }
 
-export async function checkMyTaxStatus(): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
-  const { data, error } = await supabase.rpc('check_my_tax_status');
+const TAX_BUCKET = 'tax-certificates';
+const TAX_MAX_BYTES = 5 * 1024 * 1024;
+const TAX_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+
+/** Sube la carpeta tributaria del SII y la deja pendiente de revisión por un administrador. */
+export async function submitTaxCertificate(userId: string, file: File): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
+  if (!TAX_TYPES.includes(file.type)) return { success: false, message: 'Sube el archivo en PDF, JPG o PNG.' };
+  if (file.size > TAX_MAX_BYTES) return { success: false, message: 'El archivo pesa más de 5 MB.' };
+  const ext = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : 'jpg';
+  const path = `${userId}/carpeta-tributaria-${Date.now()}.${ext}`;
+  const up = await supabase.storage.from(TAX_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+  if (up.error) {
+    const missing = /bucket not found/i.test(up.error.message);
+    if (missing) console.warn('[Spotly] Falta el bucket tax-certificates: ejecuta supabase/reset-and-setup.sql.', up.error);
+    return { success: false, message: missing ? 'No pudimos recibir el archivo por ahora. Inténtalo más tarde.' : up.error.message };
+  }
+  const { data, error } = await supabase.rpc('submit_tax_certificate', { p_path: path });
   if (error) {
-    // PGRST202: la función no existe en la base (falta ejecutar reset-and-setup.sql).
     const missing = error.code === 'PGRST202' || /could not find the function/i.test(error.message);
-    if (missing) console.warn('[Spotly] Falta check_my_tax_status en Supabase: ejecuta supabase/reset-and-setup.sql.', error);
-    return {
-      success: false,
-      message: missing ? 'La consulta al SII no está disponible por ahora. Inténtalo más tarde.' : error.message,
-    };
+    if (missing) console.warn('[Spotly] Falta submit_tax_certificate en Supabase: ejecuta supabase/reset-and-setup.sql.', error);
+    return { success: false, message: missing ? 'No pudimos recibir el archivo por ahora. Inténtalo más tarde.' : error.message };
   }
   const row = Array.isArray(data) ? data[0] : data;
   return { success: true, status: mapTaxStatus(row) };
 }
+
+/** Enlace temporal (10 minutos) para ver la carpeta tributaria: el propietario la suya, el admin cualquiera. */
+export async function getTaxCertificateUrl(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from(TAX_BUCKET).createSignedUrl(path, 600);
+  return error ? null : data.signedUrl;
+}
+
+/** Solo admin: rechaza el archivo (ilegible, de otra persona…) con el motivo. */
+export async function adminRejectTaxCertificate(userId: string, note: string): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
+  const { data, error } = await supabase.rpc('admin_reject_tax_certificate', { p_user: userId, p_note: note });
+  if (error) return { success: false, message: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  return { success: true, status: mapTaxStatus(row) };
+}
+
+/** Consulta pública del SII para contrastar el inicio de actividades por RUT. */
+export const SII_THIRD_PARTY_URL = 'https://www.sii.cl/como_se_hace_para/situacion_trib_terceros.html';
+/** Dónde el propietario descarga su carpeta tributaria electrónica. */
+export const SII_TAX_FOLDER_URL = 'https://www.chileatiende.gob.cl/fichas/3262-carpeta-tributaria-electronica';
 
 export async function adminSetTaxStatus(userId: string, hasActivity: boolean, upToDate: boolean): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
   const { data, error } = await supabase.rpc('admin_set_tax_status', { p_user: userId, p_has_activity: hasActivity, p_up_to_date: upToDate });
@@ -635,6 +678,7 @@ export interface TaxRosterRow {
   exemptDeclared: boolean;
   checkedAt: string | null;
   reviewDue: boolean;
+  certificateStatus: TaxStatus['reviewStatus'];
   spacesCount: number;
   furnishedCount: number;
   withheldClp: number;
@@ -654,6 +698,7 @@ export async function getTaxRoster(from?: string, to?: string): Promise<TaxRoste
     exemptDeclared: Boolean(r.exempt_declared),
     checkedAt: r.checked_at,
     reviewDue: Boolean(r.review_due),
+    certificateStatus: (r.certificate_status as TaxStatus['reviewStatus']) || 'none',
     spacesCount: Number(r.spaces_count),
     furnishedCount: Number(r.furnished_count),
     withheldClp: Number(r.withheld_clp),

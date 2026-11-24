@@ -21,14 +21,17 @@ export const TaxReviewNotice: React.FC<{ userId: string; furnishedCount: number;
   }, [userId]);
 
   if (tax === undefined || spacesCount === 0) return null;
+  // Ya subió su carpeta: falta que un administrador la revise, no hay nada que hacer.
+  if (tax?.reviewStatus === 'pending') return null;
   let text: string | null = null;
-  if (!tax) text = 'Revisa tu situación tributaria: por ley, Spotly debe verificar tu inicio de actividades en el SII.';
+  if (!tax) text = 'Sube tu carpeta tributaria del SII: por ley, Spotly debe verificar tu inicio de actividades.';
+  else if (tax.reviewStatus === 'rejected') text = `Rechazamos tu carpeta tributaria${tax.reviewNote ? ` (${tax.reviewNote})` : ''}. Súbela de nuevo.`;
   else if (furnishedCount > 0 && !taxStatusOk(tax))
     text = taxReviewDue(tax)
-      ? 'Toca tu revisión tributaria semestral. Mientras no la hagas, de tus arriendos amoblados se retiene un anticipo de IVA.'
+      ? 'Toca tu revisión tributaria semestral: sube tu carpeta tributaria actualizada. Mientras tanto, de tus arriendos amoblados se retiene un anticipo de IVA.'
       : 'No acreditas cumplimiento tributario: de tus arriendos amoblados se retiene un anticipo de IVA.';
-  else if (!taxCanPublish(tax)) text = 'Revisa tu situación tributaria para seguir publicando espacios.';
-  else if (tax.hasActivity && taxReviewDue(tax)) text = 'Toca tu revisión tributaria semestral (enero y julio).';
+  else if (!taxCanPublish(tax)) text = 'Sube tu carpeta tributaria para seguir publicando espacios.';
+  else if (tax.hasActivity && taxReviewDue(tax)) text = 'Toca tu revisión tributaria semestral: sube tu carpeta tributaria actualizada.';
   if (!text) return null;
 
   return (

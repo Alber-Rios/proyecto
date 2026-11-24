@@ -4,7 +4,7 @@ import { getTodayIso } from '../utils/formatters.ts';
 import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
-import { adminSetTaxStatus, getTaxRoster, getTaxStatus, taxReviewDue, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
+import { SII_THIRD_PARTY_URL, adminRejectTaxCertificate, adminSetTaxStatus, getTaxCertificateUrl, getTaxRoster, getTaxStatus, taxReviewDue, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
 import { downloadCsv } from '../utils/csv.ts';
 import { ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
 import { AuditPanel } from '../components/admin/AuditPanel.tsx';
@@ -23,6 +23,7 @@ import {
   Search,
   Eye,
   FileText,
+  ExternalLink,
   Clock,
   Banknote,
   MapPin,
@@ -202,15 +203,32 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     try {
       const rows = await getTaxRoster();
       downloadCsv(`Nomina_tributaria_Spotly_${new Date().toISOString().slice(0, 10)}.csv`, [
-        ['Nombre', 'RUT', 'Correo', 'Inicio de actividades', 'Cumplimiento al día', 'Declaró no obligado', 'Última revisión', 'Revisión semestral pendiente', 'Espacios', 'Amoblados', 'Anticipo IVA retenido (CLP)'],
+        ['Nombre', 'RUT', 'Correo', 'Inicio de actividades', 'Cumplimiento al día', 'Declaró no obligado', 'Carpeta tributaria', 'Última revisión', 'Revisión semestral pendiente', 'Espacios', 'Amoblados', 'Anticipo IVA retenido (CLP)'],
         ...rows.map((t) => [
           t.fullName, t.rut, t.email, t.hasActivity ? 'Sí' : 'No', t.upToDate ? 'Sí' : 'No', t.exemptDeclared ? 'Sí' : 'No',
+          ({ none: 'No subida', pending: 'Por revisar', reviewed: 'Revisada', rejected: 'Rechazada' } as const)[t.certificateStatus],
           t.checkedAt ? new Date(t.checkedAt).toLocaleDateString('es-CL') : '', t.reviewDue ? 'Sí' : 'No', t.spacesCount, t.furnishedCount, t.withheldClp,
         ]),
       ]);
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'No se pudo generar la nómina.');
     }
+  };
+  const viewTaxCertificate = async () => {
+    if (!selectedTax?.certificatePath) return;
+    const url = await getTaxCertificateUrl(selectedTax.certificatePath);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    else window.alert('No se pudo abrir la carpeta tributaria.');
+  };
+  const rejectTaxCertificate = async () => {
+    if (!selectedUser) return;
+    const note = window.prompt('¿Por qué rechazas el archivo? (el propietario verá este motivo)', 'El archivo no se puede leer');
+    if (!note?.trim()) return;
+    setTaxBusy(true);
+    const r = await adminRejectTaxCertificate(selectedUser.id, note.trim());
+    setTaxBusy(false);
+    if (r.success && r.status) setSelectedTax(r.status);
+    else window.alert(r.message || 'No se pudo rechazar.');
   };
   const setTax = async (hasActivity: boolean, upToDate = hasActivity) => {
     if (!selectedUser) return;
@@ -728,21 +746,35 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 <td className="py-2.5 px-4 text-slate-600">Inicio de actividades y cumplimiento (Ley 21.713, revisión enero y julio)</td>
                                 <td className="py-2.5 px-4 text-slate-700">
                                   {!selectedTax ? (
-                                    'Aún no consulta su situación'
+                                    'Aún no sube su carpeta tributaria'
                                   ) : (
                                     <>
-                                      {selectedTax.hasActivity
-                                        ? `Inicio de actividades · giro ${selectedTax.activityCode || '—'}${selectedTax.upToDate ? '' : ' · con incumplimientos'}`
-                                        : selectedTax.exemptDeclared
-                                          ? 'Declaró no estar obligado (solo sin amoblar)'
-                                          : 'Sin inicio de actividades'}
+                                      {selectedTax.reviewStatus === 'pending'
+                                        ? 'Subió su carpeta tributaria: falta revisarla'
+                                        : selectedTax.reviewStatus === 'rejected'
+                                          ? `Archivo rechazado: ${selectedTax.reviewNote || ''}`
+                                          : selectedTax.hasActivity
+                                            ? `Inicio de actividades · giro ${selectedTax.activityCode || '—'}${selectedTax.upToDate ? '' : ' · con incumplimientos'}`
+                                            : selectedTax.exemptDeclared
+                                              ? 'Declaró no estar obligado (solo sin amoblar)'
+                                              : 'Sin inicio de actividades'}
                                       <span className="block text-xs text-slate-500">
-                                        {selectedTax.source === 'admin' ? 'Corregido por administración' : 'Consulta simulada'} · revisado el{' '}
-                                        {new Date(selectedTax.checkedAt).toLocaleDateString('es-CL')}
-                                        {taxReviewDue(selectedTax) ? ' · revisión semestral pendiente' : ''}
+                                        {selectedTax.certificateUploadedAt ? `Carpeta subida el ${new Date(selectedTax.certificateUploadedAt).toLocaleDateString('es-CL')}` : 'Sin carpeta tributaria'}
+                                        {selectedTax.reviewedAt ? ` · revisada el ${new Date(selectedTax.reviewedAt).toLocaleDateString('es-CL')}` : ''}
+                                        {selectedTax.hasActivity && taxReviewDue(selectedTax) ? ' · revisión semestral pendiente' : ''}
                                       </span>
                                     </>
                                   )}
+                                  <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                    {selectedTax?.certificatePath && (
+                                      <button type="button" onClick={viewTaxCertificate} className="inline-flex items-center gap-1 font-semibold text-indigo-700 hover:underline cursor-pointer">
+                                        <FileText className="h-3.5 w-3.5" aria-hidden="true" /> Ver carpeta tributaria
+                                      </button>
+                                    )}
+                                    <a href={SII_THIRD_PARTY_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-indigo-700 hover:underline">
+                                      Contrastar en el SII (situación de terceros) <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                    </a>
+                                  </span>
                                   <span className="mt-1.5 flex flex-wrap gap-1.5">
                                     <button type="button" disabled={taxBusy} onClick={() => setTax(true, true)} className="rounded-lg border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 cursor-pointer">
                                       Al día
@@ -753,13 +785,22 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                     <button type="button" disabled={taxBusy} onClick={() => setTax(false, false)} className="rounded-lg border border-rose-300 px-2 py-0.5 text-xs font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50 cursor-pointer">
                                       Sin inicio
                                     </button>
+                                    {selectedTax?.certificatePath && selectedTax.reviewStatus !== 'rejected' && (
+                                      <button type="button" disabled={taxBusy} onClick={rejectTaxCertificate} className="rounded-lg border border-slate-300 px-2 py-0.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 cursor-pointer">
+                                        Rechazar archivo
+                                      </button>
+                                    )}
                                   </span>
                                 </td>
                                 <td className="py-2.5 px-4 text-right">
                                   {(() => {
                                     const label = !selectedTax
-                                      ? ['Sin consultar', 'bg-slate-100 text-slate-600']
-                                      : taxStatusOk(selectedTax)
+                                      ? ['Sin carpeta', 'bg-slate-100 text-slate-600']
+                                      : selectedTax.reviewStatus === 'pending'
+                                        ? ['Por revisar', 'bg-sky-50 text-sky-700']
+                                        : selectedTax.reviewStatus === 'rejected'
+                                          ? ['Rechazada', 'bg-rose-50 text-rose-700']
+                                          : taxStatusOk(selectedTax)
                                         ? ['Al día', 'bg-emerald-50 text-emerald-700']
                                         : selectedTax.hasActivity && taxReviewDue(selectedTax)
                                           ? ['Revisión pendiente', 'bg-amber-50 text-amber-700']

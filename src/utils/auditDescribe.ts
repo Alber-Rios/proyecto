@@ -121,11 +121,13 @@ export function describeAudit(action: string, d: Details = {}): string {
     case 'TAX_DOCUMENT_ISSUED':
       return `${Number(d.docType) === 61 ? 'Nota de crédito' : Number(d.docType) === 33 ? 'Factura' : 'Boleta'} simulada N° ${d.folio} por ${d.concept === 'comision_propietario' ? 'la comisión del propietario' : 'la comisión del arrendatario'}: ${clp(d.totalClp)}`;
     case 'TAX_STATUS_CHECKED':
-      return d.hasActivity && d.upToDate
-        ? `Consultó su situación tributaria (simulada): inicio de actividades al día${d.activityCode ? `, giro ${d.activityCode}` : ''}`
-        : 'Consultó su situación tributaria (simulada): sin inicio de actividades al día';
+      return 'Consultó su situación tributaria';
+    case 'TAX_CERTIFICATE_SUBMITTED':
+      return 'Subió su carpeta tributaria del SII para revisión';
+    case 'TAX_CERTIFICATE_REJECTED':
+      return `Administración rechazó la carpeta tributaria${d.note ? `: ${d.note}` : ''}`;
     case 'TAX_STATUS_SET_BY_ADMIN':
-      return `Administración marcó la situación tributaria como ${d.hasActivity && d.upToDate ? 'al día' : 'sin inicio de actividades'}`;
+      return `Administración revisó la situación tributaria: ${d.hasActivity ? (d.upToDate ? 'inicio de actividades al día' : 'inicio de actividades con incumplimientos') : 'sin inicio de actividades'}`;
     case 'TAX_EXEMPTION_DECLARED':
       return 'Declaró que su actividad no está sujeta a iniciar actividades (Ley 21.713)';
     case 'TAX_IVA_WITHHELD':
