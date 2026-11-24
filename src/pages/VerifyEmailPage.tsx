@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, MailCheck, RotateCw } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, FileText, IdCard, Loader2, MailCheck, RotateCw } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { useGuestOnly } from '../hooks/useGuestOnly.ts';
 import { AuthAlert, AuthCard, inputClass, primaryButton } from '../components/AuthCard.tsx';
@@ -106,9 +106,8 @@ export const VerifyEmailPage: React.FC = () => {
     const r = await verifyEmail(email, code);
     setLoading(false);
     if (r.success) {
+      // Cuenta activa: se ofrece seguir directo con la verificación de identidad.
       setVerified(true);
-      // Se muestra un instante la confirmación y se vuelve a la página de origen.
-      window.setTimeout(() => finish(), 900);
     } else {
       submitting.current = false;
       setError(r.message || 'Código incorrecto.');
@@ -149,6 +148,42 @@ export const VerifyEmailPage: React.FC = () => {
 
   if (redirecting && !verified) return null;
 
+  if (verified) {
+    return (
+      <AuthCard
+        icon={<CheckCircle2 className="w-7 h-7" />}
+        title="¡Listo! Tu cuenta está activa"
+        description="Último paso: verifica tu identidad para poder reservar o publicar. Lo revisa una persona de Spotly y queda listo una sola vez."
+      >
+        <ul className="space-y-2.5 rounded-2xl border border-stone-200 bg-stone-50 p-4 text-sm text-slate-700">
+          <li className="flex items-center gap-3">
+            <IdCard className="h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
+            <span><strong className="text-slate-900">Tu cédula</strong>, por ambos lados</span>
+          </li>
+          <li className="flex items-center gap-3">
+            <Camera className="h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
+            <span><strong className="text-slate-900">Una selfie</strong> con la cámara</span>
+          </li>
+          <li className="flex items-center gap-3">
+            <FileText className="h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
+            <span><strong className="text-slate-900">Certificado de antecedentes</strong> del Registro Civil (PDF o foto)</span>
+          </li>
+        </ul>
+        <p className="text-center text-xs text-slate-500">Toma unos 3 minutos. La revisión demora hasta 48 horas.</p>
+        <button type="button" onClick={() => finish('/onboarding')} className={primaryButton} autoFocus>
+          Verificar mi identidad ahora
+        </button>
+        <button
+          type="button"
+          onClick={() => finish()}
+          className="w-full min-h-11 rounded-full text-sm font-semibold text-slate-600 hover:bg-stone-100 hover:text-slate-900 transition cursor-pointer"
+        >
+          Hacerlo después y seguir explorando
+        </button>
+      </AuthCard>
+    );
+  }
+
   return (
     <AuthCard
       icon={<MailCheck className="w-7 h-7" />}
@@ -163,7 +198,6 @@ export const VerifyEmailPage: React.FC = () => {
         )
       }
     >
-      {verified && <AuthAlert kind="success">¡Correo verificado! Tu cuenta ya está activa. Entrando…</AuthAlert>}
       {error && <AuthAlert kind="error">{error}</AuthAlert>}
       {info && !error && <AuthAlert kind="info">{info}</AuthAlert>}
 

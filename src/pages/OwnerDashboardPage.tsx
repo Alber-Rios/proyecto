@@ -1,4 +1,5 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
+import { IdentityNotice } from '../components/IdentityNotice.tsx';
 import { Sensitive } from '../components/Sensitive.tsx';
 import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -681,11 +682,7 @@ export const OwnerDashboardPage: React.FC<OwnerDashboardPageProps> = ({ onOpenOw
         ]}
       >
       <div className="space-y-6">
-      {currentUser.verificationStatus !== 'verified' && (
-        <p role="status" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Tu identidad está en revisión. Puedes preparar tus espacios mientras tanto.
-        </p>
-      )}
+      <IdentityNotice user={currentUser} onVerify={() => onNavigate('onboarding')} />
 
       {nextPendingRequest && (
         <div

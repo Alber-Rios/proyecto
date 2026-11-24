@@ -20,6 +20,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface RegisterPageProps {
@@ -343,6 +344,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
               </div>
 
               <PasswordStrength id="password-rules" password={password} personal={{ email, names: [firstNames, surnames], rut }} />
+
+              <p className="flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2.5 text-xs leading-snug text-sky-950">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" aria-hidden="true" />
+                <span>
+                  <strong className="font-semibold">Antes de {role === 'owner' ? 'publicar' : 'reservar'} verificaremos tu identidad:</strong> tu cédula,
+                  una selfie y tu certificado de antecedentes. Lo haces después de crear la cuenta y toma unos 3 minutos.
+                </span>
+              </p>
 
               {/* Aceptación de Términos */}
               <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">

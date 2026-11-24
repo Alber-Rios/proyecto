@@ -1,4 +1,5 @@
 import { TabPanel } from '../components/motion/Motion.tsx';
+import { IdentityNotice } from '../components/IdentityNotice.tsx';
 import { Sensitive } from '../components/Sensitive.tsx';
 import { TenantPriceBreakdown } from '../components/PriceBreakdown.tsx';
 import { cancelledByOf, isHistoryCancellation } from '../lib/cancellations.ts';
@@ -397,6 +398,7 @@ export const TenantReservationsPage: React.FC<TenantReservationsPageProps> = ({
 
   return (
     <div className="space-y-6 pb-16">
+      {currentUser && <IdentityNotice user={currentUser} onVerify={() => onNavigate('onboarding')} />}
       {/* Cabecera */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
