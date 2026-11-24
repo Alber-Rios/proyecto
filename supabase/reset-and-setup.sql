@@ -28,9 +28,14 @@
 --   · Solicitudes que vencen solas si el propietario no responde a tiempo.
 --   · Cancelación según 24 horas: 24 h o más antes del inicio se devuelve todo;
 --     con menos de 24 h solo se cobra la comisión.
---   · Comisión del propietario (10 %, 5 % mensual; 0 % en lanzamiento y en sus
---     primeras reservas) fijada en cada reserva, liquidaciones automáticas al
---     terminar el arriendo, campo amoblado/equipado (IVA) y ajustes de comisión.
+--   · Precio con IVA sumado: arriendo + IVA del arriendo (19 %, solo amoblado o
+--     equipado) + comisión Spotly 5 % + IVA de la comisión. Al propietario se le
+--     descuenta la comisión de 10 % + su IVA (todas las modalidades, desde la
+--     primera reserva), fijada en cada reserva; liquidaciones los martes.
+--   · Boletas y notas de crédito SIMULADAS (tax_documents) y situación tributaria
+--     SIMULADA del propietario (tax_status): para publicar amoblado debe tener
+--     inicio de actividades al día en el SII.
+--   · Cuentas bancarias, devoluciones por transferencia y avalúo fiscal privado.
 --   · Reportes de ganancias de Spotly (admin_finance_report) y auditoría
 --     encadenada con SHA-256 con búsqueda y verificación de integridad.
 -- Se puede ejecutar varias veces; las cuentas con RUT repetido o vacío no lo rompen.
@@ -55,7 +60,7 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
 
 DROP TABLE IF EXISTS
-  public.tax_documents, public.refund_transfers, public.bank_accounts,
+  public.tax_status, public.tax_documents, public.refund_transfers, public.bank_accounts,
   public.support_tickets, public.user_consents, public.payment_refunds,
   public.owner_payouts, public.space_blocks,
   public.space_views, public.user_reports, public.reviews, public.favorites,
@@ -1360,6 +1365,14 @@ BEGIN
   END IF;
 
   NEW.title := trim(NEW.title);
+
+  -- Amoblado = el arriendo lleva IVA: solo puede cobrarlo quien tiene inicio de
+  -- actividades al día en el SII (ver 7e). Los espacios ya amoblados no se tocan.
+  IF COALESCE(NEW.is_furnished, false)
+     AND (TG_OP = 'INSERT' OR NOT COALESCE(OLD.is_furnished, false))
+     AND NOT public.owner_tax_ok(CASE WHEN TG_OP = 'INSERT' THEN auth.uid() ELSE OLD.owner_id END) THEN
+    RAISE EXCEPTION 'Para publicar un espacio amoblado necesitas inicio de actividades al día en el SII. Revisa tu situación tributaria o publícalo sin amoblar.';
+  END IF;
 
   -- Nombre y RUT del propietario salen del perfil, no del cliente (se copian
   -- después a reservas y contratos).
@@ -4223,6 +4236,130 @@ CREATE TRIGGER owner_payouts_tax_document
   FOR EACH ROW EXECUTE FUNCTION public.owner_payouts_tax_document();
 
 
+-- ------------------------------------------------------------------------------
+-- 7e. SITUACIÓN TRIBUTARIA DEL PROPIETARIO (SIMULADA)
+-- ------------------------------------------------------------------------------
+-- Para cobrar IVA en un arriendo amoblado, el propietario debe tener inicio de
+-- actividades en el SII y estar al día. En producción esto se consulta por RUT con
+-- un servicio API (proveedor de facturación electrónica). Para el proyecto de título
+-- la consulta es SIMULADA y determinista: si la suma de los dígitos del RUT (sin el
+-- dígito verificador) es par, tiene inicio de actividades al día; si es impar, no.
+-- El administrador puede corregir el resultado para demostrar ambos casos.
+CREATE TABLE IF NOT EXISTS public.tax_status (
+  user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  rut TEXT NOT NULL,
+  has_activity BOOLEAN NOT NULL,
+  up_to_date BOOLEAN NOT NULL,
+  activity_start DATE,
+  activity_code TEXT,
+  activity_name TEXT,
+  source TEXT NOT NULL DEFAULT 'simulado' CHECK (source IN ('simulado', 'admin', 'api')),
+  simulated BOOLEAN NOT NULL DEFAULT true,
+  checked_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE public.tax_status IS
+  'Inicio de actividades y situación tributaria del propietario (consulta SIMULADA al SII)';
+
+ALTER TABLE public.tax_status ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Situación tributaria: propia o admin" ON public.tax_status;
+CREATE POLICY "Situación tributaria: propia o admin" ON public.tax_status
+  FOR SELECT TO authenticated
+  USING (user_id = auth.uid() OR public.is_admin());
+
+-- ¿Puede este propietario cobrar IVA (publicar como amoblado)?
+CREATE OR REPLACE FUNCTION public.owner_tax_ok(p_user UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE((SELECT has_activity AND up_to_date FROM public.tax_status WHERE user_id = p_user), false);
+$$;
+
+-- Consulta (simulada) de la situación tributaria del usuario conectado, por su RUT.
+CREATE OR REPLACE FUNCTION public.check_my_tax_status()
+RETURNS public.tax_status
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_rut TEXT;
+  v_body TEXT;
+  v_sum INT := 0;
+  v_ok BOOLEAN;
+  v_row public.tax_status;
+  i INT;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Debes iniciar sesión'; END IF;
+  SELECT rut INTO v_rut FROM public.profiles WHERE id = v_uid;
+  v_body := regexp_replace(COALESCE(v_rut, ''), '[^0-9kK]', '', 'g');
+  v_body := left(v_body, greatest(length(v_body) - 1, 0));
+  IF length(v_body) < 6 THEN RAISE EXCEPTION 'Tu perfil no tiene un RUT válido'; END IF;
+  FOR i IN 1..length(v_body) LOOP
+    v_sum := v_sum + substr(v_body, i, 1)::int;
+  END LOOP;
+  v_ok := v_sum % 2 = 0;
+
+  INSERT INTO public.tax_status AS t (user_id, rut, has_activity, up_to_date, activity_start, activity_code, activity_name, source, simulated, checked_at)
+  VALUES (v_uid, v_rut, v_ok, v_ok,
+          CASE WHEN v_ok THEN date '2021-03-01' + (v_sum * 37) END,
+          CASE WHEN v_ok THEN '681012' END,
+          CASE WHEN v_ok THEN 'Alquiler de bienes inmuebles amoblados o con equipos y maquinarias' END,
+          'simulado', true, now())
+  ON CONFLICT (user_id) DO UPDATE SET
+    rut = EXCLUDED.rut,
+    has_activity = CASE WHEN t.source = 'admin' THEN t.has_activity ELSE EXCLUDED.has_activity END,
+    up_to_date = CASE WHEN t.source = 'admin' THEN t.up_to_date ELSE EXCLUDED.up_to_date END,
+    activity_start = CASE WHEN t.source = 'admin' THEN t.activity_start ELSE EXCLUDED.activity_start END,
+    activity_code = CASE WHEN t.source = 'admin' THEN t.activity_code ELSE EXCLUDED.activity_code END,
+    activity_name = CASE WHEN t.source = 'admin' THEN t.activity_name ELSE EXCLUDED.activity_name END,
+    checked_at = now()
+  RETURNING * INTO v_row;
+
+  PERFORM public.write_audit('TAX_STATUS_CHECKED', 'info', v_uid::text,
+    jsonb_build_object('hasActivity', v_row.has_activity, 'upToDate', v_row.up_to_date,
+                       'activityCode', v_row.activity_code, 'simulated', true));
+  RETURN v_row;
+END;
+$$;
+
+-- El administrador corrige el resultado (por ejemplo, tras revisar el certificado del SII).
+CREATE OR REPLACE FUNCTION public.admin_set_tax_status(p_user UUID, p_has_activity BOOLEAN, p_up_to_date BOOLEAN)
+RETURNS public.tax_status
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_row public.tax_status;
+  v_rut TEXT;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'Solo un administrador puede hacer esto'; END IF;
+  SELECT rut INTO v_rut FROM public.profiles WHERE id = p_user;
+  IF v_rut IS NULL THEN RAISE EXCEPTION 'Usuario no encontrado'; END IF;
+  INSERT INTO public.tax_status AS t (user_id, rut, has_activity, up_to_date, activity_code, activity_name, source, simulated, checked_at)
+  VALUES (p_user, v_rut, p_has_activity, p_has_activity AND p_up_to_date,
+          CASE WHEN p_has_activity THEN '681012' END,
+          CASE WHEN p_has_activity THEN 'Alquiler de bienes inmuebles amoblados o con equipos y maquinarias' END,
+          'admin', true, now())
+  ON CONFLICT (user_id) DO UPDATE SET
+    has_activity = EXCLUDED.has_activity,
+    up_to_date = EXCLUDED.up_to_date,
+    activity_code = COALESCE(t.activity_code, EXCLUDED.activity_code),
+    activity_name = COALESCE(t.activity_name, EXCLUDED.activity_name),
+    source = 'admin',
+    checked_at = now()
+  RETURNING * INTO v_row;
+  PERFORM public.write_audit('TAX_STATUS_SET_BY_ADMIN', 'warning', auth.uid()::text,
+    jsonb_build_object('targetUserId', p_user, 'hasActivity', v_row.has_activity, 'upToDate', v_row.up_to_date));
+  RETURN v_row;
+END;
+$$;
+
+
 -- ==============================================================================
 -- 8. SEGURIDAD POR FILAS (RLS): cada usuario solo ve y modifica lo suyo
 -- ==============================================================================
@@ -4620,6 +4757,7 @@ GRANT SELECT ON public.payments TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.bank_accounts TO authenticated;   -- RLS: solo la propia (admin lee)
 GRANT SELECT ON public.refund_transfers TO authenticated;                        -- RLS: propias o admin
 GRANT SELECT ON public.tax_documents TO authenticated;                          -- RLS: destinatario o admin (simulados)
+GRANT SELECT ON public.tax_status TO authenticated;                             -- RLS: propia o admin (simulada)
 GRANT SELECT (id, user_id, status, card_type, card_last4, is_default, created_at)
   ON public.wallet_cards TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.favorites TO authenticated;
@@ -4697,6 +4835,8 @@ GRANT EXECUTE ON FUNCTION public.admin_pay_owner_week(UUID, DATE, TEXT) TO authe
 GRANT EXECUTE ON FUNCTION public.admin_refund_transfers() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_mark_refund_transfer_paid(TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.request_refund_transfer(TEXT, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.check_my_tax_status() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_tax_status(UUID, BOOLEAN, BOOLEAN) TO authenticated;
 
 -- ==============================================================================
 -- 11. TIEMPO REAL

@@ -531,3 +531,64 @@ export async function getTaxDocuments(reservationId: string): Promise<TaxDocumen
     issuedAt: r.issued_at,
   }));
 }
+
+// ---------- Situación tributaria del propietario (consulta SIMULADA al SII) ----------
+// Para cobrar IVA (espacio amoblado) el propietario necesita inicio de actividades
+// al día. En producción se consultaría por RUT con un servicio API; aquí la base lo
+// simula (ver sección 7e de reset-and-setup.sql).
+
+export interface TaxStatus {
+  userId: string;
+  hasActivity: boolean;
+  upToDate: boolean;
+  activityStart: string | null;
+  activityCode: string | null;
+  activityName: string | null;
+  source: 'simulado' | 'admin' | 'api';
+  simulated: boolean;
+  checkedAt: string;
+}
+
+const mapTaxStatus = (r: any): TaxStatus => ({
+  userId: r.user_id,
+  hasActivity: Boolean(r.has_activity),
+  upToDate: Boolean(r.up_to_date),
+  activityStart: r.activity_start || null,
+  activityCode: r.activity_code || null,
+  activityName: r.activity_name || null,
+  source: r.source,
+  simulated: Boolean(r.simulated),
+  checkedAt: r.checked_at,
+});
+
+export const taxStatusOk = (t: TaxStatus | null | undefined) => Boolean(t && t.hasActivity && t.upToDate);
+
+/** Situación guardada de un usuario (la propia, o cualquiera si es admin). null si nunca se consultó. */
+export async function getTaxStatus(userId: string): Promise<TaxStatus | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase.from('tax_status').select('*').eq('user_id', userId).maybeSingle();
+  if (error || !data) return null;
+  return mapTaxStatus(data);
+}
+
+export async function checkMyTaxStatus(): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
+  const { data, error } = await supabase.rpc('check_my_tax_status');
+  if (error) {
+    const missing = /check_my_tax_status|schema cache|does not exist/i.test(error.message);
+    return {
+      success: false,
+      message: missing
+        ? 'Tu base de Supabase todavía no tiene la consulta tributaria. Vuelve a ejecutar reset-and-setup.sql.'
+        : error.message,
+    };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return { success: true, status: mapTaxStatus(row) };
+}
+
+export async function adminSetTaxStatus(userId: string, hasActivity: boolean, upToDate: boolean): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
+  const { data, error } = await supabase.rpc('admin_set_tax_status', { p_user: userId, p_has_activity: hasActivity, p_up_to_date: upToDate });
+  if (error) return { success: false, message: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  return { success: true, status: mapTaxStatus(row) };
+}

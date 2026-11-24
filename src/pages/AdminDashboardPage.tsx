@@ -4,6 +4,7 @@ import { getTodayIso } from '../utils/formatters.ts';
 import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createKycReviewUrl } from '../lib/storage.ts';
+import { adminSetTaxStatus, getTaxStatus, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
 import { ReportsPanel, KpiDashboard, PaymentsPanel, DiscountCodesPanel } from '../components/admin/AdminPanels.tsx';
 import { AuditPanel } from '../components/admin/AuditPanel.tsx';
 import { reservationLedger } from '../utils/ledger.ts';
@@ -182,6 +183,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     }
     return filteredUsers[0] || null;
   }, [allUsers, selectedUserId, filteredUsers]);
+
+  // Situación tributaria (simulada) del usuario en revisión: necesaria para publicar amoblado.
+  const [selectedTax, setSelectedTax] = useState<TaxStatus | null>(null);
+  const [taxBusy, setTaxBusy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setSelectedTax(null);
+    if (selectedUser?.id) getTaxStatus(selectedUser.id).then((t) => alive && setSelectedTax(t));
+    return () => {
+      alive = false;
+    };
+  }, [selectedUser?.id]);
+  const setTax = async (hasActivity: boolean) => {
+    if (!selectedUser) return;
+    setTaxBusy(true);
+    const r = await adminSetTaxStatus(selectedUser.id, hasActivity, hasActivity);
+    setTaxBusy(false);
+    if (r.success && r.status) setSelectedTax(r.status);
+    else window.alert(r.message || 'No se pudo guardar.');
+  };
 
   // Usuario para el modal de certificado PDF
   const pdfModalUser = useMemo(() => {
@@ -673,6 +694,47 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                                 <td className="py-2.5 px-4 text-right">
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
                                     Declarado
+                                  </span>
+                                </td>
+                              </tr>
+
+                              <tr className="hover:bg-slate-50/60 align-top">
+                                <td className="py-2.5 px-4 font-semibold text-slate-700">Situación tributaria (SII)</td>
+                                <td className="py-2.5 px-4 text-slate-600">Inicio de actividades al día (para cobrar IVA en amoblados)</td>
+                                <td className="py-2.5 px-4 text-slate-700">
+                                  {!selectedTax ? (
+                                    'Aún no consulta su situación'
+                                  ) : selectedTax.hasActivity ? (
+                                    <>
+                                      Giro {selectedTax.activityCode || '—'}
+                                      {selectedTax.activityStart ? ` · desde ${new Date(`${selectedTax.activityStart}T12:00:00`).toLocaleDateString('es-CL')}` : ''}
+                                      <span className="block text-xs text-slate-500">
+                                        {selectedTax.source === 'admin' ? 'Corregido por administración' : 'Consulta simulada'} ·{' '}
+                                        {new Date(selectedTax.checkedAt).toLocaleDateString('es-CL')}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      Sin inicio de actividades
+                                      <span className="block text-xs text-slate-500">
+                                        {selectedTax.source === 'admin' ? 'Corregido por administración' : 'Consulta simulada'}
+                                      </span>
+                                    </>
+                                  )}
+                                  <span className="mt-1.5 flex flex-wrap gap-1.5">
+                                    <button type="button" disabled={taxBusy} onClick={() => setTax(true)} className="rounded-lg border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 cursor-pointer">
+                                      Marcar al día
+                                    </button>
+                                    <button type="button" disabled={taxBusy} onClick={() => setTax(false)} className="rounded-lg border border-rose-300 px-2 py-0.5 text-xs font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-50 cursor-pointer">
+                                      Marcar sin inicio
+                                    </button>
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-4 text-right">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                                    !selectedTax ? 'bg-slate-100 text-slate-600' : taxStatusOk(selectedTax) ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                                  }`}>
+                                    {!selectedTax ? 'Sin consultar' : taxStatusOk(selectedTax) ? 'Al día' : 'Sin inicio'}
                                   </span>
                                 </td>
                               </tr>

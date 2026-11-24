@@ -1,8 +1,10 @@
 import { communesOf, normalizeCommune } from '../data/chileCommunes.ts';
 import { OwnerPriceBreakdown, TenantPriceBreakdown } from './PriceBreakdown.tsx';
-import { DEFAULT_PLATFORM_SETTINGS } from '../lib/financeApi.ts';
+import { DEFAULT_PLATFORM_SETTINGS, getTaxStatus, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
+import { TaxStatusCheck } from './TaxStatusCheck.tsx';
+import { useApp } from '../context/AppContext.tsx';
 import { platformFeeFor, rentIvaFor } from '../utils/pricing.ts';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -172,6 +174,28 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
   const [surface, setSurface] = useState<number | ''>(initial?.surfaceM2 && initial.surfaceM2 > 1 ? initial.surfaceM2 : '');
   const [description, setDescription] = useState(initial?.description || '');
   const [isFurnished, setIsFurnished] = useState(Boolean(initial?.isFurnished));
+  // Amoblado = lleva IVA: hay que tener inicio de actividades al día (consulta simulada).
+  const { currentUser } = useApp();
+  const [taxStatus, setTaxStatus] = useState<TaxStatus | null>(null);
+  const [taxLoading, setTaxLoading] = useState(true);
+  const wasFurnished = Boolean(initial?.isFurnished);
+  useEffect(() => {
+    let alive = true;
+    if (!currentUser?.id) {
+      setTaxLoading(false);
+      return;
+    }
+    getTaxStatus(currentUser.id).then((t) => {
+      if (alive) {
+        setTaxStatus(t);
+        setTaxLoading(false);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [currentUser?.id]);
+  const furnishedBlocked = isFurnished && !wasFurnished && !taxStatusOk(taxStatus);
   const avaluo = initial?.avaluoFiscalClp ? String(initial.avaluoFiscalClp) : '';
   const [amenities, setAmenities] = useState<string[]>(initial?.amenities || []);
   const [rules, setRules] = useState<string[]>(initial?.rules || []);
@@ -246,6 +270,10 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
     const problem = validateStep(3);
     if (problem) {
       setError(problem);
+      return;
+    }
+    if (furnishedBlocked) {
+      setError('Para publicar como amoblado necesitas inicio de actividades al día en el SII. Revisa tu situación tributaria o desmarca «amoblado».');
       return;
     }
 
@@ -750,6 +778,11 @@ export const PublishSpaceForm: React.FC<PublishSpaceFormProps> = ({ editingSpace
                   arriendo, y emites tu boleta o factura. Spotly solo emite la de su comisión.
                 </li>
               </ul>
+              {isFurnished && (
+                <div className="mt-3 pl-8">
+                  <TaxStatusCheck status={taxStatus} loading={taxLoading} onChange={setTaxStatus} />
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-slate-200">

@@ -120,6 +120,12 @@ export function describeAudit(action: string, d: Details = {}): string {
       return 'Liquidación vuelve a pendiente';
     case 'TAX_DOCUMENT_ISSUED':
       return `${Number(d.docType) === 61 ? 'Nota de crédito' : 'Boleta'} simulada N° ${d.folio} por ${d.concept === 'comision_propietario' ? 'la comisión del propietario' : 'la comisión del arrendatario'}: ${clp(d.totalClp)}`;
+    case 'TAX_STATUS_CHECKED':
+      return d.hasActivity && d.upToDate
+        ? `Consultó su situación tributaria (simulada): inicio de actividades al día${d.activityCode ? `, giro ${d.activityCode}` : ''}`
+        : 'Consultó su situación tributaria (simulada): sin inicio de actividades al día';
+    case 'TAX_STATUS_SET_BY_ADMIN':
+      return `Administración marcó la situación tributaria como ${d.hasActivity && d.upToDate ? 'al día' : 'sin inicio de actividades'}`;
     case 'PAYOUT_BATCH_PAID':
       return `Depósito del martes: ${clp(d.amountClp)} por ${d.count ?? '—'} arriendo${Number(d.count) === 1 ? '' : 's'}${d.transferReference ? ` · ref. ${d.transferReference}` : ''}`;
     case 'BANK_ACCOUNT_SAVED':
