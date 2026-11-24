@@ -5,6 +5,7 @@ import { TabPanel } from '../components/motion/Motion.tsx';
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PublishSpaceForm } from '../components/PublishSpaceForm.tsx';
+import { AdminUserLookup } from '../components/admin/AdminUserLookup.tsx';
 import { createKycReviewUrl } from '../lib/storage.ts';
 import { SII_THIRD_PARTY_URL, adminRejectTaxCertificate, adminSetTaxStatus, getTaxCertificateUrl, getTaxRoster, getTaxStatus, taxReviewDue, taxStatusOk, type TaxStatus } from '../lib/financeApi.ts';
 import { downloadCsv } from '../utils/csv.ts';
@@ -26,6 +27,7 @@ import {
   Eye,
   FileText,
   ExternalLink,
+  UserSearch,
   Clock,
   Banknote,
   MapPin,
@@ -89,7 +91,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
+    'overview' | 'users' | 'kyc' | 'spaces' | 'disputes' | 'transactions' | 'audit' | 'reports' | 'kpi' | 'discounts' | 'payments'
   >('overview');
 
   // Filtros de Usuarios y KYC
@@ -348,8 +350,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           {
             label: 'Operación',
             items: [
+              { id: 'users', label: 'Usuarios', icon: UserSearch },
               { id: 'kyc', label: 'Verificación KYC', icon: ShieldCheck, badge: metrics.pendingVerifications || undefined },
-              { id: 'spaces', label: 'Espacios', icon: Building, count: metrics.totalSpaces },
+              {
+                id: 'spaces',
+                label: 'Espacios',
+                icon: Building,
+                ...(spaces.some((x) => x.status === 'pending_approval')
+                  ? { badge: spaces.filter((x) => x.status === 'pending_approval').length }
+                  : { count: metrics.totalSpaces }),
+              },
               { id: 'disputes', label: 'Disputas', icon: Scale, badge: metrics.openDisputes || undefined },
             ],
           },
@@ -389,6 +399,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
         />
       )}
       {activeTab === 'audit' && <AuditPanel />}
+      {activeTab === 'users' && <AdminUserLookup />}
       {activeTab === 'reports' && <ReportsPanel />}
       {activeTab === 'kpi' && <KpiDashboard />}
       {activeTab === 'payments' && <PaymentsPanel />}

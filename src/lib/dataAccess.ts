@@ -164,6 +164,13 @@ export async function getReviewsByTenant(tenantId: string): Promise<Review[]> {
   return (data || []).map(mapReviewRow);
 }
 
+/** Reseñas de varios espacios (por ejemplo, todos los de un propietario). */
+export async function getReviewsForSpaces(spaceIds: string[]): Promise<Review[]> {
+  if (!isSupabaseConfigured() || spaceIds.length === 0) return [];
+  const { data } = await supabase.from('reviews').select('*').in('space_id', spaceIds).order('created_at', { ascending: false });
+  return (data || []).map(mapReviewRow);
+}
+
 export async function insertReviewToDb(review: {
   spaceId: string;
   reservationId: string;
