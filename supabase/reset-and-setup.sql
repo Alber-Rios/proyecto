@@ -4566,6 +4566,50 @@ BEGIN
 END;
 $$;
 
+-- Moderación de un espacio ya revisado: pausar (con motivo), reactivar (mensaje
+-- opcional) o eliminar (con motivo). Siempre avisa al propietario y queda en auditoría.
+CREATE OR REPLACE FUNCTION public.admin_moderate_space(p_space_id TEXT, p_action TEXT, p_note TEXT DEFAULT NULL)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  s RECORD;
+  v_note TEXT := NULLIF(left(btrim(COALESCE(p_note, '')), 500), '');
+  v_result TEXT;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'Solo un administrador puede hacer esto'; END IF;
+  IF p_action NOT IN ('pause', 'activate', 'delete') THEN RAISE EXCEPTION 'Acción no válida'; END IF;
+  SELECT id, owner_id, title, is_furnished, status INTO s FROM public.spaces WHERE id = p_space_id;
+  IF NOT FOUND OR s.status = 'deleted' THEN RAISE EXCEPTION 'La publicación no existe o ya fue eliminada'; END IF;
+  IF p_action <> 'activate' AND v_note IS NULL THEN RAISE EXCEPTION 'Indica el motivo: el propietario lo verá'; END IF;
+
+  IF p_action = 'pause' THEN
+    UPDATE public.spaces SET status = 'paused' WHERE id = s.id;
+    v_result := 'paused';
+    PERFORM public.notify_user(s.owner_id, 'Pausamos tu espacio',
+      '«' || s.title || '» ya no aparece en el catálogo. Motivo: ' || v_note || '. Escríbenos desde Ayuda y soporte si tienes dudas.', 'warning', '/owner');
+  ELSIF p_action = 'activate' THEN
+    IF s.is_furnished AND NOT public.owner_tax_compliant(s.owner_id) THEN
+      RAISE EXCEPTION 'Es amoblado y el propietario no acredita inicio de actividades al día: revisa su carpeta tributaria';
+    END IF;
+    UPDATE public.spaces SET status = 'active', is_verified = true WHERE id = s.id;
+    v_result := 'active';
+    PERFORM public.notify_user(s.owner_id, 'Tu espacio está publicado de nuevo',
+      '«' || s.title || '» vuelve a aparecer en Spotly.' || COALESCE(' Mensaje de administración: ' || v_note, ''), 'success', '/owner');
+  ELSE
+    v_result := public.owner_delete_space(s.id);
+    PERFORM public.notify_user(s.owner_id, 'Eliminamos tu espacio',
+      '«' || s.title || '» fue eliminado por administración. Motivo: ' || v_note || '.', 'error', '/owner');
+  END IF;
+
+  PERFORM public.write_audit('ADMIN_SPACE_MODERATED', 'security', auth.uid()::text,
+    jsonb_build_object('spaceId', s.id, 'title', s.title, 'action', p_action, 'note', v_note));
+  RETURN v_result;
+END;
+$$;
+
 -- Anticipo de IVA en la liquidación: si el propietario no acredita cumplimiento en el
 -- semestre vigente y el arriendo está afecto a IVA (amoblado), se retiene el anticipo
 -- (tasa en platform_settings, máximo 19 % del neto) y se descuenta del depósito.
@@ -5137,6 +5181,7 @@ GRANT EXECUTE ON FUNCTION public.declare_tax_exemption() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_tax_roster(DATE, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_tax_status(UUID, BOOLEAN, BOOLEAN) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_review_space(TEXT, BOOLEAN, TEXT, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_moderate_space(TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.tax_certificate_valid_until(UUID) TO authenticated;
 
 -- ==============================================================================

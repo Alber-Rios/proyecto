@@ -17,9 +17,11 @@ import {
   FileText,
   Loader2,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import {
   SII_THIRD_PARTY_URL,
+  adminModerateSpace,
   adminRejectTaxCertificate,
   adminReviewSpace,
   getTaxCertificateUrl,
@@ -73,8 +75,30 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
   const [tax, setTax] = useState<TaxStatus | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState(false);
+  // Formulario con mensaje: rechazar (nuevo), pausar, reactivar o eliminar.
+  type Mode = 'reject' | 'pause' | 'activate' | 'delete';
+  const [mode, setMode] = useState<Mode | null>(null);
+  const rejecting = mode === 'reject';
   const [rejectNote, setRejectNote] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const toggleMode = (m: Mode) => {
+    setMode((cur) => (cur === m ? null : m));
+    setRejectNote('');
+    setConfirmDelete(false);
+    setReviewError(null);
+  };
+  const moderate = async () => {
+    if (!mode || mode === 'reject') return;
+    if (mode !== 'activate' && rejectNote.trim().length < 5) return setReviewError('Escribe el motivo: el propietario lo verá.');
+    if (mode === 'delete' && !confirmDelete) return setReviewError('Confirma que entiendes que no se puede deshacer.');
+    setBusy(true);
+    setReviewError(null);
+    const r = await adminModerateSpace(space.id, mode, rejectNote.trim());
+    setBusy(false);
+    if (!r.success) return setReviewError(r.message || 'No se pudo completar.');
+    onReviewed?.();
+    onClose();
+  };
   const [rejectFile, setRejectFile] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -409,7 +433,7 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
               <button type="button" onClick={onClose} className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
                 Cerrar
               </button>
-              <button type="button" disabled={busy} onClick={() => setRejecting((v) => !v)} className="px-3.5 py-2 rounded-xl border border-rose-300 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50 cursor-pointer">
+              <button type="button" disabled={busy} onClick={() => toggleMode('reject')} className="px-3.5 py-2 rounded-xl border border-rose-300 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50 cursor-pointer">
                 Rechazar
               </button>
               {onEdit && (
@@ -438,14 +462,21 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
               )}
               <button
                 type="button"
-                onClick={() => onToggleStatus(space.id, space.status === 'active' ? 'paused' : 'active')}
+                onClick={() => toggleMode(space.status === 'active' ? 'pause' : 'activate')}
+                aria-expanded={mode === 'pause' || mode === 'activate'}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  space.status === 'active'
-                    ? 'bg-slate-900 text-white hover:bg-slate-800'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  space.status === 'active' ? 'border border-amber-300 text-amber-800 hover:bg-amber-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'
                 }`}
               >
-                {space.status === 'active' ? 'Pausar espacio' : 'Activar espacio'}
+                {space.status === 'active' ? 'Pausar espacio' : 'Reactivar espacio'}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleMode('delete')}
+                aria-expanded={mode === 'delete'}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-rose-300 text-xs font-bold text-rose-700 hover:bg-rose-50 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Eliminar
               </button>
             </div>
           )}
@@ -471,6 +502,51 @@ export const AdminSpaceDetailModal: React.FC<AdminSpaceDetailModalProps> = ({
               <button type="button" disabled={busy} onClick={reject} className="px-3.5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 disabled:opacity-50 cursor-pointer">
                 Confirmar rechazo
               </button>
+            </div>
+          )}
+          {mode && mode !== 'reject' && (
+            <div className={`w-full space-y-2 rounded-xl border p-3 ${mode === 'delete' ? 'border-rose-200 bg-rose-50' : mode === 'pause' ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
+              <p className="text-xs text-slate-700">
+                {mode === 'pause'
+                  ? 'El espacio deja de aparecer en el catálogo. Las reservas ya hechas se mantienen.'
+                  : mode === 'activate'
+                    ? 'El espacio vuelve a aparecer en el catálogo.'
+                    : 'Si tuvo reservas, se archiva y sus contratos y pagos quedan en el historial; si no, se borra. Con reservas pendientes o próximas no se puede eliminar. No se puede deshacer.'}
+              </p>
+              <label htmlFor="sp-mod-note" className="block text-xs font-bold text-slate-800">
+                {mode === 'activate' ? 'Mensaje para el propietario (opcional)' : 'Motivo (el propietario lo verá)'}
+              </label>
+              <textarea
+                id="sp-mod-note"
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                rows={2}
+                maxLength={500}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder={mode === 'activate' ? 'Por ejemplo: ya corregiste las fotos, gracias' : 'Por ejemplo: las fotos no corresponden al lugar'}
+              />
+              {mode === 'delete' && (
+                <label className="flex items-center gap-2 text-xs text-rose-900 cursor-pointer">
+                  <input type="checkbox" checked={confirmDelete} onChange={(e) => setConfirmDelete(e.target.checked)} className="h-4 w-4 accent-rose-600" />
+                  Entiendo que no se puede deshacer
+                </label>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={moderate}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-xs font-bold disabled:opacity-50 cursor-pointer ${
+                    mode === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : mode === 'pause' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                  {mode === 'delete' ? 'Eliminar y avisar' : mode === 'pause' ? 'Pausar y avisar' : 'Reactivar y avisar'}
+                </button>
+                <button type="button" onClick={() => setMode(null)} className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                  Cancelar
+                </button>
+              </div>
             </div>
           )}
           {reviewError && <p className="w-full text-xs font-semibold text-rose-700">{reviewError}</p>}

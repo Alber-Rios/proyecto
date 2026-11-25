@@ -1206,25 +1206,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
                         onClick={() => setDetailSpaceId(sp.id)}
                         className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center gap-1.5"
                       >
-                        <Eye className="w-3.5 h-3.5" /> {sp.status === 'pending_approval' ? 'Revisar y aprobar' : 'Ver detalle'}
+                        <Eye className="w-3.5 h-3.5" /> {sp.status === 'pending_approval' ? 'Revisar y aprobar' : 'Ver y gestionar'}
                       </button>
-                      {sp.status !== 'pending_approval' && (
-                      <button
-                        onClick={() =>
-                          adminToggleSpaceStatus(
-                            sp.id,
-                            sp.status === 'active' ? 'paused' : 'active'
-                          )
-                        }
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                          sp.status === 'active'
-                            ? 'border border-slate-200 text-slate-700 hover:bg-slate-100'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        }`}
-                      >
-                        {sp.status === 'active' ? 'Pausar espacio' : 'Activar espacio'}
-                      </button>
-                      )}
                     </div>
                   </div>
                 );

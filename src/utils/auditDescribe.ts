@@ -124,6 +124,8 @@ export function describeAudit(action: string, d: Details = {}): string {
       return 'Consultó su situación tributaria';
     case 'ADMIN_SPACE_APPROVED':
       return `Administración aprobó y publicó el espacio «${d.title ?? ''}»${d.taxOk ? ' (con su carpeta tributaria al día)' : ''}`;
+    case 'ADMIN_SPACE_MODERATED':
+      return `Administración ${d.action === 'pause' ? 'pausó' : d.action === 'delete' ? 'eliminó' : 'reactivó'} el espacio «${d.title ?? ''}»${d.note ? `: ${d.note}` : ''}`;
     case 'ADMIN_SPACE_REJECTED':
       return `Administración rechazó el espacio «${d.title ?? ''}»${d.note ? `: ${d.note}` : ''}`;
     case 'TAX_CERTIFICATE_SUBMITTED':

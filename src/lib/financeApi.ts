@@ -647,6 +647,12 @@ export async function adminReviewSpace(spaceId: string, approve: boolean, note?:
   return error ? { success: false, message: error.message } : { success: true };
 }
 
+/** Solo admin: pausa (con motivo), reactiva (mensaje opcional) o elimina (con motivo) un espacio. */
+export async function adminModerateSpace(spaceId: string, action: 'pause' | 'activate' | 'delete', note?: string): Promise<{ success: boolean; message?: string }> {
+  const { error } = await supabase.rpc('admin_moderate_space', { p_space_id: spaceId, p_action: action, p_note: note || null });
+  return error ? { success: false, message: error.message } : { success: true };
+}
+
 /** Solo admin: rechaza el archivo (ilegible, de otra persona…) con el motivo. */
 export async function adminRejectTaxCertificate(userId: string, note: string): Promise<{ success: boolean; status?: TaxStatus; message?: string }> {
   const { data, error } = await supabase.rpc('admin_reject_tax_certificate', { p_user: userId, p_note: note });
