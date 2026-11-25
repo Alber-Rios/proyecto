@@ -43,7 +43,12 @@ export const HeroBackdrop: React.FC = () => {
 
   return (
     <>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-stone-900">
+      {/* clip-path con el mismo radio que la tarjeta: en Chrome y Safari, mientras la foto
+          se anima (opacidad y escala), overflow + border-radius deja ver las esquinas cuadradas. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] bg-stone-900 [clip-path:inset(0_round_2rem)]"
+      >
         <AnimatePresence initial={false}>
           <motion.img
             key={slide.src}

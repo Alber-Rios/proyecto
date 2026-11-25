@@ -136,8 +136,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="space-y-10 pb-16">
       {/* Hero Section */}
-      <Spotlight className="overflow-hidden rounded-[2rem] bg-stone-950 text-white shadow-[0_40px_80px_-30px_rgba(12,10,9,0.6)]">
-        <section className="relative min-h-[30rem] sm:min-h-[34rem] flex items-center px-6 py-14 sm:px-14 sm:py-20">
+      <Spotlight className="isolate overflow-hidden rounded-[2rem] bg-stone-950 text-white shadow-[0_40px_80px_-30px_rgba(12,10,9,0.6)]">
+        <section className="relative rounded-[2rem] min-h-[30rem] sm:min-h-[34rem] flex items-center px-6 py-14 sm:px-14 sm:py-20">
           {/* Fondo: fotos de espacios que se pueden arrendar */}
           <HeroBackdrop />
 
