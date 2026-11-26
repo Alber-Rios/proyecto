@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PasswordInput } from '../components/PasswordInput.tsx';
 import { AuthLayout } from '../components/AuthLayout.tsx';
 import { useApp } from '../context/AppContext.tsx';
@@ -9,7 +9,6 @@ import { passwordProblem } from '../utils/passwordPolicy.ts';
 import { validateRut, formatRut, formatRutInput, capitalizeInitial } from '../utils/formatters.ts';
 import { getAdultBirthDateLimit, isAtLeast18 } from '../utils/ageValidation.ts';
 import { UserGender } from '../types.ts';
-import { Link } from 'react-router-dom';
 import {
   UserPlus,
   Mail,
@@ -28,26 +27,48 @@ interface RegisterPageProps {
   onNavigate: (view: string) => void;
 }
 
+// Borrador del registro en esta pestaña, por si la persona sale a leer los términos o
+// recarga. Nunca guarda las contraseñas. Se borra al crear la cuenta o al cerrar la pestaña.
+const DRAFT_KEY = 'spotly-register-draft';
+type Draft = { firstNames: string; surnames: string; rut: string; email: string; phone: string; birthDate: string; gender: UserGender; role: 'tenant' | 'owner' };
+const readDraft = (): Partial<Draft> => {
+  try {
+    return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   const { register } = useApp();
   const { submitting, redirecting, target } = useGuestOnly();
   const navigate = useNavigate();
 
-  const [firstNames, setFirstNames] = useState('');
-  const [surnames, setSurnames] = useState('');
-  const [rut, setRut] = useState('');
+  const [draft] = useState(readDraft);
+  const [firstNames, setFirstNames] = useState(draft.firstNames || '');
+  const [surnames, setSurnames] = useState(draft.surnames || '');
+  const [rut, setRut] = useState(draft.rut || '');
   const [rutTouched, setRutTouched] = useState(false);
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState<UserGender>('prefiero_no_decir');
-  const [role, setRole] = useState<'tenant' | 'owner'>('tenant');
+  const [email, setEmail] = useState(draft.email || '');
+  const [phone, setPhone] = useState(draft.phone || '');
+  const [birthDate, setBirthDate] = useState(draft.birthDate || '');
+  const [gender, setGender] = useState<UserGender>(draft.gender || 'prefiero_no_decir');
+  const [role, setRole] = useState<'tenant' | 'owner'>(draft.role || 'tenant');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    const d: Draft = { firstNames, surnames, rut, email, phone, birthDate, gender, role };
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch {
+      /* sin almacenamiento: no se guarda el borrador */
+    }
+  }, [firstNames, surnames, rut, email, phone, birthDate, gender, role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +140,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
       if (res.success) {
         // La cuenta todavía no está activa: falta ingresar el código enviado al correo.
         submitting.current = false;
+        try {
+          sessionStorage.removeItem(DRAFT_KEY);
+        } catch {
+          /* nada */
+        }
         navigate('/verificar-correo', {
           replace: true,
           state: { email: email.trim().toLowerCase(), from: role === 'owner' ? '/owner' : target },
@@ -362,7 +388,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
                   className="mt-0.5 w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
                 />
                 <span className="text-xs text-slate-600 leading-snug">
-                  Al tocar «Crear cuenta», aceptas los <Link to="/terminos" className="font-semibold text-blue-700 hover:underline">Términos y condiciones</Link> de Spotly y confirmas que has leído la <Link to="/privacidad" className="font-semibold text-blue-700 hover:underline">Política de privacidad</Link> y la <Link to="/cookies" className="font-semibold text-blue-700 hover:underline">Política de cookies</Link>.
+                  Al tocar «Crear cuenta», aceptas los <a href="/terminos" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 hover:underline">Términos y condiciones<span className="sr-only"> (se abre en otra pestaña)</span></a> de Spotly y confirmas que has leído la <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 hover:underline">Política de privacidad<span className="sr-only"> (se abre en otra pestaña)</span></a> y la <a href="/cookies" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 hover:underline">Política de cookies<span className="sr-only"> (se abre en otra pestaña)</span></a>.
                 </span>
               </label>
 
