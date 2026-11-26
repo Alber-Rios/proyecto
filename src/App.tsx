@@ -245,9 +245,10 @@ function AppContent() {
               <NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} restricted />
             )} />
 
+          {/* Para quien no es admin, /admin es una página que no existe: no se revela el panel. */}
           <Route path="/admin" element={currentUser?.role === 'admin'
             ? <AdminDashboardPage onOpenAuth={handleOpenAuth} onNavigate={handleNavigate} />
-            : <NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} restricted />
+            : <NotFoundPage onNavigate={handleNavigate} showLogin={!currentUser} />
           } />
 
           <Route path="/onboarding" element={

@@ -294,41 +294,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
     });
   }, [disputes, disputeFilter]);
 
-  // Guardia de acceso para usuarios no administradores
-  if (!currentUser || currentUser.role !== 'admin') {
-    return (
-      <div className="max-w-xl mx-auto py-16 px-4">
-        <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-10 text-center shadow-sm space-y-6">
-          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
-            <ShieldCheck className="w-7 h-7" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full">
-              Acceso restringido
-            </span>
-            <h2 className="text-2xl font-bold text-slate-900">
-              Panel de administración
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Esta sección está reservada para el equipo de administración de Spotly Chile.
-            </p>
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-            {!currentUser ? (
-              <button
-                onClick={() => onOpenAuth?.('login')}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs transition cursor-pointer"
-              >
-                Iniciar sesión
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Solo se llega aquí siendo admin (la ruta muestra «Página no encontrada» al resto).
+  // Si la sesión se cierra mientras se ve el panel, no se dibuja nada que lo delate.
+  if (!currentUser || currentUser.role !== 'admin') return null;
 
   const handleConfirmRejectUser = (userId: string) => {
     if (!rejectReason.trim()) return;
