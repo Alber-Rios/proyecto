@@ -1,6 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+// CORS: la web llama desde el mismo dominio; solo se abre a los orígenes de CORS_ORIGIN
+// (lista separada por comas; "*" se ignora). Sin origen permitido no se envía la cabecera.
+function applyCors(req: VercelRequest, res: VercelResponse, methods = 'GET,POST,OPTIONS'): void {
+  const origin = String(req.headers.origin || '');
+  const allowed = (process.env.CORS_ORIGIN || '').split(',').map((x) => x.trim()).filter((x) => x && x !== '*');
+  res.setHeader('Vary', 'Origin');
+  if (origin && allowed.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', methods);
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+}
+
+
 // Estado del servicio. Vercel Cron la llama una vez al día (vercel.json) para que la
 // base de datos de Supabase registre actividad y no se pause por inactividad.
 async function pingDatabase(): Promise<'ok' | 'error' | 'not_configured'> {
@@ -40,9 +54,7 @@ async function authSetup() {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  applyCors(req, res, 'GET,OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
@@ -50,10 +62,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const database = await pingDatabase();
-  return res.status(database === 'error' ? 503 : 200).json({
-    status: database === 'error' ? 'degraded' : 'ok',
-    database,
-    auth: await authSetup(),
-    timestamp: new Date().toISOString(),
-  });
+  const status = database === 'error' ? 'degraded' : 'ok';
+  // El detalle de la configuración (claves presentes, correo, parche SQL) solo se muestra
+  // con HEALTH_TOKEN (?token=…) o en desarrollo: no se le dice a cualquiera cómo está armado.
+  const token = String(req.query?.token || '');
+  const detailed =
+    process.env.NODE_ENV !== 'production' && !process.env.VERCEL
+      ? true
+      : Boolean(process.env.HEALTH_TOKEN) && token === process.env.HEALTH_TOKEN;
+  return res.status(database === 'error' ? 503 : 200).json(
+    detailed
+      ? { status, database, auth: await authSetup(), timestamp: new Date().toISOString() }
+      : { status, timestamp: new Date().toISOString() }
+  );
 }
