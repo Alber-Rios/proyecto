@@ -6,7 +6,7 @@ import { AppProvider, useApp } from './context/AppContext.tsx';
 import { Header } from './components/Header.tsx';
 import { HomePage } from './pages/HomePage.tsx';
 import { Space } from './types.ts';
-import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import { authReturnPath, isAuthPath } from './utils/authRedirect.ts';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { PageTransition, ScrollProgress } from './components/motion/Motion.tsx';
@@ -54,6 +54,7 @@ function AppContent() {
   const { currentUser, spaces, authReady, logout, logoutPending } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const [isOwnerUpgradeModalOpen, setIsOwnerUpgradeModalOpen] = useState(false);
   
@@ -183,7 +184,17 @@ function AppContent() {
       >
         <AppErrorBoundary resetKey={location.pathname}>
         <Suspense fallback={<PageLoading />}>
-        <AnimatePresence mode="wait" initial={false} onExitComplete={() => logoutPending && void logout()}>
+        <AnimatePresence
+          mode="wait"
+          initial={false}
+          onExitComplete={() => {
+            // La página nueva siempre parte arriba (con "atrás" el navegador recupera la
+            // posición). Se hace aquí, entre la salida de una página y la entrada de la
+            // otra: si se hace antes, la página que sale puede dejar el scroll abajo.
+            if (navigationType !== 'POP' && !location.hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+            if (logoutPending) void logout();
+          }}
+        >
         <PageTransition key={location.pathname}>
         {!authReady && isProtectedPath(location.pathname) ? (
           <PageLoading label="Cargando tu sesión…" />
