@@ -318,7 +318,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onOpenAu
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             {!currentUser ? (
               <button
-                onClick={() => onOpenAuth?.('login', 'Inicia sesión con credenciales de Administrador.')}
+                onClick={() => onOpenAuth?.('login')}
                 className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs transition cursor-pointer"
               >
                 Iniciar sesión
