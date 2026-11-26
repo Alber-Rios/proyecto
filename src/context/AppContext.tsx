@@ -93,6 +93,9 @@ interface AppContextType {
   switchUser: (userId: string | null) => void;
   login: (email: string, password?: string, remember?: boolean) => Promise<{ success: boolean; message?: string; code?: string; status?: number }>;
   logout: () => Promise<void>;
+  /** Cerrar sesión desde una página privada: se cierra cuando esa página ya salió de la vista. */
+  requestLogout: () => void;
+  logoutPending: boolean;
   verifyEmail: (email: string, code: string) => Promise<{ success: boolean; message?: string }>;
   resendVerificationCode: (email: string) => Promise<{ success: boolean; message?: string }>;
   requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string }>;
@@ -582,7 +585,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Cierre de sesión: el servidor revoca el token en Supabase y borra la cookie.
+  // Si la sesión se cierra mientras la página privada todavía está saliendo, esa página
+  // se redibuja como "Acceso restringido" y la transición queda pegada. Por eso, desde
+  // una página privada se pide el cierre y App lo ejecuta al terminar la transición.
+  const [logoutPending, setLogoutPending] = useState(false);
+  const requestLogout = () => setLogoutPending(true);
+
   const logout = async () => {
+    setLogoutPending(false);
     // Se pide al servidor antes de borrar el token local (lo necesita para revocarlo),
     // pero la pantalla no espera la respuesta.
     const serverLogout = authRequest('logout', {}, true).catch((err) => {
@@ -1797,6 +1807,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         switchUser,
         login,
         logout,
+        requestLogout,
+        logoutPending,
         register,
         verifyEmail,
         resendVerificationCode,

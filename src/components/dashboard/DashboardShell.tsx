@@ -74,7 +74,7 @@ export function DashboardShell<T extends string>({
   storageKey,
   children,
 }: DashboardShellProps<T>) {
-  const { currentUser, logout, notifications, markAllNotificationsRead, dismissNotification } = useApp();
+  const { currentUser, requestLogout, notifications, markAllNotificationsRead, dismissNotification } = useApp();
   const routerNavigate = useNavigate();
   const reduce = useReducedMotion();
   const [collapsed, setCollapsed] = useState(() => readFlag(storageKey));
@@ -139,7 +139,8 @@ export function DashboardShell<T extends string>({
 
   const handleLogout = () => {
     setDrawerOpen(false);
-    logout();
+    // Primero se sale del panel; la sesión se cierra cuando el panel ya salió (App).
+    requestLogout();
     onNavigate('home', { replace: true });
   };
 

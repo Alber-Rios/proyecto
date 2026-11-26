@@ -51,7 +51,7 @@ function PageLoading({ label = 'Cargando…' }: { label?: string }) {
 }
 
 function AppContent() {
-  const { currentUser, spaces, authReady } = useApp();
+  const { currentUser, spaces, authReady, logout, logoutPending } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
@@ -83,6 +83,15 @@ function AppContent() {
     }
     setIsOwnerUpgradeModalOpen(true);
   };
+
+  // Cierre de sesión pedido desde una página privada: normalmente lo ejecuta
+  // onExitComplete al terminar la transición; si no hay transición (ya estaba en la
+  // portada), se cierra igual a los 2,5 s.
+  useEffect(() => {
+    if (!logoutPending) return;
+    const t = window.setTimeout(() => void logout(), 2500);
+    return () => window.clearTimeout(t);
+  }, [logoutPending]);
 
   const handleNavigate = (view: string, options?: { replace?: boolean }) => {
     if (view === 'login' || view === 'register') {
@@ -174,7 +183,7 @@ function AppContent() {
       >
         <AppErrorBoundary resetKey={location.pathname}>
         <Suspense fallback={<PageLoading />}>
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="wait" initial={false} onExitComplete={() => logoutPending && void logout()}>
         <PageTransition key={location.pathname}>
         {!authReady && isProtectedPath(location.pathname) ? (
           <PageLoading label="Cargando tu sesión…" />

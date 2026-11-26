@@ -50,7 +50,7 @@ interface UserMenuProps {
 }
 
 export const UserMenu: React.FC<UserMenuProps> = ({ open, currentView, onClose, onNavigate, onOpenOwnerUpgrade }) => {
-  const { currentUser, logout, favoriteSpaceIds } = useApp();
+  const { currentUser, logout, requestLogout, favoriteSpaceIds } = useApp();
   const reduce = useReducedMotion();
   if (!currentUser) return null;
 
@@ -230,9 +230,15 @@ export const UserMenu: React.FC<UserMenuProps> = ({ open, currentView, onClose, 
                 role="menuitem"
                 onClick={() => {
                   onClose();
-                  logout();
                   // Se reemplaza la página actual: "atrás" no vuelve a una vista privada.
-                  onNavigate('home', { replace: true });
+                  // La sesión se cierra cuando esa página ya salió de la vista (App).
+                  if (window.location.pathname === '/') {
+                    // Ya está en la portada: no hay página que salga, se cierra de inmediato.
+                    void logout();
+                  } else {
+                    requestLogout();
+                    onNavigate('home', { replace: true });
+                  }
                 }}
                 className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-rose-700 transition-[background-color,transform] duration-150 hover:bg-rose-50 active:scale-[0.98] cursor-pointer"
               >
